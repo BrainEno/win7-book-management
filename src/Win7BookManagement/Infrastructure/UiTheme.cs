@@ -282,6 +282,9 @@ namespace Win7BookManagement.Infrastructure
                         button.FlatStyle = FlatStyle.Flat;
                         button.FlatAppearance.BorderSize = 0;
                         button.Cursor = Cursors.Hand;
+                        button.MinimumSize = new Size(
+                            button.MinimumSize.Width,
+                            Math.Max(ButtonHeight, button.Font.Height + 14));
                     }
                     else
                     {
