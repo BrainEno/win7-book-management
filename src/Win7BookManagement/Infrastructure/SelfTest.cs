@@ -205,7 +205,7 @@ namespace Win7BookManagement.Infrastructure
             var forms = new Form[]
             {
                 new MainForm(services),
-                new DashboardForm(services, delegate { }, delegate { }),
+                new DashboardForm(services, delegate(string key) { }, delegate { }),
                 new BookListForm(services),
                 new BookEditForm(services, storedBook),
                 new BookLookupDialog(services),
@@ -217,7 +217,7 @@ namespace Win7BookManagement.Infrastructure
                 new SupplierForm(services),
                 new BackupForm(services),
                 new SettingsForm(services),
-                new HelpForm(services, delegate { }, delegate { })
+                new HelpForm(services, delegate { }, delegate(string key) { })
             };
 
             try
