@@ -1,4 +1,5 @@
 using Win7BookManagement.Database;
+using Win7BookManagement.Reporting;
 using Win7BookManagement.Repositories;
 using Win7BookManagement.Services;
 
@@ -16,6 +17,9 @@ namespace Win7BookManagement.Infrastructure
             Purchases = new PurchaseService(Database);
             Sales = new SalesService(Database);
             Inventory = new InventoryService(Database);
+            Reports = new ReportRepository(Database);
+            Excel = new ExcelReportExporter();
+            Backup = new BackupService(Database);
         }
 
         public DatabaseConnectionFactory Database { get; private set; }
@@ -24,5 +28,8 @@ namespace Win7BookManagement.Infrastructure
         public PurchaseService Purchases { get; private set; }
         public SalesService Sales { get; private set; }
         public InventoryService Inventory { get; private set; }
+        public ReportRepository Reports { get; private set; }
+        public ExcelReportExporter Excel { get; private set; }
+        public BackupService Backup { get; private set; }
     }
 }

@@ -47,6 +47,8 @@ namespace Win7BookManagement.Forms
             left.Controls.Add(CreateNavButton("采购入库", delegate { ShowChild("采购入库", new PurchaseForm(_services)); }));
             left.Controls.Add(CreateNavButton("销售开单", delegate { ShowChild("销售开单", new SalesForm(_services)); }));
             left.Controls.Add(CreateNavButton("库存管理", delegate { ShowChild("库存管理", new InventoryForm(_services)); }));
+            left.Controls.Add(CreateNavButton("报表导出", delegate { ShowChild("报表导出", new ReportsForm(_services)); }));
+            left.Controls.Add(CreateNavButton("备份恢复", delegate { ShowChild("备份恢复", new BackupForm(_services)); }));
 
             var header = new Panel
             {

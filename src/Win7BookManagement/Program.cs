@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows.Forms;
 using Win7BookManagement.Forms;
 using Win7BookManagement.Infrastructure;
@@ -10,6 +11,9 @@ namespace Win7BookManagement
         [STAThread]
         private static int Main(string[] args)
         {
+            if (args != null && args.Any(a => string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase)))
+                return SelfTest.Run();
+
             try
             {
                 Application.EnableVisualStyles();

@@ -13,8 +13,10 @@
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\x86\$(Configuration)\</OutputPath>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageReference Include="NPOI" Version="2.6.2" />
   </ItemGroup>
 </Project>
