@@ -12,6 +12,10 @@ namespace Win7BookManagement.Infrastructure
         public static readonly Color Background = Color.FromArgb(248, 246, 241);
         public static readonly Color Surface = Color.FromArgb(255, 255, 253);
         public static readonly Color SurfaceMuted = Color.FromArgb(250, 248, 244);
+        public static readonly Color NavigationSurface = Color.FromArgb(247, 242, 232);
+        public static readonly Color NavigationHover = Color.FromArgb(241, 235, 223);
+        public static readonly Color NavigationSelected = Color.FromArgb(235, 226, 209);
+        public static readonly Color NavigationText = Color.FromArgb(49, 60, 55);
         public static readonly Color Sidebar = Color.FromArgb(27, 39, 37);
         public static readonly Color SidebarHover = Color.FromArgb(42, 57, 53);
         public static readonly Color Accent = Color.FromArgb(31, 116, 96);
