@@ -77,6 +77,10 @@
 
 如果 .NET Framework 4.8 是本次安装中新装的，安装完成后不会强行立即启动 BOOK DESK；部分 Win7 机器可能需要先重启一次。
 
+## 本地构建依赖
+
+开发电脑不再要求单独安装 .NET Framework 4.8 Targeting Pack。项目通过 NuGet 固定引用 `Microsoft.NETFramework.ReferenceAssemblies.net48 1.0.3`，因此只要本机具有可用的 Visual Studio/MSBuild 和 NuGet 访问能力，就可以还原 .NET Framework 4.8 编译参考程序集。目标 Win7 运行时仍由最终离线 installer 内置的 .NET Framework 4.8 runtime 负责。
+
 ## 一条命令生成 installer
 
 在仓库根目录打开 CMD 或 PowerShell，执行：

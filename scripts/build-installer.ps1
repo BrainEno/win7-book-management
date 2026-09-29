@@ -33,23 +33,6 @@ function Find-MSBuild {
     throw "MSBuild was not found. Install the .NET desktop development workload in Visual Studio."
 }
 
-function Assert-NetFramework48TargetingPack {
-    $referenceRoot = Join-Path ${env:ProgramFiles(x86)} "Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8"
-    $frameworkList = Join-Path $referenceRoot "RedistList\FrameworkList.xml"
-
-    if (-not (Test-Path $frameworkList)) {
-        throw @"
-.NET Framework 4.8 targeting pack was not found.
-
-Install one of the following on this development PC:
-  1. Visual Studio -> Modify -> Individual components -> ".NET Framework 4.8 targeting pack"
-  2. Microsoft .NET Framework 4.8 Developer Pack
-
-This is only required on the PC that builds the program. The final offline installer already contains the .NET Framework 4.8 runtime for the Windows 7 target PC.
-"@
-    }
-}
-
 function Invoke-Checked {
     param(
         [Parameter(Mandatory=$true)][string]$FilePath,
@@ -110,7 +93,6 @@ Push-Location $root
 try {
     if (-not $SkipBuild) {
         $msbuild = Find-MSBuild
-        Assert-NetFramework48TargetingPack
 
         Write-Host "== Restore NuGet packages =="
         Invoke-Checked $msbuild @(
