@@ -332,7 +332,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(16, 14, 16, 14),
                 Margin = new Padding(0, 0, 0, 12),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
