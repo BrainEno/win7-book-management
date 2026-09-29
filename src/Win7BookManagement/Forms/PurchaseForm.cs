@@ -162,8 +162,8 @@ namespace Win7BookManagement.Forms
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
