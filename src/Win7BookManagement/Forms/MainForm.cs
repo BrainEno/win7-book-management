@@ -83,7 +83,9 @@ namespace Win7BookManagement.Forms
             var header = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 78,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 80),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
@@ -102,11 +104,12 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
             titles.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            titles.RowStyles.Add(new RowStyle(SizeType.Absolute, 33));
-            titles.RowStyles.Add(new RowStyle(SizeType.Absolute, 23));
+            titles.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            titles.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             _pageTitle = new Label
             {
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 Font = UiTheme.Font(15F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
@@ -116,6 +119,7 @@ namespace Win7BookManagement.Forms
             };
             _pageSubtitle = new Label
             {
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 Font = UiTheme.Font(8.7F),
                 ForeColor = UiTheme.TextSecondary,
@@ -192,8 +196,8 @@ namespace Win7BookManagement.Forms
             var title = new Label
             {
                 Text = "BOOK",
+                AutoSize = true,
                 Dock = DockStyle.Top,
-                Height = 32,
                 ForeColor = UiTheme.TextPrimary,
                 Font = UiTheme.Font(15F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
@@ -201,8 +205,8 @@ namespace Win7BookManagement.Forms
             var sub = new Label
             {
                 Text = "离线书店进销存",
+                AutoSize = true,
                 Dock = DockStyle.Top,
-                Height = 23,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8.3F),
                 TextAlign = ContentAlignment.MiddleLeft
@@ -240,16 +244,16 @@ namespace Win7BookManagement.Forms
             var offline = new Label
             {
                 Text = "●  本机离线模式",
+                AutoSize = true,
                 Dock = DockStyle.Top,
-                Height = 22,
                 ForeColor = UiTheme.Success,
                 Font = UiTheme.Font(8.2F, FontStyle.Bold)
             };
             var version = new Label
             {
                 Text = ".NET Framework 4.8 · SQLite",
+                AutoSize = true,
                 Dock = DockStyle.Top,
-                Height = 20,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(7.5F)
             };
