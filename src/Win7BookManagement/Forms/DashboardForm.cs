@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
+using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Forms
 {
@@ -23,6 +24,8 @@ namespace Win7BookManagement.Forms
         private DashboardSummary _lastSummary;
         private int _lastThreshold;
         private bool _guideExpanded = true;
+        private bool _metricLayoutInitialized;
+        private bool _metricsCompact;
 
         public DashboardForm(ApplicationServices services, Action<string> navigate, Action startGuide)
         {
@@ -330,7 +333,7 @@ namespace Win7BookManagement.Forms
 
             _lastSummary = summary;
             _lastThreshold = threshold;
-            RebuildMetricCards();
+            RebuildMetricCards(true);
 
             _recentSales.DataSource = _services.Dashboard.RecentSales(10);
             _lowStock.DataSource = _services.Dashboard.LowStock(threshold, 30);
@@ -342,14 +345,25 @@ namespace Win7BookManagement.Forms
             _updatedAt.Text = "最后刷新：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
-        private void RebuildMetricCards()
+        private void RebuildMetricCards(bool force)
         {
             if (_lastSummary == null)
                 return;
 
             var compact = ClientSize.Width < 1080;
+            if (!force && _metricLayoutInitialized && compact == _metricsCompact)
+                return;
+
+            _metricLayoutInitialized = true;
+            _metricsCompact = compact;
+
             _metrics.SuspendLayout();
-            _metrics.Controls.Clear();
+            while (_metrics.Controls.Count > 0)
+            {
+                var control = _metrics.Controls[0];
+                _metrics.Controls.RemoveAt(0);
+                control.Dispose();
+            }
             _metrics.ColumnStyles.Clear();
             _metrics.RowStyles.Clear();
 
@@ -561,7 +575,7 @@ namespace Win7BookManagement.Forms
 
         private void ApplyResponsiveLayout()
         {
-            RebuildMetricCards();
+            RebuildMetricCards(false);
 
             var compact = ClientSize.Width < UiTheme.WideBreakpoint;
             _lower.ColumnStyles.Clear();
