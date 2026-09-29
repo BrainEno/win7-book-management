@@ -119,7 +119,7 @@ namespace Win7BookManagement.Forms
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
@@ -242,8 +242,9 @@ namespace Win7BookManagement.Forms
             _split.Dock = DockStyle.Fill;
             _split.Orientation = Orientation.Vertical;
             _split.FixedPanel = FixedPanel.Panel2;
-            _split.Panel1MinSize = 420;
-            _split.Panel2MinSize = 300;
+            // Do not assign large Panel*MinSize values before the SplitContainer
+            // has been laid out. WinForms validates them against the default
+            // 150px constructor size and can throw before the page is shown.
             _split.SplitterWidth = 8;
             _split.BackColor = UiTheme.Background;
             _split.Margin = new Padding(0, 10, 0, 0);
@@ -261,8 +262,9 @@ namespace Win7BookManagement.Forms
             {
                 Text = "库存表格",
                 Dock = DockStyle.Top,
-                Height = 38,
-                Padding = new Padding(12, 0, 0, 0),
+                AutoSize = true,
+                MinimumSize = new Size(0, 42),
+                Padding = new Padding(12, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,
@@ -287,7 +289,8 @@ namespace Win7BookManagement.Forms
             var header = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 46,
+                AutoSize = true,
+                MinimumSize = new Size(0, 48),
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = Padding.Empty
@@ -354,12 +357,13 @@ namespace Win7BookManagement.Forms
         {
             var row = table.RowCount;
             table.RowCount += 1;
-            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             table.Controls.Add(new Label
             {
                 Text = labelText,
                 Dock = DockStyle.Fill,
+                MinimumSize = new Size(0, 46),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(0, 0, 8, 0),
                 ForeColor = UiTheme.TextSecondary,
@@ -370,6 +374,7 @@ namespace Win7BookManagement.Forms
             {
                 Text = "—",
                 Dock = DockStyle.Fill,
+                MinimumSize = new Size(0, 40),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(9, 0, 9, 0),
                 Margin = new Padding(0, 3, 0, 3),
@@ -462,8 +467,11 @@ namespace Win7BookManagement.Forms
             {
                 var desiredRightWidth = Math.Min(360, Math.Max(305, _split.Width / 3));
                 var distance = _split.Width - desiredRightWidth - _split.SplitterWidth;
-                if (distance >= _split.Panel1MinSize)
-                    _split.SplitterDistance = distance;
+                const int minimumLeftWidth = 420;
+                const int minimumRightWidth = 300;
+                var maximumDistance = _split.Width - minimumRightWidth - _split.SplitterWidth;
+                if (distance >= minimumLeftWidth && maximumDistance >= minimumLeftWidth)
+                    _split.SplitterDistance = Math.Min(distance, maximumDistance);
             }
 
             var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
@@ -634,9 +642,9 @@ namespace Win7BookManagement.Forms
                 };
                 body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
                 body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                body.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-                body.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-                body.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+                body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
                 AddDialogLabel(body, 0, "调整方向 *");
@@ -681,7 +689,8 @@ namespace Win7BookManagement.Forms
                 var footer = new TableLayoutPanel
                 {
                     Dock = DockStyle.Bottom,
-                    Height = 68,
+                    AutoSize = true,
+                    MinimumSize = new Size(0, 68),
                     ColumnCount = 2,
                     RowCount = 1,
                     BackColor = UiTheme.Surface,

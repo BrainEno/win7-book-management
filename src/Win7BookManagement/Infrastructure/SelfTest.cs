@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Drawing;
 using System.IO;
+using System.Windows.Forms;
+using Win7BookManagement.Forms;
 using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Infrastructure
@@ -182,11 +185,22 @@ namespace Win7BookManagement.Infrastructure
                     throw new InvalidOperationException("数据库备份自检失败。");
 
                 VerifyLegacyBookSchemaUpgrade(root);
+                VerifyUiLayoutContracts(services, storedBook);
 
                 return 0;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.Error.WriteLine(ex.ToString());
+                try
+                {
+                    File.WriteAllText(
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "self-test-error.txt"),
+                        ex.ToString());
+                }
+                catch
+                {
+                }
                 return 1;
             }
             finally
@@ -194,6 +208,108 @@ namespace Win7BookManagement.Infrastructure
                 SQLiteConnection.ClearAllPools();
                 try { Directory.Delete(root, true); } catch { }
             }
+        }
+
+        private static void VerifyUiLayoutContracts(ApplicationServices services, Book storedBook)
+        {
+            var forms = new Form[]
+            {
+                new MainForm(services),
+                new DashboardForm(services, delegate(string key) { }, delegate { }),
+                new BookListForm(services),
+                new BookEditForm(services, storedBook),
+                new BookLookupDialog(services),
+                new PurchaseForm(services),
+                new SalesForm(services),
+                new InventoryForm(services),
+                new DocumentCenterForm(services),
+                new ReportsForm(services),
+                new SupplierForm(services),
+                new BackupForm(services),
+                new SettingsForm(services),
+                new HelpForm(services, delegate { }, delegate(string key) { })
+            };
+
+            try
+            {
+                foreach (var form in forms)
+                {
+                    form.Size = new Size(1024, 768);
+                    form.CreateControl();
+                    UiTheme.Apply(form);
+                    form.PerformLayout();
+                    VerifyControlTree(form, form.GetType().Name);
+                }
+            }
+            finally
+            {
+                foreach (var form in forms)
+                    form.Dispose();
+            }
+        }
+
+        private static void VerifyControlTree(Control control, string formName)
+        {
+            var label = control as Label;
+            if (label != null &&
+                !label.AutoSize &&
+                !string.IsNullOrWhiteSpace(label.Text) &&
+                label.Visible)
+            {
+                var required = TextRenderer.MeasureText(
+                    "国Ag",
+                    label.Font,
+                    new Size(int.MaxValue, int.MaxValue),
+                    TextFormatFlags.NoPrefix |
+                    TextFormatFlags.SingleLine |
+                    TextFormatFlags.NoPadding).Height +
+                    label.Padding.Vertical + 2;
+
+                if (label.Height > 0 && label.Height < required)
+                {
+                    throw new InvalidOperationException(
+                        formName + " 存在可能裁字的 Label：" +
+                        label.Text + "，实际高度 " + label.Height +
+                        "，安全高度至少 " + required + "。");
+                }
+            }
+
+            var textBox = control as TextBox;
+            if (textBox != null && !textBox.Multiline && !textBox.AutoSize)
+            {
+                throw new InvalidOperationException(
+                    formName + " 存在强制固定高度的单行 TextBox。");
+            }
+
+            var button = control as Button;
+            if (button != null && button.Visible)
+            {
+                var required = button.Font.Height + 12;
+                if (button.Height > 0 && button.Height < required)
+                {
+                    throw new InvalidOperationException(
+                        formName + " 存在高度不足的按钮：" + button.Text + "。");
+                }
+            }
+
+            var table = control as TableLayoutPanel;
+            if (table != null)
+            {
+                for (var row = 0; row < table.RowStyles.Count; row++)
+                {
+                    var style = table.RowStyles[row];
+                    if (style.SizeType == SizeType.Absolute &&
+                        style.Height > 0 &&
+                        style.Height < 80F)
+                    {
+                        throw new InvalidOperationException(
+                            formName + " 仍存在小于 80px 的固定 TableLayout 行。");
+                    }
+                }
+            }
+
+            foreach (Control child in control.Controls)
+                VerifyControlTree(child, formName);
         }
 
         private static void VerifyLegacyBookSchemaUpgrade(string root)

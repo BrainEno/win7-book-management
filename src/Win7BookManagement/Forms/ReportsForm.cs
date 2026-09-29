@@ -130,7 +130,8 @@ namespace Win7BookManagement.Forms
             var filters = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Height = 50,
+                AutoSize = true,
+                MinimumSize = new Size(0, 48),
                 ColumnCount = 8,
                 RowCount = 1,
                 Margin = new Padding(0, 2, 0, 0)
@@ -272,8 +273,9 @@ namespace Win7BookManagement.Forms
             {
                 Text = "报表明细",
                 Dock = DockStyle.Top,
-                Height = 38,
-                Padding = new Padding(12, 0, 0, 0),
+                AutoSize = true,
+                MinimumSize = new Size(0, 42),
+                Padding = new Padding(12, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,

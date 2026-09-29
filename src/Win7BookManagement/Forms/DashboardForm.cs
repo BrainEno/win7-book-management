@@ -471,7 +471,8 @@ namespace Win7BookManagement.Forms
             var header = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 62,
+                AutoSize = true,
+                MinimumSize = new Size(0, 62),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
