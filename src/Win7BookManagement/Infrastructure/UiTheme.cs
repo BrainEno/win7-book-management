@@ -95,6 +95,17 @@ namespace Win7BookManagement.Infrastructure
             };
         }
 
+        public static Panel CreateCard()
+        {
+            return new Panel
+            {
+                BackColor = Surface,
+                Padding = new Padding(18),
+                Margin = new Padding(0, 0, 14, 14),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+        }
+
         public static void PrepareInput(Control control)
         {
             if (control == null) return;
