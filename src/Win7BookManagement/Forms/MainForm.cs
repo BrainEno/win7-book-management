@@ -80,6 +80,7 @@ namespace Win7BookManagement.Forms
             AddNavigation("books", "图书资料");
             AddNavigation("purchase", "采购入库");
             AddNavigation("sales", "销售开单");
+            AddNavigation("documents", "单据中心");
             AddNavigation("inventory", "库存管理");
             AddNavigation("suppliers", "供应商");
             AddNavigation("reports", "报表与导出");
@@ -214,6 +215,11 @@ namespace Win7BookManagement.Forms
                     title = "销售开单";
                     subtitle = "支持扫码枪输入 ISBN，结账后自动扣减库存";
                     child = new SalesForm(_services);
+                    break;
+                case "documents":
+                    title = "单据中心";
+                    subtitle = "查看销售、采购和退货历史，并从原单据发起退货";
+                    child = new DocumentCenterForm(_services);
                     break;
                 case "inventory":
                     title = "库存管理";

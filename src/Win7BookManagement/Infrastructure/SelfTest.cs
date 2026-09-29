@@ -51,9 +51,66 @@ namespace Win7BookManagement.Infrastructure
                     },
                     "sale");
 
-                var book = services.Books.GetById(bookId);
-                if (book == null || book.StockQuantity != 7)
-                    throw new InvalidOperationException("库存事务自检失败。");
+                if (services.Books.GetById(bookId).StockQuantity != 7)
+                    throw new InvalidOperationException("采购/销售库存事务自检失败。");
+
+                var saleDocs = services.Documents.Search("sale", DateTime.Today, DateTime.Today, "");
+                var purchaseDocs = services.Documents.Search("purchase", DateTime.Today, DateTime.Today, "");
+                if (saleDocs.Rows.Count != 1 || purchaseDocs.Rows.Count != 1)
+                    throw new InvalidOperationException("单据中心原单查询自检失败。");
+
+                var saleId = Convert.ToInt64(saleDocs.Rows[0]["Id"]);
+                var purchaseId = Convert.ToInt64(purchaseDocs.Rows[0]["Id"]);
+                var saleReturnable = services.Documents.GetReturnableLines("sale", saleId);
+                var purchaseReturnable = services.Documents.GetReturnableLines("purchase", purchaseId);
+
+                services.Returns.CreateSalesReturn(
+                    saleId,
+                    new List<ReturnLineInput>
+                    {
+                        new ReturnLineInput { SourceItemId = saleReturnable[0].SourceItemId, Quantity = 1 }
+                    },
+                    "sale return");
+
+                if (services.Books.GetById(bookId).StockQuantity != 8)
+                    throw new InvalidOperationException("销售退货没有正确加回库存。");
+
+                services.Returns.CreatePurchaseReturn(
+                    purchaseId,
+                    new List<ReturnLineInput>
+                    {
+                        new ReturnLineInput { SourceItemId = purchaseReturnable[0].SourceItemId, Quantity = 1 }
+                    },
+                    "purchase return");
+
+                if (services.Books.GetById(bookId).StockQuantity != 7)
+                    throw new InvalidOperationException("采购退货没有正确扣减库存。");
+
+                try
+                {
+                    services.Returns.CreateSalesReturn(
+                        saleId,
+                        new List<ReturnLineInput>
+                        {
+                            new ReturnLineInput { SourceItemId = saleReturnable[0].SourceItemId, Quantity = 2 }
+                        },
+                        "over return");
+                    throw new InvalidOperationException("超量销售退货校验未生效。");
+                }
+                catch (InvalidOperationException)
+                {
+                    if (services.Books.GetById(bookId).StockQuantity != 7)
+                        throw new InvalidOperationException("失败退货没有正确回滚。");
+                }
+
+                var saleReturnDocs = services.Documents.Search("sale_return", DateTime.Today, DateTime.Today, "");
+                var purchaseReturnDocs = services.Documents.Search("purchase_return", DateTime.Today, DateTime.Today, "");
+                if (saleReturnDocs.Rows.Count != 1 || purchaseReturnDocs.Rows.Count != 1)
+                    throw new InvalidOperationException("退货单据查询自检失败。");
+
+                var saleItems = services.Documents.GetItems("sale", saleId);
+                if (saleItems.Rows.Count != 1 || Convert.ToInt32(saleItems.Rows[0]["已退"]) != 1)
+                    throw new InvalidOperationException("原销售单退货状态自检失败。");
 
                 try
                 {
@@ -72,21 +129,27 @@ namespace Win7BookManagement.Infrastructure
                 }
 
                 var dashboard = services.Dashboard.GetSummary(5);
-                if (dashboard.ActiveTitles != 1 || dashboard.StockUnits != 7 || dashboard.TodaySalesOrders != 1)
-                    throw new InvalidOperationException("经营概览自检失败。");
+                if (dashboard.ActiveTitles != 1 ||
+                    dashboard.StockUnits != 7 ||
+                    dashboard.TodaySalesOrders != 1 ||
+                    dashboard.TodaySalesQuantity != 1 ||
+                    dashboard.TodaySalesCent != 2000)
+                    throw new InvalidOperationException("退货后的净销售经营概览自检失败。");
 
                 var sales = services.Reports.SalesDetail(DateTime.Today, DateTime.Today);
-                if (sales.Rows.Count != 1)
-                    throw new InvalidOperationException("销售报表自检失败。");
+                var saleReturns = services.Reports.SalesReturnDetail(DateTime.Today, DateTime.Today);
+                var purchaseReturns = services.Reports.PurchaseReturnDetail(DateTime.Today, DateTime.Today);
+                if (sales.Rows.Count != 1 || saleReturns.Rows.Count != 1 || purchaseReturns.Rows.Count != 1)
+                    throw new InvalidOperationException("销售/退货报表自检失败。");
 
                 var snapshot = services.Reports.InventorySnapshot(DateTime.Today);
                 if (snapshot.Rows.Count != 1 || Convert.ToInt32(snapshot.Rows[0]["库存数量"]) != 7)
                     throw new InvalidOperationException("库存快照自检失败。");
 
-                var excelPath = Path.Combine(root, "sales.xlsx");
-                services.Excel.Export(sales, excelPath, "销售明细");
+                var excelPath = Path.Combine(root, "sales-returns.xlsx");
+                services.Excel.Export(saleReturns, excelPath, "销售退货明细");
                 if (!File.Exists(excelPath) || new FileInfo(excelPath).Length == 0)
-                    throw new InvalidOperationException("Excel 导出自检失败。");
+                    throw new InvalidOperationException("退货 Excel 导出自检失败。");
 
                 var backupPath = Path.Combine(root, "backup.db");
                 services.Backup.CreateBackup(backupPath);

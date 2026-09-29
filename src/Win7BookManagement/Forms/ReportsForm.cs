@@ -32,7 +32,9 @@ namespace Win7BookManagement.Forms
             _type.Width = 160;
             _type.Margin = new Padding(0, 9, 8, 8);
             _type.Items.Add(new ReportOption("销售明细", "sales"));
+            _type.Items.Add(new ReportOption("销售退货明细", "sales_return"));
             _type.Items.Add(new ReportOption("采购明细", "purchase"));
+            _type.Items.Add(new ReportOption("采购退货明细", "purchase_return"));
             _type.Items.Add(new ReportOption("库存变动明细", "movement"));
             _type.Items.Add(new ReportOption("指定日期库存快照", "snapshot"));
             _type.SelectedIndex = 0;
@@ -48,7 +50,7 @@ namespace Win7BookManagement.Forms
             _to.Margin = new Padding(0, 9, 8, 8);
 
             var query = new Button { Text = "查询", Width = 72, Height = 30, Margin = new Padding(0, 7, 8, 7) };
-            var export = new Button { Text = "导出 Excel", Width = 96, Height = 30, Margin = new Padding(0, 7, 8, 7) };
+            var export = new Button { Text = "导出 Excel", Width = 96, Height = 30, Margin = new Padding(0, 7, 8, 7), Tag = "primary" };
             query.Click += delegate { Query(); };
             export.Click += delegate { Export(); };
 
@@ -92,8 +94,14 @@ namespace Win7BookManagement.Forms
                     case "sales":
                         _current = _services.Reports.SalesDetail(_from.Value.Date, _to.Value.Date);
                         break;
+                    case "sales_return":
+                        _current = _services.Reports.SalesReturnDetail(_from.Value.Date, _to.Value.Date);
+                        break;
                     case "purchase":
                         _current = _services.Reports.PurchaseDetail(_from.Value.Date, _to.Value.Date);
+                        break;
+                    case "purchase_return":
+                        _current = _services.Reports.PurchaseReturnDetail(_from.Value.Date, _to.Value.Date);
                         break;
                     case "movement":
                         _current = _services.Reports.InventoryMovements(_from.Value.Date, _to.Value.Date);

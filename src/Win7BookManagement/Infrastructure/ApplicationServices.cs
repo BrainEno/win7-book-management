@@ -16,8 +16,10 @@ namespace Win7BookManagement.Infrastructure
             Suppliers = new SupplierRepository(Database);
             Purchases = new PurchaseService(Database);
             Sales = new SalesService(Database);
+            Returns = new ReturnService(Database);
             Inventory = new InventoryService(Database);
             Reports = new ReportRepository(Database);
+            Documents = new DocumentRepository(Database);
             Dashboard = new DashboardRepository(Database);
             Settings = new SettingsRepository(Database);
             Excel = new ExcelReportExporter();
@@ -29,8 +31,10 @@ namespace Win7BookManagement.Infrastructure
         public SupplierRepository Suppliers { get; private set; }
         public PurchaseService Purchases { get; private set; }
         public SalesService Sales { get; private set; }
+        public ReturnService Returns { get; private set; }
         public InventoryService Inventory { get; private set; }
         public ReportRepository Reports { get; private set; }
+        public DocumentRepository Documents { get; private set; }
         public DashboardRepository Dashboard { get; private set; }
         public SettingsRepository Settings { get; private set; }
         public ExcelReportExporter Excel { get; private set; }

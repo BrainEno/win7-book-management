@@ -14,16 +14,18 @@ Build a small, dependable, completely offline bookstore inventory/sales applicat
 - Build artifacts must include every non-system DLL/native SQLite dependency required at runtime.
 
 ## Scope
-The first commercial baseline is intentionally small:
+The commercial baseline is intentionally small:
 1. Book master data.
 2. Suppliers.
 3. Purchase receiving.
-4. Sales checkout / sales history.
-5. Inventory query and inventory movement history.
-6. Reports and Excel export by date.
-7. SQLite backup and restore.
-8. Minimal settings and low-stock reminders.
-9. A lightweight operating dashboard.
+4. Sales checkout.
+5. Document center for sales, purchases, sales returns and purchase returns.
+6. Sales returns and purchase returns based on original documents.
+7. Inventory query and inventory movement history.
+8. Reports and Excel export by date.
+9. SQLite backup and restore.
+10. Minimal settings and low-stock reminders.
+11. A lightweight operating dashboard.
 
 Out of scope unless explicitly requested: cloud sync, mobile apps, multi-store networking, online accounts, complex accounting, CRM, microservices.
 
@@ -45,14 +47,21 @@ Do not add architectural layers without a concrete need.
 - ISBN is a business identifier, not the primary key.
 - Primary keys are internal integer IDs.
 - Sales and purchase documents preserve item snapshots needed for historical reporting.
-- Every stock-changing operation must:
-  1. execute inside one SQLite transaction;
-  2. update current stock;
-  3. append an inventory transaction row;
-  4. either commit all changes or commit none.
+- Every stock-changing operation must execute inside one SQLite transaction, update current stock, append an inventory transaction row, and either commit all changes or none.
 - Never mutate historical inventory transaction rows to "fix" current stock. Use an explicit adjustment transaction.
 - Historical inventory for a date must be reproducible from the inventory ledger.
 - Deleting a book that has transaction history is forbidden; deactivate it instead.
+
+## Return invariants
+- Never edit or delete an original sales or purchase document to represent a return.
+- A return is always a new document linked to an original document.
+- Sales returns increase stock and create positive SALE_RETURN inventory movements.
+- Purchase returns decrease stock and create negative PURCHASE_RETURN inventory movements.
+- A source line cannot be returned beyond its original quantity across all return documents.
+- Purchase return cannot reduce current stock below zero.
+- Return prices/costs come from the original document snapshot, not from the current book master price.
+- Original documents must expose returned and remaining-returnable quantities.
+- Dashboard net sales must deduct sales returns by the return date.
 
 ## SQLite rules
 - Enable foreign keys for every connection.
@@ -65,13 +74,16 @@ Do not add architectural layers without a concrete need.
 - Store timestamps in an unambiguous sortable format.
 - Report date filters are inclusive by local calendar date.
 - A stock snapshot for a date means stock at the end of that local calendar day.
+- Returns belong to the date/time when the return is actually processed.
 
 ## Excel/reporting rules
 Required exports:
 - Sales detail by date range.
+- Sales return detail by date range.
+- Purchase detail by date range.
+- Purchase return detail by date range.
 - Inventory snapshot for a selected date.
 - Inventory movement detail by date range.
-- Purchase detail by date range.
 Exports must be valid .xlsx files and must not require Microsoft Excel to be installed.
 
 ## UI rules
@@ -102,12 +114,13 @@ At minimum, verify:
 - clean database creation and forward schema upgrade;
 - purchase increases stock and creates ledger rows;
 - sale decreases stock and creates ledger rows;
-- failed sale/purchase rolls back completely;
-- insufficient stock is rejected unless an explicit future requirement changes this;
-- historical inventory snapshot remains correct after later transactions;
-- date-range sales/purchase/movement queries use correct inclusive boundaries;
-- dashboard queries and low-stock settings work;
-- key Forms can be constructed without runtime exceptions;
+- sales return restores stock and cannot exceed source quantity;
+- purchase return deducts stock and cannot exceed source quantity/current stock;
+- failed sale/purchase/return rolls back completely;
+- original document return status/quantities remain correct;
+- historical inventory snapshot remains correct after returns;
+- dashboard net sales deducts sales returns;
+- date-range sales/purchase/return/movement queries use correct inclusive boundaries;
 - Excel export creates a readable workbook;
 - backup produces a restorable database.
 
@@ -118,4 +131,4 @@ Before changing behavior:
 3. Prefer the smallest coherent change.
 4. Keep business logic out of Forms.
 5. Update README/docs when user-visible behavior or setup changes.
-6. Do not weaken the inventory-ledger invariants for convenience.
+6. Do not weaken inventory or return invariants for convenience.

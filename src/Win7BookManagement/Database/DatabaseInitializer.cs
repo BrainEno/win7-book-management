@@ -112,6 +112,61 @@ CREATE TABLE IF NOT EXISTS sales_order_items (
     FOREIGN KEY(book_id) REFERENCES books(id)
 );
 
+CREATE TABLE IF NOT EXISTS sales_returns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    return_no TEXT NOT NULL UNIQUE,
+    source_sales_order_id INTEGER NOT NULL,
+    source_order_no_snapshot TEXT NOT NULL,
+    returned_at TEXT NOT NULL,
+    total_cent INTEGER NOT NULL CHECK(total_cent >= 0),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(source_sales_order_id) REFERENCES sales_orders(id)
+);
+
+CREATE TABLE IF NOT EXISTS sales_return_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sales_return_id INTEGER NOT NULL,
+    source_sales_order_item_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    isbn_snapshot TEXT NOT NULL DEFAULT '',
+    title_snapshot TEXT NOT NULL,
+    quantity INTEGER NOT NULL CHECK(quantity > 0),
+    unit_price_cent INTEGER NOT NULL CHECK(unit_price_cent >= 0),
+    line_total_cent INTEGER NOT NULL CHECK(line_total_cent >= 0),
+    FOREIGN KEY(sales_return_id) REFERENCES sales_returns(id),
+    FOREIGN KEY(source_sales_order_item_id) REFERENCES sales_order_items(id),
+    FOREIGN KEY(book_id) REFERENCES books(id)
+);
+
+CREATE TABLE IF NOT EXISTS purchase_returns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    return_no TEXT NOT NULL UNIQUE,
+    source_purchase_order_id INTEGER NOT NULL,
+    source_order_no_snapshot TEXT NOT NULL,
+    supplier_name_snapshot TEXT NOT NULL DEFAULT '',
+    returned_at TEXT NOT NULL,
+    total_cent INTEGER NOT NULL CHECK(total_cent >= 0),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(source_purchase_order_id) REFERENCES purchase_orders(id)
+);
+
+CREATE TABLE IF NOT EXISTS purchase_return_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    purchase_return_id INTEGER NOT NULL,
+    source_purchase_order_item_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    isbn_snapshot TEXT NOT NULL DEFAULT '',
+    title_snapshot TEXT NOT NULL,
+    quantity INTEGER NOT NULL CHECK(quantity > 0),
+    unit_cost_cent INTEGER NOT NULL CHECK(unit_cost_cent >= 0),
+    line_total_cent INTEGER NOT NULL CHECK(line_total_cent >= 0),
+    FOREIGN KEY(purchase_return_id) REFERENCES purchase_returns(id),
+    FOREIGN KEY(source_purchase_order_item_id) REFERENCES purchase_order_items(id),
+    FOREIGN KEY(book_id) REFERENCES books(id)
+);
+
 CREATE TABLE IF NOT EXISTS inventory_transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     book_id INTEGER NOT NULL,
@@ -141,6 +196,18 @@ ON sales_orders(sold_at);
 
 CREATE INDEX IF NOT EXISTS ix_purchase_orders_purchased_at
 ON purchase_orders(purchased_at);
+
+CREATE INDEX IF NOT EXISTS ix_sales_returns_returned_at
+ON sales_returns(returned_at);
+
+CREATE INDEX IF NOT EXISTS ix_sales_return_items_source
+ON sales_return_items(source_sales_order_item_id);
+
+CREATE INDEX IF NOT EXISTS ix_purchase_returns_returned_at
+ON purchase_returns(returned_at);
+
+CREATE INDEX IF NOT EXISTS ix_purchase_return_items_source
+ON purchase_return_items(source_purchase_order_item_id);
 ";
                     command.ExecuteNonQuery();
 
@@ -149,11 +216,11 @@ ON purchase_orders(purchased_at);
                         version.Transaction = transaction;
                         version.CommandText = @"
 INSERT INTO schema_info(version)
-SELECT 2 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+SELECT 3 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
 
 UPDATE schema_info
-SET version = 2
-WHERE version < 2;
+SET version = 3
+WHERE version < 3;
 
 INSERT OR IGNORE INTO app_settings(key, value, updated_at)
 VALUES('low_stock_threshold', '3', @now);";

@@ -31,11 +31,25 @@ SELECT
   (SELECT COALESCE(SUM(stock_quantity),0) FROM books WHERE is_active=1) AS stock_units,
   (SELECT COUNT(*) FROM books WHERE is_active=1 AND stock_quantity<=@threshold) AS low_stock_titles,
   (SELECT COUNT(*) FROM sales_orders WHERE sold_at>=@today AND sold_at<@tomorrow) AS today_orders,
-  (SELECT COALESCE(SUM(si.quantity),0)
-     FROM sales_order_items si JOIN sales_orders so ON so.id=si.sales_order_id
-    WHERE so.sold_at>=@today AND so.sold_at<@tomorrow) AS today_quantity,
-  (SELECT COALESCE(SUM(total_cent),0) FROM sales_orders WHERE sold_at>=@today AND sold_at<@tomorrow) AS today_sales_cent,
-  (SELECT COALESCE(SUM(total_cent),0) FROM sales_orders WHERE sold_at>=@monthStart AND sold_at<@tomorrow) AS month_sales_cent;";
+  (
+    (SELECT COALESCE(SUM(si.quantity),0)
+       FROM sales_order_items si JOIN sales_orders so ON so.id=si.sales_order_id
+      WHERE so.sold_at>=@today AND so.sold_at<@tomorrow)
+    -
+    (SELECT COALESCE(SUM(sri.quantity),0)
+       FROM sales_return_items sri JOIN sales_returns sr ON sr.id=sri.sales_return_id
+      WHERE sr.returned_at>=@today AND sr.returned_at<@tomorrow)
+  ) AS today_quantity,
+  (
+    (SELECT COALESCE(SUM(total_cent),0) FROM sales_orders WHERE sold_at>=@today AND sold_at<@tomorrow)
+    -
+    (SELECT COALESCE(SUM(total_cent),0) FROM sales_returns WHERE returned_at>=@today AND returned_at<@tomorrow)
+  ) AS today_sales_cent,
+  (
+    (SELECT COALESCE(SUM(total_cent),0) FROM sales_orders WHERE sold_at>=@monthStart AND sold_at<@tomorrow)
+    -
+    (SELECT COALESCE(SUM(total_cent),0) FROM sales_returns WHERE returned_at>=@monthStart AND returned_at<@tomorrow)
+  ) AS month_sales_cent;";
                 command.Parameters.AddWithValue("@threshold", lowStockThreshold);
                 command.Parameters.AddWithValue("@today", Format(today));
                 command.Parameters.AddWithValue("@tomorrow", Format(tomorrow));

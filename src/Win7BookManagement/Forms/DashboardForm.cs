@@ -41,7 +41,7 @@ namespace Win7BookManagement.Forms
 
             var sub = new Label
             {
-                Text = "销售、库存和低库存提醒都集中在这里。",
+                Text = "净销售、库存和低库存提醒都集中在这里；退货会实时扣减净销售。",
                 Dock = DockStyle.Top,
                 Height = 26,
                 Font = UiTheme.Font(9F),
@@ -78,9 +78,9 @@ namespace Win7BookManagement.Forms
             lower.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
             lower.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
 
-            lower.Controls.Add(CreateTableCard("最近销售", "最近 10 张销售单", _recentSales, "查看销售报表", delegate
+            lower.Controls.Add(CreateTableCard("最近销售单", "最近 10 张原销售单", _recentSales, "打开单据中心", delegate
             {
-                if (_navigate != null) _navigate("reports");
+                if (_navigate != null) _navigate("documents");
             }), 0, 0);
 
             lower.Controls.Add(CreateTableCard("低库存", "达到提醒阈值的启用图书", _lowStock, "管理库存", delegate
@@ -106,10 +106,10 @@ namespace Win7BookManagement.Forms
 
             _metrics.SuspendLayout();
             _metrics.Controls.Clear();
-            _metrics.Controls.Add(CreateMetric("今日销售额", "¥" + Money.Format(summary.TodaySalesCent),
-                summary.TodaySalesOrders + " 单 · " + summary.TodaySalesQuantity + " 册", UiTheme.Accent), 0, 0);
-            _metrics.Controls.Add(CreateMetric("本月销售额", "¥" + Money.Format(summary.MonthSalesCent),
-                "按自然月累计", UiTheme.Success), 1, 0);
+            _metrics.Controls.Add(CreateMetric("今日净销售额", "¥" + Money.Format(summary.TodaySalesCent),
+                summary.TodaySalesOrders + " 单 · 净 " + summary.TodaySalesQuantity + " 册", UiTheme.Accent), 0, 0);
+            _metrics.Controls.Add(CreateMetric("本月净销售额", "¥" + Money.Format(summary.MonthSalesCent),
+                "已扣除本月销售退货", UiTheme.Success), 1, 0);
             _metrics.Controls.Add(CreateMetric("当前库存", summary.StockUnits.ToString(),
                 summary.ActiveTitles + " 个启用品种", UiTheme.TextPrimary), 2, 0);
             _metrics.Controls.Add(CreateMetric("低库存", summary.LowStockTitles.ToString(),
@@ -178,7 +178,7 @@ namespace Win7BookManagement.Forms
             {
                 Text = actionText,
                 Dock = DockStyle.Right,
-                Width = 104,
+                Width = 112,
                 Height = 30,
                 Tag = "primary"
             };
