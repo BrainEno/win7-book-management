@@ -18,8 +18,9 @@ namespace Win7BookManagement.Forms
         private readonly Button _returnButton = new Button();
         private readonly Label _detailTitle = new Label();
         private readonly Label _countChip = new Label();
-        private readonly Label _typeChip = new Label();
-        private readonly Label _emptyDetails = new Label();
+        private readonly Label _amountChip = new Label();
+        private readonly Label _emptyDocuments = new Label();
+        private readonly Label _emptyItems = new Label();
         private readonly SplitContainer _split = new SplitContainer();
 
         public DocumentCenterForm(ApplicationServices services)
@@ -29,34 +30,41 @@ namespace Win7BookManagement.Forms
             BackColor = UiTheme.Background;
 
             ConfigureFilters();
+            ConfigureGrid(_documents);
+            ConfigureGrid(_items);
 
             var root = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 BackColor = UiTheme.Background,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
+                Padding = Padding.Empty,
+                Margin = Padding.Empty
             };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            root.Controls.Add(CreateFilterSection(), 0, 0);
+            root.Controls.Add(CreateSearchSection(), 0, 0);
             root.Controls.Add(CreateDocumentWorkspace(), 0, 1);
-            root.Controls.Add(CreateFooterHint(), 0, 2);
 
             Controls.Add(root);
 
-            Resize += delegate { ApplyResponsiveLayout(); };
-            UiTheme.Apply(this);
+            _documents.SelectionChanged += delegate { LoadSelectedDetails(); };
+            _documents.CellDoubleClick += delegate { LoadSelectedDetails(); };
+            Resize += delegate
+            {
+                ResizeSplit();
+                ApplyResponsiveColumns();
+            };
 
+            UiTheme.Apply(this);
             Shown += delegate
             {
                 ReloadDocuments();
-                ApplyResponsiveLayout();
+                ResizeSplit();
+                ApplyResponsiveColumns();
                 _search.Focus();
             };
         }
@@ -76,6 +84,7 @@ namespace Win7BookManagement.Forms
             _from.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             _to.Value = DateTime.Today;
 
+            _search.Font = UiTheme.Font(9.2F);
             _search.KeyDown += delegate(object sender, KeyEventArgs e)
             {
                 if (e.KeyCode == Keys.Enter)
@@ -85,18 +94,20 @@ namespace Win7BookManagement.Forms
                 }
             };
 
-            _returnButton.Text = "发起退货";
+            _returnButton.Text = "从选中单据发起退货";
+            _returnButton.Width = 160;
+            _returnButton.Height = UiTheme.ButtonHeight;
             _returnButton.Tag = "primary";
             _returnButton.Click += delegate { StartReturn(); };
         }
 
-        private Control CreateFilterSection()
+        private Control CreateSearchSection()
         {
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                ColumnCount = 1,
+                ColumnCount = 2,
                 RowCount = 4,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(14, 12, 14, 12),
@@ -104,93 +115,57 @@ namespace Win7BookManagement.Forms
                 BorderStyle = BorderStyle.FixedSingle
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            var header = new TableLayoutPanel
+            section.Controls.Add(new Label
             {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                ColumnCount = 2,
-                RowCount = 1,
-                Margin = Padding.Empty
-            };
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-            header.Controls.Add(new Label
-            {
-                Text = "单据中心",
+                Text = "单据查询",
                 AutoSize = true,
                 Font = UiTheme.Font(12F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
-                Margin = new Padding(0, 4, 0, 8)
+                Margin = new Padding(0, 5, 0, 8)
             }, 0, 0);
 
-            var headerActions = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                Margin = Padding.Empty
-            };
+            _returnButton.Margin = Padding.Empty;
+            section.Controls.Add(_returnButton, 1, 0);
 
-            _returnButton.Width = 104;
-            _returnButton.Height = UiTheme.ButtonHeight;
-            headerActions.Controls.Add(_returnButton);
-            header.Controls.Add(headerActions, 1, 0);
-            section.Controls.Add(header, 0, 0);
-
-            var filterRow = new TableLayoutPanel
+            var filters = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 6,
+                Height = 50,
+                ColumnCount = 9,
                 RowCount = 1,
-                Margin = Padding.Empty
+                Margin = new Padding(0, 2, 0, 0)
             };
-            filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72));
-            filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
-            filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66));
-            filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66));
-            filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 138));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
 
-            filterRow.Controls.Add(CreateFilterLabel("类型"), 0, 0);
+            filters.Controls.Add(CreateFilterLabel("类型"), 0, 0);
             _type.Dock = DockStyle.Fill;
-            _type.Margin = new Padding(0, 4, 12, 4);
-            filterRow.Controls.Add(_type, 1, 0);
+            _type.Margin = new Padding(0, 4, 10, 4);
+            filters.Controls.Add(_type, 1, 0);
 
-            filterRow.Controls.Add(CreateFilterLabel("开始"), 2, 0);
+            filters.Controls.Add(CreateFilterLabel("从"), 2, 0);
             _from.Dock = DockStyle.Fill;
-            _from.Margin = new Padding(0, 4, 12, 4);
-            filterRow.Controls.Add(_from, 3, 0);
+            _from.Margin = new Padding(0, 4, 8, 4);
+            filters.Controls.Add(_from, 3, 0);
 
-            filterRow.Controls.Add(CreateFilterLabel("结束"), 4, 0);
+            filters.Controls.Add(CreateFilterLabel("到"), 4, 0);
             _to.Dock = DockStyle.Fill;
-            _to.Margin = new Padding(0, 4, 0, 4);
-            filterRow.Controls.Add(_to, 5, 0);
+            _to.Margin = new Padding(0, 4, 10, 4);
+            filters.Controls.Add(_to, 5, 0);
 
-            section.Controls.Add(filterRow, 0, 1);
-
-            var searchRow = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 3,
-                RowCount = 1,
-                Margin = Padding.Empty
-            };
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
-
-            searchRow.Controls.Add(CreateFilterLabel("搜索"), 0, 0);
+            filters.Controls.Add(CreateFilterLabel("关键词"), 6, 0);
             _search.Dock = DockStyle.Fill;
             _search.Margin = new Padding(0, 4, 10, 4);
-            _search.Font = UiTheme.Font(9.5F);
-            searchRow.Controls.Add(_search, 1, 0);
+            filters.Controls.Add(_search, 7, 0);
 
             var query = new Button
             {
@@ -199,10 +174,22 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 4, 0, 4)
             };
             query.Click += delegate { ReloadDocuments(); };
-            searchRow.Controls.Add(query, 2, 0);
-            section.Controls.Add(searchRow, 0, 2);
+            filters.Controls.Add(query, 8, 0);
 
-            var stats = new FlowLayoutPanel
+            section.Controls.Add(filters, 0, 1);
+            section.SetColumnSpan(filters, 2);
+
+            section.Controls.Add(new Label
+            {
+                Text = "支持按单号、ISBN、书名和备注搜索；采购相关单据还支持供应商名称。退货必须从原销售单或原采购单发起。",
+                AutoSize = true,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8F),
+                Margin = new Padding(0, 6, 0, 0)
+            }, 0, 2);
+            section.SetColumnSpan(section.GetControlFromPosition(0, 2), 2);
+
+            var chips = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
@@ -210,20 +197,13 @@ namespace Win7BookManagement.Forms
                 WrapContents = true,
                 Margin = new Padding(0, 8, 0, 0)
             };
+            ConfigureChip(_countChip, UiTheme.AccentSoft, UiTheme.Accent);
+            ConfigureChip(_amountChip, UiTheme.SurfaceMuted, UiTheme.TextSecondary);
+            chips.Controls.Add(_countChip);
+            chips.Controls.Add(_amountChip);
 
-            ConfigureChip(_typeChip, UiTheme.AccentSoft, UiTheme.Accent);
-            ConfigureChip(_countChip, UiTheme.SurfaceMuted, UiTheme.TextSecondary);
-            stats.Controls.Add(_typeChip);
-            stats.Controls.Add(_countChip);
-            stats.Controls.Add(new Label
-            {
-                AutoSize = true,
-                Text = "可按单号、ISBN、书名、备注搜索；采购单还支持供应商名称。",
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F),
-                Margin = new Padding(4, 5, 0, 0)
-            });
-            section.Controls.Add(stats, 0, 3);
+            section.Controls.Add(chips, 0, 3);
+            section.SetColumnSpan(chips, 2);
 
             return section;
         }
@@ -236,7 +216,7 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.2F, FontStyle.Bold)
             };
         }
 
@@ -254,18 +234,12 @@ namespace Win7BookManagement.Forms
         {
             _split.Dock = DockStyle.Fill;
             _split.Orientation = Orientation.Horizontal;
-            _split.SplitterDistance = 320;
+            _split.SplitterDistance = 330;
             _split.SplitterWidth = 8;
+            _split.BackColor = UiTheme.Background;
             _split.Panel1MinSize = 180;
             _split.Panel2MinSize = 150;
-            _split.BackColor = UiTheme.Background;
             _split.Margin = new Padding(0, 10, 0, 0);
-
-            ConfigureGrid(_documents);
-            ConfigureGrid(_items);
-
-            _documents.SelectionChanged += delegate { LoadSelectedDetails(); };
-            _documents.CellDoubleClick += delegate { LoadSelectedDetails(); };
 
             var documentHost = new Panel
             {
@@ -273,17 +247,26 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 BorderStyle = BorderStyle.FixedSingle
             };
-            documentHost.Controls.Add(_documents);
-            documentHost.Controls.Add(new Label
+            var documentHeader = new Label
             {
                 Text = "单据列表",
                 Dock = DockStyle.Top,
-                Height = 40,
-                Padding = new Padding(12, 11, 0, 0),
+                Height = 38,
+                Padding = new Padding(12, 10, 0, 0),
                 BackColor = UiTheme.Surface,
-                Font = UiTheme.Font(9.5F, FontStyle.Bold),
+                Font = UiTheme.Font(9.2F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary
-            });
+            };
+            _emptyDocuments.Dock = DockStyle.Fill;
+            _emptyDocuments.TextAlign = ContentAlignment.MiddleCenter;
+            _emptyDocuments.Text = "当前条件下没有找到单据";
+            _emptyDocuments.ForeColor = UiTheme.TextSecondary;
+            _emptyDocuments.BackColor = UiTheme.Surface;
+            _emptyDocuments.Font = UiTheme.Font(9F);
+
+            documentHost.Controls.Add(_documents);
+            documentHost.Controls.Add(_emptyDocuments);
+            documentHost.Controls.Add(documentHeader);
             _split.Panel1.Controls.Add(documentHost);
 
             var detailHost = new Panel
@@ -292,43 +275,27 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 BorderStyle = BorderStyle.FixedSingle
             };
-
             _detailTitle.Text = "单据明细";
             _detailTitle.Dock = DockStyle.Top;
-            _detailTitle.Height = 40;
-            _detailTitle.Padding = new Padding(12, 11, 0, 0);
+            _detailTitle.Height = 38;
+            _detailTitle.Padding = new Padding(12, 10, 0, 0);
             _detailTitle.BackColor = UiTheme.Surface;
-            _detailTitle.Font = UiTheme.Font(9.5F, FontStyle.Bold);
+            _detailTitle.Font = UiTheme.Font(9.2F, FontStyle.Bold);
             _detailTitle.ForeColor = UiTheme.TextPrimary;
 
-            _emptyDetails.Dock = DockStyle.Fill;
-            _emptyDetails.Text = "选择一张单据后，这里会显示原始商品快照和退货状态。";
-            _emptyDetails.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyDetails.ForeColor = UiTheme.TextSecondary;
-            _emptyDetails.BackColor = UiTheme.Surface;
-            _emptyDetails.Font = UiTheme.Font(8.5F);
+            _emptyItems.Dock = DockStyle.Fill;
+            _emptyItems.TextAlign = ContentAlignment.MiddleCenter;
+            _emptyItems.Text = "选择上方单据后，这里显示书目明细";
+            _emptyItems.ForeColor = UiTheme.TextSecondary;
+            _emptyItems.BackColor = UiTheme.Surface;
+            _emptyItems.Font = UiTheme.Font(9F);
 
             detailHost.Controls.Add(_items);
-            detailHost.Controls.Add(_emptyDetails);
+            detailHost.Controls.Add(_emptyItems);
             detailHost.Controls.Add(_detailTitle);
-            _emptyDetails.BringToFront();
             _split.Panel2.Controls.Add(detailHost);
 
             return _split;
-        }
-
-        private Control CreateFooterHint()
-        {
-            return new Label
-            {
-                Text = "退货必须从原销售单或采购单发起，系统会保留原单并新建独立退货单；历史快照不会被改写。",
-                Dock = DockStyle.Top,
-                Height = 34,
-                Padding = new Padding(10, 9, 8, 0),
-                ForeColor = UiTheme.TextSecondary,
-                BackColor = UiTheme.Surface,
-                Font = UiTheme.Font(8F)
-            };
         }
 
         private static void ConfigureGrid(DataGridView grid)
@@ -338,11 +305,11 @@ namespace Win7BookManagement.Forms
             grid.AllowUserToAddRows = false;
             grid.AllowUserToDeleteRows = false;
             grid.AutoGenerateColumns = true;
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             grid.RowHeadersVisible = false;
             grid.BackgroundColor = UiTheme.Surface;
             grid.MultiSelect = false;
             grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
         }
 
         private string CurrentKind
@@ -354,50 +321,197 @@ namespace Win7BookManagement.Forms
             }
         }
 
-        private string CurrentTypeText
-        {
-            get
-            {
-                var option = _type.SelectedItem as DocumentOption;
-                return option == null ? "销售单" : option.Text;
-            }
-        }
-
         private void ReloadDocuments()
         {
+            if (!IsHandleCreated)
+                return;
+
+            if (_to.Value.Date < _from.Value.Date)
+            {
+                MessageBox.Show(this, "结束日期不能早于开始日期，请重新选择日期范围。", "日期范围不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _to.Focus();
+                return;
+            }
+
             try
             {
                 var table = _services.Documents.Search(CurrentKind, _from.Value.Date, _to.Value.Date, _search.Text);
                 _documents.DataSource = table;
-                ApplyDocumentColumns();
+                HideIdColumn(_documents);
+                StyleDocumentColumns();
 
-                _typeChip.Text = CurrentTypeText;
-                _countChip.Text = "结果  " + table.Rows.Count;
-                _returnButton.Enabled = CurrentKind == "sale" || CurrentKind == "purchase";
-                _returnButton.Text = CurrentKind == "purchase" ? "发起采购退货" :
-                                     CurrentKind == "sale" ? "发起销售退货" : "当前类型不可退";
+                var canReturn = CurrentKind == "sale" || CurrentKind == "purchase";
+                _returnButton.Enabled = canReturn;
+
+                UpdateSummary(table);
+                _emptyDocuments.Visible = _documents.Rows.Count == 0;
 
                 if (_documents.Rows.Count == 0)
                 {
                     _items.DataSource = null;
                     _detailTitle.Text = "单据明细";
-                    _emptyDetails.Text = "当前条件没有找到单据。";
-                    _emptyDetails.Visible = true;
-                    _emptyDetails.BringToFront();
+                    _emptyDocuments.BringToFront();
+                    _emptyItems.Visible = true;
+                    _emptyItems.BringToFront();
                 }
                 else
                 {
+                    _documents.BringToFront();
                     _documents.Rows[0].Selected = true;
                     var first = FirstVisibleColumnIndex(_documents);
                     if (first >= 0)
                         _documents.CurrentCell = _documents.Rows[0].Cells[first];
                     LoadSelectedDetails();
                 }
+
+                ApplyResponsiveColumns();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "查询单据失败：\r\n" + ex.Message, "请检查查询条件", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "查询单据失败：\r\n" + ex.Message, "查询失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private void UpdateSummary(DataTable table)
+        {
+            _countChip.Text = "单据  " + table.Rows.Count;
+
+            decimal total = 0m;
+            var amountColumn = AmountColumnName();
+            if (table.Columns.Contains(amountColumn))
+            {
+                foreach (DataRow row in table.Rows)
+                {
+                    if (row[amountColumn] != DBNull.Value)
+                        total += Convert.ToDecimal(row[amountColumn]);
+                }
+            }
+
+            string label;
+            switch (CurrentKind)
+            {
+                case "sale": label = "销售金额"; break;
+                case "purchase": label = "采购金额"; break;
+                case "sale_return": label = "退款金额"; break;
+                default: label = "退货金额"; break;
+            }
+
+            _amountChip.Text = label + "  ¥" + total.ToString("0.00");
+        }
+
+        private string AmountColumnName()
+        {
+            switch (CurrentKind)
+            {
+                case "sale":
+                case "purchase":
+                    return "金额";
+                case "sale_return":
+                    return "退款金额";
+                default:
+                    return "退货金额";
+            }
+        }
+
+        private void StyleDocumentColumns()
+        {
+            SetColumnWidth(_documents, "日期", 146);
+            SetColumnWidth(_documents, "单号", 170);
+            SetColumnWidth(_documents, "退货单号", 170);
+            SetColumnWidth(_documents, "原销售单号", 170);
+            SetColumnWidth(_documents, "原采购单号", 170);
+            SetColumnWidth(_documents, "供应商", 130);
+            SetColumnWidth(_documents, "数量", 72);
+            SetColumnWidth(_documents, "金额", 92);
+            SetColumnWidth(_documents, "退款金额", 92);
+            SetColumnWidth(_documents, "退货金额", 92);
+            SetColumnWidth(_documents, "状态", 86);
+
+            SetNumericAlignment(_documents, "数量");
+            SetNumericAlignment(_documents, "金额");
+            SetNumericAlignment(_documents, "退款金额");
+            SetNumericAlignment(_documents, "退货金额");
+
+            if (_documents.Columns.Contains("备注"))
+            {
+                _documents.Columns["备注"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                _documents.Columns["备注"].MinimumWidth = 140;
+                _documents.Columns["备注"].FillWeight = 180;
+            }
+        }
+
+        private void StyleItemColumns()
+        {
+            SetColumnWidth(_items, "ISBN", 132);
+            SetColumnWidth(_items, "原数量", 76);
+            SetColumnWidth(_items, "已退", 66);
+            SetColumnWidth(_items, "可退", 66);
+            SetColumnWidth(_items, "退货数量", 82);
+            SetColumnWidth(_items, "单价", 88);
+            SetColumnWidth(_items, "进价", 88);
+            SetColumnWidth(_items, "原售价", 88);
+            SetColumnWidth(_items, "原进价", 88);
+            SetColumnWidth(_items, "金额", 96);
+            SetColumnWidth(_items, "退款金额", 96);
+            SetColumnWidth(_items, "退货金额", 96);
+
+            if (_items.Columns.Contains("书名"))
+            {
+                _items.Columns["书名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                _items.Columns["书名"].MinimumWidth = 190;
+                _items.Columns["书名"].FillWeight = 220;
+            }
+
+            foreach (var name in new[] { "原数量", "已退", "可退", "退货数量", "单价", "进价", "原售价", "原进价", "金额", "退款金额", "退货金额" })
+                SetNumericAlignment(_items, name);
+        }
+
+        private static void SetColumnWidth(DataGridView grid, string name, int width)
+        {
+            if (grid.Columns.Contains(name))
+                grid.Columns[name].Width = width;
+        }
+
+        private static void SetNumericAlignment(DataGridView grid, string name)
+        {
+            if (grid.Columns.Contains(name))
+                grid.Columns[name].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
+
+        private void ApplyResponsiveColumns()
+        {
+            var width = ClientSize.Width;
+
+            SetColumnVisible(_documents, "备注", width >= 940);
+            SetColumnVisible(_documents, "供应商", width >= 820);
+
+            SetColumnVisible(_items, "ISBN", width >= 760);
+            SetColumnVisible(_items, "已退", width >= 700);
+
+            var first = FirstVisibleColumnIndex(_documents);
+            if (_documents.CurrentRow != null &&
+                (_documents.CurrentCell == null || !_documents.CurrentCell.OwningColumn.Visible) &&
+                first >= 0)
+            {
+                _documents.CurrentCell = _documents.CurrentRow.Cells[first];
+            }
+        }
+
+        private static void SetColumnVisible(DataGridView grid, string name, bool visible)
+        {
+            if (grid.Columns.Contains(name))
+                grid.Columns[name].Visible = visible;
+        }
+
+        private void ResizeSplit()
+        {
+            if (_split.Height <= 360)
+                return;
+
+            var target = (int)(_split.Height * 0.56);
+            var max = _split.Height - _split.Panel2MinSize - _split.SplitterWidth;
+            if (max > _split.Panel1MinSize)
+                _split.SplitterDistance = Math.Max(_split.Panel1MinSize, Math.Min(max, target));
         }
 
         private void LoadSelectedDetails()
@@ -409,158 +523,31 @@ namespace Win7BookManagement.Forms
                 {
                     _items.DataSource = null;
                     _detailTitle.Text = "单据明细";
-                    _emptyDetails.Visible = true;
-                    _emptyDetails.BringToFront();
+                    _emptyItems.Visible = true;
+                    _emptyItems.BringToFront();
                     return;
                 }
 
                 var table = _services.Documents.GetItems(CurrentKind, id);
                 _items.DataSource = table;
-                ApplyItemColumns();
+                StyleItemColumns();
                 _detailTitle.Text = "单据明细 · " + _services.Documents.GetDocumentNo(CurrentKind, id);
-                _emptyDetails.Visible = table.Rows.Count == 0;
-                if (_emptyDetails.Visible)
-                    _emptyDetails.BringToFront();
+                _emptyItems.Visible = _items.Rows.Count == 0;
+
+                if (_items.Rows.Count == 0)
+                    _emptyItems.BringToFront();
                 else
                     _items.BringToFront();
+
+                ApplyResponsiveColumns();
             }
             catch
             {
                 _items.DataSource = null;
                 _detailTitle.Text = "单据明细";
-                _emptyDetails.Visible = true;
-                _emptyDetails.BringToFront();
+                _emptyItems.Visible = true;
+                _emptyItems.BringToFront();
             }
-        }
-
-        private void ApplyDocumentColumns()
-        {
-            HideIdColumn(_documents);
-
-            foreach (DataGridViewColumn column in _documents.Columns)
-            {
-                column.SortMode = DataGridViewColumnSortMode.Automatic;
-                column.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
-
-                switch (column.Name)
-                {
-                    case "日期":
-                        column.Width = 142;
-                        break;
-                    case "单号":
-                    case "退货单号":
-                    case "原销售单号":
-                    case "原采购单号":
-                        column.Width = 172;
-                        break;
-                    case "供应商":
-                        column.Width = 150;
-                        break;
-                    case "数量":
-                        column.Width = 76;
-                        column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                        break;
-                    case "金额":
-                    case "退款金额":
-                    case "退货金额":
-                        column.Width = 96;
-                        column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                        column.DefaultCellStyle.Format = "0.00";
-                        break;
-                    case "状态":
-                        column.Width = 92;
-                        break;
-                    case "备注":
-                        column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                        column.MinimumWidth = 120;
-                        break;
-                    default:
-                        column.Width = 110;
-                        break;
-                }
-            }
-
-            ApplyResponsiveDocumentColumns();
-        }
-
-        private void ApplyItemColumns()
-        {
-            foreach (DataGridViewColumn column in _items.Columns)
-            {
-                column.SortMode = DataGridViewColumnSortMode.NotSortable;
-                column.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
-
-                switch (column.Name)
-                {
-                    case "ISBN":
-                        column.Width = 132;
-                        break;
-                    case "书名":
-                        column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                        column.MinimumWidth = 190;
-                        break;
-                    case "原数量":
-                    case "已退":
-                    case "可退":
-                    case "退货数量":
-                        column.Width = 76;
-                        column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                        break;
-                    case "单价":
-                    case "进价":
-                    case "原售价":
-                    case "原进价":
-                    case "金额":
-                    case "退款金额":
-                    case "退货金额":
-                        column.Width = 94;
-                        column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                        column.DefaultCellStyle.Format = "0.00";
-                        break;
-                    default:
-                        column.Width = 100;
-                        break;
-                }
-            }
-
-            ApplyResponsiveItemColumns();
-        }
-
-        private void ApplyResponsiveLayout()
-        {
-            if (_split.Height > 360)
-            {
-                var target = (int)(_split.Height * 0.56);
-                var maximum = _split.Height - _split.Panel2MinSize - _split.SplitterWidth;
-                if (maximum >= _split.Panel1MinSize)
-                    _split.SplitterDistance = Math.Max(_split.Panel1MinSize, Math.Min(maximum, target));
-            }
-
-            ApplyResponsiveDocumentColumns();
-            ApplyResponsiveItemColumns();
-        }
-
-        private void ApplyResponsiveDocumentColumns()
-        {
-            var width = ClientSize.Width;
-
-            SetColumnVisible(_documents, "备注", width >= 900);
-            SetColumnVisible(_documents, "供应商", width >= 820);
-            SetColumnVisible(_documents, "原销售单号", width >= 780);
-            SetColumnVisible(_documents, "原采购单号", width >= 780);
-        }
-
-        private void ApplyResponsiveItemColumns()
-        {
-            var width = ClientSize.Width;
-            SetColumnVisible(_items, "ISBN", width >= 700);
-            SetColumnVisible(_items, "已退", width >= 760);
-        }
-
-        private static void SetColumnVisible(DataGridView grid, string name, bool visible)
-        {
-            if (grid.Columns.Contains(name))
-                grid.Columns[name].Visible = visible;
         }
 
         private void StartReturn()
@@ -568,12 +555,15 @@ namespace Win7BookManagement.Forms
             try
             {
                 if (CurrentKind != "sale" && CurrentKind != "purchase")
+                {
+                    MessageBox.Show(this, "退货需要从原销售单或原采购单发起。请先切换到相应单据类型。", "请选择原单据", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
+                }
 
                 long id;
                 if (!TryGetSelectedId(out id))
                 {
-                    MessageBox.Show(this, "请先选择一张原销售单或采购单。", "还没有选择原单", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, "请先选择一张原销售单或采购单。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -591,7 +581,7 @@ namespace Win7BookManagement.Forms
 
                 if (!hasReturnable)
                 {
-                    MessageBox.Show(this, "这张单据已经没有可退数量。", "无需退货", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, "这张单据已经没有可退数量。", "没有可退图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -603,16 +593,20 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "无法发起退货：\r\n" + ex.Message, "请检查原单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "无法发起退货：\r\n" + ex.Message, "退货准备失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
         private bool TryGetSelectedId(out long id)
         {
             id = 0;
-            if (_documents.CurrentRow == null) return false;
+            if (_documents.CurrentRow == null || !_documents.Columns.Contains("Id"))
+                return false;
+
             var value = _documents.CurrentRow.Cells["Id"].Value;
-            if (value == null || value == DBNull.Value) return false;
+            if (value == null || value == DBNull.Value)
+                return false;
+
             return long.TryParse(Convert.ToString(value), out id);
         }
 
