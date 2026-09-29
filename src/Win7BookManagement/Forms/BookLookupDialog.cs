@@ -19,19 +19,21 @@ namespace Win7BookManagement.Forms
             _services = services;
             Text = "选择图书";
             StartPosition = FormStartPosition.CenterParent;
-            Width = 760;
-            Height = 520;
-            Font = new Font("Microsoft YaHei", 9F);
+            Width = 800;
+            Height = 540;
+            BackColor = UiTheme.Background;
 
             var toolbar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 46,
+                Height = 56,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false
+                WrapContents = false,
+                Padding = new Padding(12, 8, 12, 8),
+                BackColor = UiTheme.Surface
             };
-            _search = new TextBox { Width = 300, Margin = new Padding(0, 8, 8, 8) };
-            var searchButton = new Button { Text = "查询", Width = 72, Height = 28, Margin = new Padding(0, 6, 8, 6) };
+            _search = new TextBox { Width = 340, Margin = new Padding(0, 5, 8, 5) };
+            var searchButton = new Button { Text = "查询", Width = 76, Height = 32, Margin = new Padding(0, 3, 8, 3) };
             searchButton.Click += delegate { Reload(); };
             _search.KeyDown += delegate(object sender, KeyEventArgs e)
             {
@@ -54,7 +56,7 @@ namespace Win7BookManagement.Forms
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 AutoGenerateColumns = false,
                 RowHeadersVisible = false,
-                BackgroundColor = Color.White
+                BackgroundColor = UiTheme.Surface
             };
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ISBN", DataPropertyName = "Isbn", Width = 135 });
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "书名", DataPropertyName = "Title", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
@@ -64,12 +66,13 @@ namespace Win7BookManagement.Forms
             var buttons = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
-                Height = 50,
+                Height = 56,
                 FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(0, 8, 0, 8)
+                Padding = new Padding(0, 10, 12, 10),
+                BackColor = UiTheme.Surface
             };
-            var select = new Button { Text = "选择", Width = 86, Height = 30 };
-            var cancel = new Button { Text = "取消", Width = 86, Height = 30, DialogResult = DialogResult.Cancel };
+            var select = new Button { Text = "选择", Width = 90, Height = 32, Tag = "primary" };
+            var cancel = new Button { Text = "取消", Width = 90, Height = 32, DialogResult = DialogResult.Cancel };
             select.Click += delegate { Choose(); };
             buttons.Controls.Add(select);
             buttons.Controls.Add(cancel);
@@ -81,6 +84,7 @@ namespace Win7BookManagement.Forms
             Controls.Add(toolbar);
             AcceptButton = select;
             CancelButton = cancel;
+            UiTheme.Apply(this);
             Shown += delegate { Reload(); };
         }
 

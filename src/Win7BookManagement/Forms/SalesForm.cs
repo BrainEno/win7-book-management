@@ -8,7 +8,7 @@ using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Forms
 {
-    public sealed class SalesForm : Form
+    public sealed class SalesForm : Form, INavigationGuard
     {
         private readonly ApplicationServices _services;
         private readonly TextBox _isbn = new TextBox();
@@ -20,18 +20,21 @@ namespace Win7BookManagement.Forms
         public SalesForm(ApplicationServices services)
         {
             _services = services;
+            BackColor = UiTheme.Background;
 
             var top = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 92,
+                Height = 104,
                 ColumnCount = 5,
-                RowCount = 2
+                RowCount = 2,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(12, 8, 12, 8)
             };
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
-            top.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
+            top.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
 
             AddCell(top, 0, 0, "ISBN", _isbn);
@@ -60,25 +63,53 @@ namespace Win7BookManagement.Forms
             var bottom = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
-                Height = 58,
+                Height = 64,
                 FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(0, 10, 0, 8)
+                Padding = new Padding(0, 12, 0, 10),
+                BackColor = UiTheme.Surface
             };
-            var submit = new Button { Text = "结账", Width = 100, Height = 32 };
-            var remove = new Button { Text = "移除选中", Width = 90, Height = 32 };
+            var submit = new Button { Text = "结账", Width = 104, Height = 34, Tag = "primary" };
+            var remove = new Button { Text = "移除选中", Width = 94, Height = 34 };
             _total.AutoSize = true;
-            _total.Margin = new Padding(15, 8, 18, 0);
+            _total.Margin = new Padding(15, 8, 20, 0);
+            _total.Font = UiTheme.Font(12F, FontStyle.Bold);
+            _total.ForeColor = UiTheme.TextPrimary;
             submit.Click += delegate { Submit(); };
             remove.Click += delegate { RemoveSelected(); };
             bottom.Controls.Add(submit);
             bottom.Controls.Add(remove);
             bottom.Controls.Add(_total);
 
+            var hint = new Label
+            {
+                Text = "扫码枪可直接输入 ISBN 并回车加入商品；数量和售价可在表格中修改。",
+                Dock = DockStyle.Top,
+                Height = 30,
+                Padding = new Padding(12, 7, 0, 0),
+                ForeColor = UiTheme.TextSecondary,
+                BackColor = UiTheme.Surface,
+                Font = UiTheme.Font(8F)
+            };
+
             Controls.Add(_grid);
             Controls.Add(bottom);
+            Controls.Add(hint);
             Controls.Add(top);
+
             _rows.ListChanged += delegate { UpdateTotal(); };
             Shown += delegate { _isbn.Focus(); UpdateTotal(); };
+        }
+
+        public bool CanNavigateAway(IWin32Window owner)
+        {
+            if (_rows.Count == 0) return true;
+
+            return MessageBox.Show(
+                owner,
+                "当前销售单还有 " + _rows.Count + " 项未结账。离开页面会丢弃这些内容，确定离开吗？",
+                "未完成的销售单",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning) == DialogResult.Yes;
         }
 
         private static void AddCell(TableLayoutPanel table, int column, int row, string label, Control control)
@@ -95,7 +126,7 @@ namespace Win7BookManagement.Forms
             _grid.AutoGenerateColumns = false;
             _grid.AllowUserToAddRows = false;
             _grid.RowHeadersVisible = false;
-            _grid.BackgroundColor = Color.White;
+            _grid.BackgroundColor = UiTheme.Surface;
             _grid.DataSource = _rows;
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ISBN", DataPropertyName = "Isbn", Width = 140, ReadOnly = true });
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "书名", DataPropertyName = "Title", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, ReadOnly = true });
@@ -169,7 +200,7 @@ namespace Win7BookManagement.Forms
             decimal total = 0m;
             foreach (var row in _rows)
                 total += row.Quantity * row.UnitPriceYuan;
-            _total.Text = "应收：¥" + total.ToString("0.00");
+            _total.Text = "应收 ¥" + total.ToString("0.00");
         }
 
         private void Submit()

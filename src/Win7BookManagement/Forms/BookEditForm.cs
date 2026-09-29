@@ -26,10 +26,10 @@ namespace Win7BookManagement.Forms
 
             Text = book == null ? "新增图书" : "编辑图书";
             StartPosition = FormStartPosition.CenterParent;
-            Width = 560;
-            Height = 480;
-            MinimumSize = new Size(520, 440);
-            Font = new Font("Microsoft YaHei", 9F);
+            Width = 600;
+            Height = 500;
+            MinimumSize = new Size(560, 460);
+            BackColor = UiTheme.Background;
 
             _listPrice.DecimalPlaces = 2;
             _listPrice.Maximum = 1000000m;
@@ -43,9 +43,10 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 9,
-                Padding = new Padding(18)
+                Padding = new Padding(24),
+                BackColor = UiTheme.Surface
             };
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             AddRow(table, 0, "ISBN", _isbn);
@@ -60,10 +61,11 @@ namespace Win7BookManagement.Forms
             var buttons = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft
+                FlowDirection = FlowDirection.RightToLeft,
+                BackColor = UiTheme.Surface
             };
-            var save = new Button { Text = "保存", Width = 86, Height = 30 };
-            var cancel = new Button { Text = "取消", Width = 86, Height = 30, DialogResult = DialogResult.Cancel };
+            var save = new Button { Text = "保存", Width = 90, Height = 32, Tag = "primary" };
+            var cancel = new Button { Text = "取消", Width = 90, Height = 32, DialogResult = DialogResult.Cancel };
             save.Click += Save;
             buttons.Controls.Add(save);
             buttons.Controls.Add(cancel);
@@ -75,11 +77,13 @@ namespace Win7BookManagement.Forms
 
             if (book != null)
                 LoadBook(book);
+
+            UiTheme.Apply(this);
         }
 
         private static void AddRow(TableLayoutPanel table, int row, string label, Control control)
         {
-            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
             table.Controls.Add(new Label
             {
                 Text = label,
@@ -87,7 +91,7 @@ namespace Win7BookManagement.Forms
                 TextAlign = ContentAlignment.MiddleRight
             }, 0, row);
             control.Dock = DockStyle.Fill;
-            control.Margin = new Padding(6);
+            control.Margin = new Padding(8, 6, 6, 6);
             table.Controls.Add(control, 1, row);
         }
 

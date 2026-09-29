@@ -127,6 +127,12 @@ CREATE TABLE IF NOT EXISTS inventory_transactions (
     FOREIGN KEY(book_id) REFERENCES books(id)
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS ix_inventory_book_time
 ON inventory_transactions(book_id, occurred_at);
 
@@ -141,8 +147,17 @@ ON purchase_orders(purchased_at);
                     using (var version = connection.CreateCommand())
                     {
                         version.Transaction = transaction;
-                        version.CommandText =
-                            "INSERT INTO schema_info(version) SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM schema_info);";
+                        version.CommandText = @"
+INSERT INTO schema_info(version)
+SELECT 2 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+
+UPDATE schema_info
+SET version = 2
+WHERE version < 2;
+
+INSERT OR IGNORE INTO app_settings(key, value, updated_at)
+VALUES('low_stock_threshold', '3', @now);";
+                        version.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                         version.ExecuteNonQuery();
                     }
 

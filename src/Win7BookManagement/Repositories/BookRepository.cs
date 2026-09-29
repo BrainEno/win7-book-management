@@ -27,7 +27,14 @@ SELECT id, isbn, title, author, publisher, category,
        list_price_cent, sale_price_cent, stock_quantity, is_active
 FROM books
 WHERE (@includeInactive = 1 OR is_active = 1)
-  AND (@term = '' OR isbn LIKE @like OR title LIKE @like OR author LIKE @like)
+  AND (
+       @term = ''
+       OR isbn LIKE @like
+       OR title LIKE @like
+       OR author LIKE @like
+       OR publisher LIKE @like
+       OR category LIKE @like
+  )
 ORDER BY title, id;";
                 command.Parameters.AddWithValue("@includeInactive", includeInactive ? 1 : 0);
                 command.Parameters.AddWithValue("@term", term);

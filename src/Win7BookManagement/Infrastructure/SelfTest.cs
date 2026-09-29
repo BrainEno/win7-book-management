@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
+using Win7BookManagement.Forms;
 using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Infrastructure
@@ -17,6 +18,13 @@ namespace Win7BookManagement.Infrastructure
             {
                 var dbPath = Path.Combine(root, "test.db");
                 var services = new ApplicationServices(dbPath);
+
+                if (services.Settings.GetLowStockThreshold() != 3)
+                    throw new InvalidOperationException("默认低库存设置自检失败。");
+
+                services.Settings.SetLowStockThreshold(5);
+                if (services.Settings.GetLowStockThreshold() != 5)
+                    throw new InvalidOperationException("设置保存自检失败。");
 
                 var supplierId = services.Suppliers.Insert(new Supplier { Name = "测试供应商" });
                 var bookId = services.Books.Insert(new Book
@@ -64,6 +72,10 @@ namespace Win7BookManagement.Infrastructure
                         throw new InvalidOperationException("失败销售没有正确回滚。");
                 }
 
+                var dashboard = services.Dashboard.GetSummary(5);
+                if (dashboard.ActiveTitles != 1 || dashboard.StockUnits != 7 || dashboard.TodaySalesOrders != 1)
+                    throw new InvalidOperationException("经营概览自检失败。");
+
                 var sales = services.Reports.SalesDetail(DateTime.Today, DateTime.Today);
                 if (sales.Rows.Count != 1)
                     throw new InvalidOperationException("销售报表自检失败。");
@@ -81,6 +93,14 @@ namespace Win7BookManagement.Infrastructure
                 services.Backup.CreateBackup(backupPath);
                 if (!File.Exists(backupPath) || new FileInfo(backupPath).Length == 0)
                     throw new InvalidOperationException("数据库备份自检失败。");
+
+                using (var dashboardForm = new DashboardForm(services, null)) { }
+                using (var booksForm = new BookListForm(services)) { }
+                using (var purchaseForm = new PurchaseForm(services)) { }
+                using (var salesForm = new SalesForm(services)) { }
+                using (var inventoryForm = new InventoryForm(services)) { }
+                using (var reportsForm = new ReportsForm(services)) { }
+                using (var settingsForm = new SettingsForm(services)) { }
 
                 return 0;
             }

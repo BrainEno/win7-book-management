@@ -1,3 +1,5 @@
+using Win7BookManagement.Infrastructure;
+
 namespace Win7BookManagement.Models
 {
     public sealed class Book
@@ -12,6 +14,9 @@ namespace Win7BookManagement.Models
         public long SalePriceCent { get; set; }
         public int StockQuantity { get; set; }
         public bool IsActive { get; set; }
+
+        public decimal ListPriceYuan { get { return Money.ToYuan(ListPriceCent); } }
+        public decimal SalePriceYuan { get { return Money.ToYuan(SalePriceCent); } }
 
         public Book()
         {

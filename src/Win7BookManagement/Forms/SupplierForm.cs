@@ -15,9 +15,16 @@ namespace Win7BookManagement.Forms
         {
             _services = services;
 
-            var toolbar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 48, FlowDirection = FlowDirection.LeftToRight };
-            var add = new Button { Text = "新增供应商", Width = 100, Height = 28, Margin = new Padding(0, 6, 8, 6) };
-            var edit = new Button { Text = "编辑", Width = 72, Height = 28, Margin = new Padding(0, 6, 8, 6) };
+            var toolbar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 58,
+                FlowDirection = FlowDirection.LeftToRight,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(12, 8, 12, 8)
+            };
+            var add = new Button { Text = "新增供应商", Width = 104, Height = 32, Margin = new Padding(0, 3, 8, 3), Tag = "primary" };
+            var edit = new Button { Text = "编辑", Width = 72, Height = 32, Margin = new Padding(0, 3, 8, 3) };
             add.Click += delegate { EditSupplier(null); };
             edit.Click += delegate { EditSelected(); };
             toolbar.Controls.Add(add);
@@ -33,7 +40,7 @@ namespace Win7BookManagement.Forms
                 MultiSelect = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 RowHeadersVisible = false,
-                BackgroundColor = Color.White
+                BackgroundColor = UiTheme.Surface
             };
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "供应商", DataPropertyName = "Name", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "联系人", DataPropertyName = "ContactName", Width = 140 });
@@ -88,15 +95,22 @@ namespace Win7BookManagement.Forms
                 _supplier = supplier;
                 Text = supplier == null ? "新增供应商" : "编辑供应商";
                 StartPosition = FormStartPosition.CenterParent;
-                Width = 500;
-                Height = 360;
-                Font = new Font("Microsoft YaHei", 9F);
+                Width = 540;
+                Height = 390;
+                BackColor = UiTheme.Background;
 
                 _active.Text = "启用";
                 _active.Checked = true;
 
-                var table = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 6, Padding = new Padding(18) };
-                table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+                var table = new TableLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    ColumnCount = 2,
+                    RowCount = 6,
+                    Padding = new Padding(24),
+                    BackColor = UiTheme.Surface
+                };
+                table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
                 table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
                 Add(table, 0, "名称 *", _name);
@@ -105,9 +119,14 @@ namespace Win7BookManagement.Forms
                 Add(table, 3, "备注", _note);
                 Add(table, 4, "状态", _active);
 
-                var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-                var save = new Button { Text = "保存", Width = 80, Height = 30 };
-                var cancel = new Button { Text = "取消", Width = 80, Height = 30, DialogResult = DialogResult.Cancel };
+                var buttons = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    BackColor = UiTheme.Surface
+                };
+                var save = new Button { Text = "保存", Width = 88, Height = 32, Tag = "primary" };
+                var cancel = new Button { Text = "取消", Width = 88, Height = 32, DialogResult = DialogResult.Cancel };
                 save.Click += Save;
                 buttons.Controls.Add(save);
                 buttons.Controls.Add(cancel);
@@ -125,14 +144,16 @@ namespace Win7BookManagement.Forms
                     _note.Text = supplier.Note;
                     _active.Checked = supplier.IsActive;
                 }
+
+                UiTheme.Apply(this);
             }
 
             private static void Add(TableLayoutPanel table, int row, string label, Control control)
             {
-                table.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+                table.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
                 table.Controls.Add(new Label { Text = label, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, row);
                 control.Dock = DockStyle.Fill;
-                control.Margin = new Padding(6);
+                control.Margin = new Padding(8, 6, 6, 6);
                 table.Controls.Add(control, 1, row);
             }
 

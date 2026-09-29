@@ -8,7 +8,7 @@ using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Forms
 {
-    public sealed class PurchaseForm : Form
+    public sealed class PurchaseForm : Form, INavigationGuard
     {
         private readonly ApplicationServices _services;
         private readonly ComboBox _supplier = new ComboBox();
@@ -21,13 +21,16 @@ namespace Win7BookManagement.Forms
         public PurchaseForm(ApplicationServices services)
         {
             _services = services;
+            BackColor = UiTheme.Background;
 
             var top = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 92,
+                Height = 104,
                 ColumnCount = 6,
-                RowCount = 2
+                RowCount = 2,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(12, 8, 12, 8)
             };
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
             top.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32));
@@ -65,23 +68,38 @@ namespace Win7BookManagement.Forms
             var bottom = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
-                Height = 58,
+                Height = 64,
                 FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(0, 10, 0, 8)
+                Padding = new Padding(0, 12, 0, 10),
+                BackColor = UiTheme.Surface
             };
 
-            var submit = new Button { Text = "确认入库", Width = 100, Height = 32 };
-            var remove = new Button { Text = "移除选中", Width = 90, Height = 32 };
+            var submit = new Button { Text = "确认入库", Width = 104, Height = 34, Tag = "primary" };
+            var remove = new Button { Text = "移除选中", Width = 94, Height = 34 };
             _total.AutoSize = true;
-            _total.Margin = new Padding(15, 8, 18, 0);
+            _total.Margin = new Padding(15, 8, 20, 0);
+            _total.Font = UiTheme.Font(12F, FontStyle.Bold);
+            _total.ForeColor = UiTheme.TextPrimary;
             submit.Click += delegate { Submit(); };
             remove.Click += delegate { RemoveSelected(); };
             bottom.Controls.Add(submit);
             bottom.Controls.Add(remove);
             bottom.Controls.Add(_total);
 
+            var hint = new Label
+            {
+                Text = "选择供应商后可扫码或搜索图书；数量和本次进价可直接在表格中修改。",
+                Dock = DockStyle.Top,
+                Height = 30,
+                Padding = new Padding(12, 7, 0, 0),
+                ForeColor = UiTheme.TextSecondary,
+                BackColor = UiTheme.Surface,
+                Font = UiTheme.Font(8F)
+            };
+
             Controls.Add(_grid);
             Controls.Add(bottom);
+            Controls.Add(hint);
             Controls.Add(top);
 
             _rows.ListChanged += delegate { UpdateTotal(); };
@@ -90,6 +108,18 @@ namespace Win7BookManagement.Forms
                 ReloadSuppliers();
                 UpdateTotal();
             };
+        }
+
+        public bool CanNavigateAway(IWin32Window owner)
+        {
+            if (_rows.Count == 0) return true;
+
+            return MessageBox.Show(
+                owner,
+                "当前采购入库单还有 " + _rows.Count + " 项未提交。离开页面会丢弃这些内容，确定离开吗？",
+                "未完成的采购单",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning) == DialogResult.Yes;
         }
 
         private static void AddCell(TableLayoutPanel table, int column, int row, string label, Control control)
@@ -111,7 +141,7 @@ namespace Win7BookManagement.Forms
             _grid.AutoGenerateColumns = false;
             _grid.AllowUserToAddRows = false;
             _grid.RowHeadersVisible = false;
-            _grid.BackgroundColor = Color.White;
+            _grid.BackgroundColor = UiTheme.Surface;
             _grid.DataSource = _rows;
 
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ISBN", DataPropertyName = "Isbn", Width = 140, ReadOnly = true });
@@ -195,7 +225,7 @@ namespace Win7BookManagement.Forms
             decimal total = 0m;
             foreach (var row in _rows)
                 total += row.Quantity * row.UnitCostYuan;
-            _total.Text = "合计：¥" + total.ToString("0.00");
+            _total.Text = "合计 ¥" + total.ToString("0.00");
         }
 
         private void Submit()

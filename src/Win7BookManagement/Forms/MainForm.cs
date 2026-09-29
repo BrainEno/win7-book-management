@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
@@ -8,8 +9,15 @@ namespace Win7BookManagement.Forms
     public sealed class MainForm : Form
     {
         private readonly ApplicationServices _services;
-        private readonly Panel _content;
-        private readonly Label _title;
+        private readonly Panel _sidebar;
+        private readonly FlowLayoutPanel _navigation;
+        private readonly Panel _contentHost;
+        private readonly Label _pageTitle;
+        private readonly Label _pageSubtitle;
+        private readonly Label _status;
+        private readonly Dictionary<string, Button> _navButtons = new Dictionary<string, Button>();
+        private string _currentKey;
+        private Form _currentPage;
 
         public MainForm(ApplicationServices services)
         {
@@ -17,96 +25,297 @@ namespace Win7BookManagement.Forms
 
             Text = "简易图书管理系统";
             StartPosition = FormStartPosition.CenterScreen;
-            Width = 1180;
-            Height = 760;
+            Width = 1240;
+            Height = 780;
             MinimumSize = new Size(960, 640);
-            Font = new Font("Microsoft YaHei", 9F);
+            BackColor = UiTheme.Background;
+            Font = UiTheme.Font(9F);
 
-            var left = new FlowLayoutPanel
+            _sidebar = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 170,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                Padding = new Padding(10),
-                BackColor = Color.FromArgb(245, 246, 248)
+                Width = 206,
+                BackColor = UiTheme.Sidebar,
+                Padding = new Padding(14, 18, 14, 14)
             };
 
-            var brand = new Label
+            var brand = new Panel
             {
-                Text = "图书管理",
-                AutoSize = false,
-                Width = 145,
-                Height = 48,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font(Font.FontFamily, 14F, FontStyle.Bold)
+                Dock = DockStyle.Top,
+                Height = 84,
+                BackColor = UiTheme.Sidebar
             };
-            left.Controls.Add(brand);
-            left.Controls.Add(CreateNavButton("图书资料", delegate { ShowChild("图书资料", new BookListForm(_services)); }));
-            left.Controls.Add(CreateNavButton("供应商", delegate { ShowChild("供应商", new SupplierForm(_services)); }));
-            left.Controls.Add(CreateNavButton("采购入库", delegate { ShowChild("采购入库", new PurchaseForm(_services)); }));
-            left.Controls.Add(CreateNavButton("销售开单", delegate { ShowChild("销售开单", new SalesForm(_services)); }));
-            left.Controls.Add(CreateNavButton("库存管理", delegate { ShowChild("库存管理", new InventoryForm(_services)); }));
-            left.Controls.Add(CreateNavButton("报表导出", delegate { ShowChild("报表导出", new ReportsForm(_services)); }));
-            left.Controls.Add(CreateNavButton("备份恢复", delegate { ShowChild("备份恢复", new BackupForm(_services)); }));
+            var brandTitle = new Label
+            {
+                Text = "BOOK DESK",
+                Dock = DockStyle.Top,
+                Height = 32,
+                ForeColor = Color.White,
+                Font = UiTheme.Font(15F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            var brandSub = new Label
+            {
+                Text = "离线书店进销存",
+                Dock = DockStyle.Top,
+                Height = 24,
+                ForeColor = Color.FromArgb(160, 174, 192),
+                Font = UiTheme.Font(8.5F),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            brand.Controls.Add(brandSub);
+            brand.Controls.Add(brandTitle);
+
+            _navigation = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                BackColor = UiTheme.Sidebar,
+                Padding = new Padding(0, 8, 0, 0),
+                AutoScroll = true
+            };
+
+            AddNavigation("dashboard", "经营概览");
+            AddNavigation("books", "图书资料");
+            AddNavigation("purchase", "采购入库");
+            AddNavigation("sales", "销售开单");
+            AddNavigation("inventory", "库存管理");
+            AddNavigation("suppliers", "供应商");
+            AddNavigation("reports", "报表与导出");
+            AddNavigation("backup", "备份与恢复");
+            AddNavigation("settings", "系统设置");
+
+            var sidebarFoot = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 58,
+                BackColor = UiTheme.Sidebar,
+                Padding = new Padding(2, 10, 2, 0)
+            };
+            var offline = new Label
+            {
+                Text = "●  本机离线模式",
+                Dock = DockStyle.Top,
+                Height = 22,
+                ForeColor = Color.FromArgb(134, 239, 172),
+                Font = UiTheme.Font(8.5F)
+            };
+            var version = new Label
+            {
+                Text = ".NET Framework 4.8 · SQLite",
+                Dock = DockStyle.Top,
+                Height = 20,
+                ForeColor = Color.FromArgb(126, 142, 164),
+                Font = UiTheme.Font(7.8F)
+            };
+            sidebarFoot.Controls.Add(version);
+            sidebarFoot.Controls.Add(offline);
+
+            _sidebar.Controls.Add(_navigation);
+            _sidebar.Controls.Add(sidebarFoot);
+            _sidebar.Controls.Add(brand);
+
+            var main = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = UiTheme.Background
+            };
 
             var header = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 58,
-                Padding = new Padding(18, 8, 18, 8)
+                Height = 86,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(24, 14, 24, 8)
             };
-            _title = new Label
+
+            _pageTitle = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 34,
+                Font = UiTheme.Font(16F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                Text = "经营概览"
+            };
+            _pageSubtitle = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 24,
+                Font = UiTheme.Font(8.8F),
+                ForeColor = UiTheme.TextSecondary,
+                Text = "今天的销售与库存情况"
+            };
+            header.Controls.Add(_pageSubtitle);
+            header.Controls.Add(_pageTitle);
+
+            _status = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Height = 26,
+                BackColor = Color.FromArgb(248, 250, 252),
+                ForeColor = UiTheme.TextSecondary,
+                Padding = new Padding(22, 5, 8, 0),
+                Font = UiTheme.Font(7.8F),
+                Text = "数据库：" + _services.Database.DatabasePath
+            };
+
+            _contentHost = new Panel
             {
                 Dock = DockStyle.Fill,
-                Text = "图书资料",
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font(Font.FontFamily, 13F, FontStyle.Bold)
-            };
-            header.Controls.Add(_title);
-
-            _content = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(12),
-                BackColor = Color.White
+                BackColor = UiTheme.Background,
+                Padding = new Padding(22, 18, 22, 18)
             };
 
-            Controls.Add(_content);
-            Controls.Add(header);
-            Controls.Add(left);
+            main.Controls.Add(_contentHost);
+            main.Controls.Add(_status);
+            main.Controls.Add(header);
 
-            Shown += delegate { ShowChild("图书资料", new BookListForm(_services)); };
+            Controls.Add(main);
+            Controls.Add(_sidebar);
+
+            Resize += delegate { ApplyResponsiveLayout(); };
+            FormClosing += HandleFormClosing;
+            Shown += delegate { Navigate("dashboard"); };
+            ApplyResponsiveLayout();
         }
 
-        private Button CreateNavButton(string text, EventHandler click)
+        public void Navigate(string key)
+        {
+            if (string.Equals(key, _currentKey, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var guard = _currentPage as INavigationGuard;
+            if (guard != null && !guard.CanNavigateAway(this))
+                return;
+
+            Form child;
+            string title;
+            string subtitle;
+
+            switch (key)
+            {
+                case "dashboard":
+                    title = "经营概览";
+                    subtitle = "销售、库存和提醒集中查看";
+                    child = new DashboardForm(_services, Navigate);
+                    break;
+                case "books":
+                    title = "图书资料";
+                    subtitle = "维护 ISBN、书名、作者、出版社和售价";
+                    child = new BookListForm(_services);
+                    break;
+                case "purchase":
+                    title = "采购入库";
+                    subtitle = "登记进货并自动增加库存";
+                    child = new PurchaseForm(_services);
+                    break;
+                case "sales":
+                    title = "销售开单";
+                    subtitle = "支持扫码枪输入 ISBN，结账后自动扣减库存";
+                    child = new SalesForm(_services);
+                    break;
+                case "inventory":
+                    title = "库存管理";
+                    subtitle = "查询当前库存并进行有记录的库存调整";
+                    child = new InventoryForm(_services);
+                    break;
+                case "suppliers":
+                    title = "供应商";
+                    subtitle = "维护常用供货方资料";
+                    child = new SupplierForm(_services);
+                    break;
+                case "reports":
+                    title = "报表与导出";
+                    subtitle = "按日期查询并导出 Excel";
+                    child = new ReportsForm(_services);
+                    break;
+                case "backup":
+                    title = "备份与恢复";
+                    subtitle = "保护本机 SQLite 数据";
+                    child = new BackupForm(_services);
+                    break;
+                case "settings":
+                    title = "系统设置";
+                    subtitle = "调整低库存提醒等本机设置";
+                    child = new SettingsForm(_services);
+                    break;
+                default:
+                    return;
+            }
+
+            if (_currentPage != null)
+            {
+                _contentHost.Controls.Remove(_currentPage);
+                _currentPage.Dispose();
+            }
+
+            _currentKey = key;
+            _currentPage = child;
+            _pageTitle.Text = title;
+            _pageSubtitle.Text = subtitle;
+            UpdateNavigationState();
+
+            child.TopLevel = false;
+            child.FormBorderStyle = FormBorderStyle.None;
+            child.Dock = DockStyle.Fill;
+            UiTheme.Apply(child);
+            _contentHost.Controls.Add(child);
+            child.Show();
+        }
+
+        private void HandleFormClosing(object sender, FormClosingEventArgs e)
+        {
+            var guard = _currentPage as INavigationGuard;
+            if (guard != null && !guard.CanNavigateAway(this))
+                e.Cancel = true;
+        }
+
+        private void AddNavigation(string key, string text)
         {
             var button = new Button
             {
                 Text = text,
-                Width = 145,
+                Name = "nav_" + key,
+                Tag = "nav",
+                Width = 174,
                 Height = 42,
+                Margin = new Padding(0, 2, 0, 2),
+                Padding = new Padding(14, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 3, 0, 3)
+                BackColor = UiTheme.Sidebar,
+                ForeColor = Color.FromArgb(203, 213, 225),
+                Font = UiTheme.Font(9.2F, FontStyle.Regular),
+                Cursor = Cursors.Hand
             };
             button.FlatAppearance.BorderSize = 0;
-            button.Click += click;
-            return button;
+            button.FlatAppearance.MouseOverBackColor = UiTheme.SidebarHover;
+            button.FlatAppearance.MouseDownBackColor = UiTheme.SidebarHover;
+            button.Click += delegate { Navigate(key); };
+
+            _navButtons[key] = button;
+            _navigation.Controls.Add(button);
         }
 
-        private void ShowChild(string title, Form child)
+        private void UpdateNavigationState()
         {
-            for (var i = _content.Controls.Count - 1; i >= 0; i--)
-                _content.Controls[i].Dispose();
-            _content.Controls.Clear();
+            foreach (var pair in _navButtons)
+            {
+                var active = string.Equals(pair.Key, _currentKey, StringComparison.OrdinalIgnoreCase);
+                pair.Value.BackColor = active ? UiTheme.Accent : UiTheme.Sidebar;
+                pair.Value.ForeColor = active ? Color.White : Color.FromArgb(203, 213, 225);
+                pair.Value.Font = UiTheme.Font(9.2F, active ? FontStyle.Bold : FontStyle.Regular);
+            }
+        }
 
-            _title.Text = title;
-            child.TopLevel = false;
-            child.FormBorderStyle = FormBorderStyle.None;
-            child.Dock = DockStyle.Fill;
-            _content.Controls.Add(child);
-            child.Show();
+        private void ApplyResponsiveLayout()
+        {
+            var compact = ClientSize.Width < 1080;
+            _sidebar.Width = compact ? 178 : 206;
+
+            foreach (var pair in _navButtons)
+                pair.Value.Width = compact ? 146 : 174;
         }
     }
 }

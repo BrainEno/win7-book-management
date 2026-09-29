@@ -18,6 +18,8 @@ namespace Win7BookManagement.Infrastructure
             Sales = new SalesService(Database);
             Inventory = new InventoryService(Database);
             Reports = new ReportRepository(Database);
+            Dashboard = new DashboardRepository(Database);
+            Settings = new SettingsRepository(Database);
             Excel = new ExcelReportExporter();
             Backup = new BackupService(Database);
         }
@@ -29,6 +31,8 @@ namespace Win7BookManagement.Infrastructure
         public SalesService Sales { get; private set; }
         public InventoryService Inventory { get; private set; }
         public ReportRepository Reports { get; private set; }
+        public DashboardRepository Dashboard { get; private set; }
+        public SettingsRepository Settings { get; private set; }
         public ExcelReportExporter Excel { get; private set; }
         public BackupService Backup { get; private set; }
     }
