@@ -172,6 +172,8 @@ namespace Win7BookManagement.Forms
             Controls.Add(main);
             Controls.Add(_sidebar);
 
+            UiTheme.Apply(this);
+
             Resize += delegate { ApplyResponsiveLayout(); };
             FormClosing += HandleFormClosing;
             Shown += delegate
