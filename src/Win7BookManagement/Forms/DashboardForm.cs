@@ -1,9 +1,7 @@
 using System;
-using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
-using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Forms
 {
@@ -11,7 +9,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly Action<string> _navigate;
-        private readonly FlowLayoutPanel _metrics = new FlowLayoutPanel();
+        private readonly TableLayoutPanel _metrics = new TableLayoutPanel();
         private readonly DataGridView _recentSales = new DataGridView();
         private readonly DataGridView _lowStock = new DataGridView();
         private readonly Label _updatedAt = new Label();
@@ -61,10 +59,13 @@ namespace Win7BookManagement.Forms
 
             _metrics.Dock = DockStyle.Top;
             _metrics.Height = 128;
-            _metrics.WrapContents = false;
-            _metrics.AutoScroll = true;
+            _metrics.ColumnCount = 4;
+            _metrics.RowCount = 1;
             _metrics.BackColor = UiTheme.Background;
-            _metrics.Padding = new Padding(4, 0, 0, 12);
+            _metrics.Padding = new Padding(4, 0, 4, 12);
+            for (var i = 0; i < 4; i++)
+                _metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            _metrics.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             var lower = new TableLayoutPanel
             {
@@ -106,13 +107,13 @@ namespace Win7BookManagement.Forms
             _metrics.SuspendLayout();
             _metrics.Controls.Clear();
             _metrics.Controls.Add(CreateMetric("今日销售额", "¥" + Money.Format(summary.TodaySalesCent),
-                summary.TodaySalesOrders + " 单 · " + summary.TodaySalesQuantity + " 册", UiTheme.Accent));
+                summary.TodaySalesOrders + " 单 · " + summary.TodaySalesQuantity + " 册", UiTheme.Accent), 0, 0);
             _metrics.Controls.Add(CreateMetric("本月销售额", "¥" + Money.Format(summary.MonthSalesCent),
-                "按自然月累计", UiTheme.Success));
+                "按自然月累计", UiTheme.Success), 1, 0);
             _metrics.Controls.Add(CreateMetric("当前库存", summary.StockUnits.ToString(),
-                summary.ActiveTitles + " 个启用品种", UiTheme.TextPrimary));
+                summary.ActiveTitles + " 个启用品种", UiTheme.TextPrimary), 2, 0);
             _metrics.Controls.Add(CreateMetric("低库存", summary.LowStockTitles.ToString(),
-                "阈值 ≤ " + threshold + " 册", summary.LowStockTitles > 0 ? UiTheme.Warning : UiTheme.Success));
+                "阈值 ≤ " + threshold + " 册", summary.LowStockTitles > 0 ? UiTheme.Warning : UiTheme.Success), 3, 0);
             _metrics.ResumeLayout();
 
             _recentSales.DataSource = _services.Dashboard.RecentSales(10);
@@ -123,33 +124,35 @@ namespace Win7BookManagement.Forms
         private static Panel CreateMetric(string caption, string value, string foot, Color valueColor)
         {
             var card = UiTheme.CreateCard();
-            card.Width = 220;
-            card.Height = 104;
-            card.Padding = new Padding(16, 12, 16, 10);
+            card.Dock = DockStyle.Fill;
+            card.Margin = new Padding(0, 0, 10, 12);
+            card.Padding = new Padding(14, 10, 14, 8);
 
             var captionLabel = new Label
             {
                 Text = caption,
                 Dock = DockStyle.Top,
-                Height = 23,
+                Height = 22,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F)
+                Font = UiTheme.Font(8.2F)
             };
             var valueLabel = new Label
             {
                 Text = value,
                 Dock = DockStyle.Top,
-                Height = 38,
+                Height = 36,
                 ForeColor = valueColor,
-                Font = UiTheme.Font(18F, FontStyle.Bold)
+                Font = UiTheme.Font(17F, FontStyle.Bold),
+                AutoEllipsis = true
             };
             var footLabel = new Label
             {
                 Text = foot,
                 Dock = DockStyle.Top,
-                Height = 21,
+                Height = 20,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F)
+                Font = UiTheme.Font(7.8F),
+                AutoEllipsis = true
             };
 
             card.Controls.Add(footLabel);
@@ -171,22 +174,6 @@ namespace Win7BookManagement.Forms
             card.Padding = new Padding(16);
 
             var header = new Panel { Dock = DockStyle.Top, Height = 70, BackColor = UiTheme.Surface };
-            var titleLabel = new Label
-            {
-                Text = title,
-                Dock = DockStyle.Top,
-                Height = 28,
-                Font = UiTheme.Font(11F, FontStyle.Bold),
-                ForeColor = UiTheme.TextPrimary
-            };
-            var subtitleLabel = new Label
-            {
-                Text = subtitle,
-                Dock = DockStyle.Top,
-                Height = 24,
-                Font = UiTheme.Font(8.5F),
-                ForeColor = UiTheme.TextSecondary
-            };
             var actionButton = new Button
             {
                 Text = actionText,
@@ -196,6 +183,26 @@ namespace Win7BookManagement.Forms
                 Tag = "primary"
             };
             actionButton.Click += action;
+
+            var titleLabel = new Label
+            {
+                Text = title,
+                Dock = DockStyle.Top,
+                Height = 28,
+                Font = UiTheme.Font(11F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                AutoEllipsis = true
+            };
+            var subtitleLabel = new Label
+            {
+                Text = subtitle,
+                Dock = DockStyle.Top,
+                Height = 24,
+                Font = UiTheme.Font(8.5F),
+                ForeColor = UiTheme.TextSecondary,
+                AutoEllipsis = true
+            };
+
             header.Controls.Add(actionButton);
             header.Controls.Add(subtitleLabel);
             header.Controls.Add(titleLabel);

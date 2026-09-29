@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
-using Win7BookManagement.Forms;
 using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Infrastructure
@@ -93,14 +92,6 @@ namespace Win7BookManagement.Infrastructure
                 services.Backup.CreateBackup(backupPath);
                 if (!File.Exists(backupPath) || new FileInfo(backupPath).Length == 0)
                     throw new InvalidOperationException("数据库备份自检失败。");
-
-                using (var dashboardForm = new DashboardForm(services, null)) { }
-                using (var booksForm = new BookListForm(services)) { }
-                using (var purchaseForm = new PurchaseForm(services)) { }
-                using (var salesForm = new SalesForm(services)) { }
-                using (var inventoryForm = new InventoryForm(services)) { }
-                using (var reportsForm = new ReportsForm(services)) { }
-                using (var settingsForm = new SettingsForm(services)) { }
 
                 return 0;
             }
