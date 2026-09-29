@@ -152,7 +152,8 @@ namespace Win7BookManagement.Forms
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 66,
+                AutoSize = true,
+                MinimumSize = new Size(0, 66),
                 ColumnCount = 3,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
@@ -247,8 +248,9 @@ namespace Win7BookManagement.Forms
             {
                 Text = "搜索结果",
                 Dock = DockStyle.Top,
-                Height = 38,
-                Padding = new Padding(12, 0, 0, 0),
+                AutoSize = true,
+                MinimumSize = new Size(0, 42),
+                Padding = new Padding(12, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,
@@ -262,7 +264,8 @@ namespace Win7BookManagement.Forms
             var footer = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 70,
+                AutoSize = true,
+                MinimumSize = new Size(0, 70),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
