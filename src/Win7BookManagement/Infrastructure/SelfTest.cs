@@ -42,9 +42,23 @@ namespace Win7BookManagement.Infrastructure
                     Isbn = "9780000000001",
                     Title = "自检图书",
                     Author = "Test",
+                    SelfCode = "BK-TEST-001",
+                    PublicationYear = "2026",
+                    Edition = "1版1印",
+                    Binding = "平装",
+                    ShelfCode = "A-01-1",
+                    DefaultPurchasePriceCent = 1200,
                     SalePriceCent = 2000,
-                    ListPriceCent = 3000
+                    ListPriceCent = 3000,
+                    Note = "self-test"
                 });
+
+                var storedBook = services.Books.GetById(bookId);
+                if (storedBook.SelfCode != "BK-TEST-001" ||
+                    storedBook.ShelfCode != "A-01-1" ||
+                    storedBook.DefaultPurchasePriceCent != 1200 ||
+                    storedBook.PublicationYear != "2026")
+                    throw new InvalidOperationException("扩展图书资料字段保存自检失败。");
 
                 services.Inventory.Adjust(bookId, 5, "opening");
                 services.Purchases.Receive(
@@ -167,6 +181,8 @@ namespace Win7BookManagement.Infrastructure
                 if (!File.Exists(backupPath) || new FileInfo(backupPath).Length == 0)
                     throw new InvalidOperationException("数据库备份自检失败。");
 
+                VerifyLegacyBookSchemaUpgrade(root);
+
                 return 0;
             }
             catch
@@ -178,6 +194,59 @@ namespace Win7BookManagement.Infrastructure
                 SQLiteConnection.ClearAllPools();
                 try { Directory.Delete(root, true); } catch { }
             }
+        }
+
+        private static void VerifyLegacyBookSchemaUpgrade(string root)
+        {
+            var legacyPath = Path.Combine(root, "legacy-v3.db");
+            SQLiteConnection.CreateFile(legacyPath);
+
+            using (var connection = new SQLiteConnection("Data Source=" + legacyPath + ";Version=3;"))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = @"
+CREATE TABLE schema_info (version INTEGER NOT NULL);
+INSERT INTO schema_info(version) VALUES(3);
+
+CREATE TABLE books (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    isbn TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL,
+    author TEXT NOT NULL DEFAULT '',
+    publisher TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '',
+    list_price_cent INTEGER NOT NULL DEFAULT 0,
+    sale_price_cent INTEGER NOT NULL DEFAULT 0,
+    stock_quantity INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+INSERT INTO books
+(isbn, title, author, publisher, category, list_price_cent, sale_price_cent,
+ stock_quantity, is_active, created_at, updated_at)
+VALUES
+('9780000000002', '旧库升级图书', 'Legacy', '', '', 3000, 2000, 2, 1,
+ '2026-01-01 00:00:00', '2026-01-01 00:00:00');";
+                    command.ExecuteNonQuery();
+                }
+            }
+
+            var upgraded = new ApplicationServices(legacyPath);
+            var legacyBook = upgraded.Books.FindByExactIsbn("9780000000002");
+            if (legacyBook == null ||
+                legacyBook.Title != "旧库升级图书" ||
+                legacyBook.DefaultPurchasePriceCent != 0 ||
+                legacyBook.ShelfCode != "")
+                throw new InvalidOperationException("V3 图书数据库前向升级自检失败。");
+
+            legacyBook.ShelfCode = "LEGACY-01";
+            upgraded.Books.Update(legacyBook);
+            if (upgraded.Books.GetById(legacyBook.Id).ShelfCode != "LEGACY-01")
+                throw new InvalidOperationException("升级后新增字段写入自检失败。");
         }
     }
 }

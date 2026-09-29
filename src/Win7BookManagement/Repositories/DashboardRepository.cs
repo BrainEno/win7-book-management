@@ -104,7 +104,7 @@ LIMIT @limit;";
                 command.CommandText = @"
 SELECT isbn AS ISBN,
        title AS 书名,
-       author AS 作者,
+       shelf_code AS 货架位,
        stock_quantity AS 当前库存
 FROM books
 WHERE is_active=1 AND stock_quantity<=@threshold

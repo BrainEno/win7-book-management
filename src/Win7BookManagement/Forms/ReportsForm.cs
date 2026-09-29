@@ -19,14 +19,7 @@ namespace Win7BookManagement.Forms
         {
             _services = services;
 
-            var toolbar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 54,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoScroll = true
-            };
+            var toolbar = UiTheme.CreateResponsiveToolbar();
 
             _type.DropDownStyle = ComboBoxStyle.DropDownList;
             _type.Width = 160;
@@ -73,6 +66,7 @@ namespace Win7BookManagement.Forms
 
             Controls.Add(_grid);
             Controls.Add(toolbar);
+            UiTheme.Apply(this);
             Shown += delegate { Query(); };
         }
 

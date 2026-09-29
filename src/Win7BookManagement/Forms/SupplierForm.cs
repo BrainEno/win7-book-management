@@ -15,14 +15,7 @@ namespace Win7BookManagement.Forms
         {
             _services = services;
 
-            var toolbar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 58,
-                FlowDirection = FlowDirection.LeftToRight,
-                BackColor = UiTheme.Surface,
-                Padding = new Padding(12, 8, 12, 8)
-            };
+            var toolbar = UiTheme.CreateResponsiveToolbar();
             var add = new Button { Text = "新增供应商", Width = 104, Height = 32, Margin = new Padding(0, 3, 8, 3), Tag = "primary" };
             var edit = new Button { Text = "编辑", Width = 72, Height = 32, Margin = new Padding(0, 3, 8, 3) };
             add.Click += delegate { EditSupplier(null); };

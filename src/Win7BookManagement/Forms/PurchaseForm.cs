@@ -26,7 +26,7 @@ namespace Win7BookManagement.Forms
             var top = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 104,
+                Height = 112,
                 ColumnCount = 6,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
@@ -88,7 +88,7 @@ namespace Win7BookManagement.Forms
 
             var hint = new Label
             {
-                Text = "选择供应商后可扫码或搜索图书；数量和本次进价可直接在表格中修改。",
+                Text = "选择供应商后可扫码或搜索图书；数量和本次进价可直接在表格中修改。若图书资料维护了默认进价，会自动预填。",
                 Dock = DockStyle.Top,
                 Height = 30,
                 Padding = new Padding(12, 7, 0, 0),
@@ -209,7 +209,7 @@ namespace Win7BookManagement.Forms
                 Isbn = book.Isbn,
                 Title = book.Title,
                 Quantity = 1,
-                UnitCostYuan = 0m
+                UnitCostYuan = Money.ToYuan(book.DefaultPurchasePriceCent)
             });
         }
 

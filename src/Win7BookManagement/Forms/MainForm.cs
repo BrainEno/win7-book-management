@@ -23,11 +23,12 @@ namespace Win7BookManagement.Forms
         public MainForm(ApplicationServices services)
         {
             _services = services;
+            UiTheme.ConfigureForm(this);
 
             Text = "简易图书管理系统";
             StartPosition = FormStartPosition.CenterScreen;
-            Width = 1240;
-            Height = 780;
+            Width = 1360;
+            Height = 840;
             MinimumSize = new Size(960, 640);
             BackColor = UiTheme.Background;
             Font = UiTheme.Font(9F);
@@ -160,6 +161,7 @@ namespace Win7BookManagement.Forms
                 ForeColor = UiTheme.TextSecondary,
                 Padding = new Padding(22, 5, 8, 0),
                 Font = UiTheme.Font(7.8F),
+                AutoEllipsis = true,
                 Text = "完全离线 · 数据库：" + _services.Database.DatabasePath
             };
 
@@ -210,7 +212,7 @@ namespace Win7BookManagement.Forms
                     break;
                 case "books":
                     title = "图书资料";
-                    subtitle = "维护 ISBN、书名、作者、出版社和售价";
+                    subtitle = "维护书目信息、货架位和经营价格";
                     child = new BookListForm(_services);
                     break;
                 case "purchase":
@@ -354,11 +356,14 @@ namespace Win7BookManagement.Forms
 
         private void ApplyResponsiveLayout()
         {
-            var compact = ClientSize.Width < 1080;
-            _sidebar.Width = compact ? 178 : 206;
+            var compact = ClientSize.Width < 1180;
+            _sidebar.Width = compact ? 178 : 212;
+            _contentHost.Padding = compact
+                ? new Padding(12, 12, 12, 12)
+                : new Padding(22, 18, 22, 18);
 
             foreach (var pair in _navButtons)
-                pair.Value.Width = compact ? 146 : 174;
+                pair.Value.Width = compact ? 146 : 180;
         }
     }
 }

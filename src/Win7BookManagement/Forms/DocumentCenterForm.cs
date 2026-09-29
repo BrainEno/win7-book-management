@@ -23,16 +23,7 @@ namespace Win7BookManagement.Forms
             _services = services;
             BackColor = UiTheme.Background;
 
-            var toolbar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 62,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                AutoScroll = true,
-                BackColor = UiTheme.Surface,
-                Padding = new Padding(12, 9, 12, 8)
-            };
+            var toolbar = UiTheme.CreateResponsiveToolbar();
 
             _type.DropDownStyle = ComboBoxStyle.DropDownList;
             _type.Width = 130;
@@ -139,8 +130,22 @@ namespace Win7BookManagement.Forms
             Controls.Add(hint);
             Controls.Add(toolbar);
 
+            Resize += delegate
+            {
+                if (split.Height > 360)
+                {
+                    var target = (int)(split.Height * 0.56);
+                    split.SplitterDistance = Math.Max(split.Panel1MinSize, Math.Min(split.Height - split.Panel2MinSize - split.SplitterWidth, target));
+                }
+            };
+
             UiTheme.Apply(this);
-            Shown += delegate { ReloadDocuments(); };
+            Shown += delegate
+            {
+                ReloadDocuments();
+                if (split.Height > 360)
+                    split.SplitterDistance = Math.Max(split.Panel1MinSize, (int)(split.Height * 0.56));
+            };
         }
 
         private static void ConfigureGrid(DataGridView grid)

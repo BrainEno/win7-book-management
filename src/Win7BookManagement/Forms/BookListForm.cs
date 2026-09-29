@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
@@ -15,22 +14,37 @@ namespace Win7BookManagement.Forms
         private readonly DataGridView _grid;
         private readonly Label _summary;
 
+        private readonly DataGridViewColumn _selfCodeColumn;
+        private readonly DataGridViewColumn _publisherColumn;
+        private readonly DataGridViewColumn _categoryColumn;
+        private readonly DataGridViewColumn _shelfColumn;
+        private readonly DataGridViewColumn _activeColumn;
+
         public BookListForm(ApplicationServices services)
         {
             _services = services;
             BackColor = UiTheme.Background;
 
-            var toolbar = new FlowLayoutPanel
+            var toolbar = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 Height = 58,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                ColumnCount = 5,
+                RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(12, 8, 12, 8)
+                Padding = new Padding(12, 9, 12, 9)
             };
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 106));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82));
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
 
-            _search = new TextBox { Width = 320, Margin = new Padding(0, 5, 8, 5) };
+            _search = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 10, 3)
+            };
             _search.KeyDown += delegate(object sender, KeyEventArgs e)
             {
                 if (e.KeyCode == Keys.Enter)
@@ -40,30 +54,36 @@ namespace Win7BookManagement.Forms
                 }
             };
 
-            var searchButton = new Button { Text = "查询", Width = 72, Height = 32, Margin = new Padding(0, 3, 8, 3) };
+            var searchButton = new Button { Text = "查询", Dock = DockStyle.Fill, Margin = new Padding(0, 1, 8, 1) };
             searchButton.Click += delegate { Reload(); };
 
-            var addButton = new Button { Text = "新增图书", Width = 92, Height = 32, Margin = new Padding(0, 3, 8, 3), Tag = "primary" };
+            var addButton = new Button { Text = "新增图书", Dock = DockStyle.Fill, Margin = new Padding(0, 1, 8, 1), Tag = "primary" };
             addButton.Click += delegate { EditBook(null); };
 
-            var editButton = new Button { Text = "编辑", Width = 72, Height = 32, Margin = new Padding(0, 3, 8, 3) };
+            var editButton = new Button { Text = "编辑", Dock = DockStyle.Fill, Margin = new Padding(0, 1, 8, 1) };
             editButton.Click += delegate { EditSelected(); };
 
-            _includeInactive = new CheckBox { Text = "包含停用", AutoSize = true, Margin = new Padding(8, 9, 0, 0) };
+            _includeInactive = new CheckBox
+            {
+                Text = "包含停用",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(4, 0, 0, 0)
+            };
             _includeInactive.CheckedChanged += delegate { Reload(); };
 
-            toolbar.Controls.Add(_search);
-            toolbar.Controls.Add(searchButton);
-            toolbar.Controls.Add(addButton);
-            toolbar.Controls.Add(editButton);
-            toolbar.Controls.Add(_includeInactive);
+            toolbar.Controls.Add(_search, 0, 0);
+            toolbar.Controls.Add(searchButton, 1, 0);
+            toolbar.Controls.Add(addButton, 2, 0);
+            toolbar.Controls.Add(editButton, 3, 0);
+            toolbar.Controls.Add(_includeInactive, 4, 0);
 
             var hint = new Label
             {
-                Text = "可按 ISBN、书名、作者、出版社或分类搜索",
+                Text = "可按店内编码、ISBN、书名、作者、出版社、分类、出版年、装帧或货架位搜索；双击一行可直接编辑。",
                 Dock = DockStyle.Top,
-                Height = 32,
-                Padding = new Padding(12, 7, 0, 0),
+                Height = 34,
+                Padding = new Padding(12, 8, 8, 0),
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F)
@@ -72,8 +92,8 @@ namespace Win7BookManagement.Forms
             _summary = new Label
             {
                 Dock = DockStyle.Bottom,
-                Height = 28,
-                Padding = new Padding(10, 6, 0, 0),
+                Height = 30,
+                Padding = new Padding(10, 7, 8, 0),
                 ForeColor = UiTheme.TextSecondary,
                 BackColor = UiTheme.Surface
             };
@@ -91,20 +111,41 @@ namespace Win7BookManagement.Forms
                 BackgroundColor = UiTheme.Surface,
                 BorderStyle = BorderStyle.None
             };
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ISBN", DataPropertyName = "Isbn", Width = 130 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "书名", DataPropertyName = "Title", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 180 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "作者", DataPropertyName = "Author", Width = 120 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "出版社", DataPropertyName = "Publisher", Width = 120 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "分类", DataPropertyName = "Category", Width = 90 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
+
+            _selfCodeColumn = new DataGridViewTextBoxColumn { HeaderText = "店内编码", DataPropertyName = "SelfCode", Width = 100 };
+            var isbnColumn = new DataGridViewTextBoxColumn { HeaderText = "ISBN", DataPropertyName = "Isbn", Width = 132 };
+            var titleColumn = new DataGridViewTextBoxColumn { HeaderText = "书名", DataPropertyName = "Title", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 180, FillWeight = 220 };
+            var authorColumn = new DataGridViewTextBoxColumn { HeaderText = "作者", DataPropertyName = "Author", Width = 120 };
+            _publisherColumn = new DataGridViewTextBoxColumn { HeaderText = "出版社", DataPropertyName = "Publisher", Width = 120 };
+            _categoryColumn = new DataGridViewTextBoxColumn { HeaderText = "分类", DataPropertyName = "Category", Width = 92 };
+            _shelfColumn = new DataGridViewTextBoxColumn { HeaderText = "货架位", DataPropertyName = "ShelfCode", Width = 86 };
+            var priceColumn = new DataGridViewTextBoxColumn
             {
                 HeaderText = "售价",
                 DataPropertyName = "SalePriceYuan",
-                Width = 78,
-                DefaultCellStyle = new DataGridViewCellStyle { Format = "0.00" }
-            });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "库存", DataPropertyName = "StockQuantity", Width = 68 });
-            _grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "启用", DataPropertyName = "IsActive", Width = 56 });
+                Width = 82,
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "0.00", Alignment = DataGridViewContentAlignment.MiddleRight }
+            };
+            var stockColumn = new DataGridViewTextBoxColumn
+            {
+                HeaderText = "库存",
+                DataPropertyName = "StockQuantity",
+                Width = 72,
+                DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight }
+            };
+            _activeColumn = new DataGridViewCheckBoxColumn { HeaderText = "启用", DataPropertyName = "IsActive", Width = 62 };
+
+            _grid.Columns.Add(_selfCodeColumn);
+            _grid.Columns.Add(isbnColumn);
+            _grid.Columns.Add(titleColumn);
+            _grid.Columns.Add(authorColumn);
+            _grid.Columns.Add(_publisherColumn);
+            _grid.Columns.Add(_categoryColumn);
+            _grid.Columns.Add(_shelfColumn);
+            _grid.Columns.Add(priceColumn);
+            _grid.Columns.Add(stockColumn);
+            _grid.Columns.Add(_activeColumn);
+
             _grid.CellDoubleClick += delegate { EditSelected(); };
             _grid.CellFormatting += HighlightLowStock;
 
@@ -113,7 +154,13 @@ namespace Win7BookManagement.Forms
             Controls.Add(hint);
             Controls.Add(toolbar);
 
-            Shown += delegate { Reload(); };
+            Resize += delegate { ApplyResponsiveColumns(); };
+            Shown += delegate
+            {
+                Reload();
+                ApplyResponsiveColumns();
+                _search.Focus();
+            };
         }
 
         private void Reload()
@@ -123,6 +170,17 @@ namespace Win7BookManagement.Forms
             _summary.Text = "共 " + books.Count + " 条图书资料 · 低库存阈值 " + _services.Settings.GetLowStockThreshold() + " 册";
         }
 
+        private void ApplyResponsiveColumns()
+        {
+            var width = ClientSize.Width;
+
+            _selfCodeColumn.Visible = width >= 980;
+            _publisherColumn.Visible = width >= 1080;
+            _categoryColumn.Visible = width >= 900;
+            _shelfColumn.Visible = width >= 820;
+            _activeColumn.Visible = width >= 760;
+        }
+
         private void HighlightLowStock(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -130,7 +188,10 @@ namespace Win7BookManagement.Forms
             if (book == null || !book.IsActive) return;
 
             if (book.StockQuantity <= _services.Settings.GetLowStockThreshold())
+            {
                 _grid.Rows[e.RowIndex].DefaultCellStyle.ForeColor = UiTheme.Warning;
+                _grid.Rows[e.RowIndex].DefaultCellStyle.SelectionForeColor = UiTheme.Warning;
+            }
         }
 
         private void EditSelected()

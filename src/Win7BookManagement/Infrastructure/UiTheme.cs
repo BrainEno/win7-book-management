@@ -38,14 +38,39 @@ namespace Win7BookManagement.Infrastructure
 
             var form = root as Form;
             if (form != null)
-            {
-                form.Font = Font(9F);
-                if (form.BackColor == SystemColors.Control)
-                    form.BackColor = Background;
-                form.ForeColor = TextPrimary;
-            }
+                ConfigureForm(form);
 
             ApplyRecursive(root);
+        }
+
+        public static void ConfigureForm(Form form)
+        {
+            if (form == null) return;
+
+            if (form.AutoScaleMode != AutoScaleMode.Dpi)
+            {
+                form.AutoScaleDimensions = new SizeF(96F, 96F);
+                form.AutoScaleMode = AutoScaleMode.Dpi;
+            }
+            form.Font = Font(9F);
+            form.ForeColor = TextPrimary;
+            if (form.BackColor == SystemColors.Control)
+                form.BackColor = Background;
+        }
+
+        public static FlowLayoutPanel CreateResponsiveToolbar()
+        {
+            return new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 54),
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = Surface,
+                Padding = new Padding(12, 8, 12, 8)
+            };
         }
 
         public static void StyleGrid(DataGridView grid)
@@ -71,13 +96,17 @@ namespace Win7BookManagement.Infrastructure
             grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(247, 248, 250);
             grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = TextSecondary;
             grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
+            grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
 
             grid.DefaultCellStyle.BackColor = Surface;
             grid.DefaultCellStyle.ForeColor = TextPrimary;
             grid.DefaultCellStyle.SelectionBackColor = AccentSoft;
             grid.DefaultCellStyle.SelectionForeColor = TextPrimary;
             grid.DefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
+            grid.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(252, 252, 253);
+            grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
+            grid.RowTemplate.Resizable = DataGridViewTriState.False;
         }
 
         public static void StyleButton(Button button, bool primary)
@@ -168,8 +197,19 @@ namespace Win7BookManagement.Infrastructure
                 }
 
                 var label = control as Label;
-                if (label != null && label.ForeColor == SystemColors.ControlText)
-                    label.ForeColor = TextPrimary;
+                if (label != null)
+                {
+                    if (label.ForeColor == SystemColors.ControlText)
+                        label.ForeColor = TextPrimary;
+                    label.AutoEllipsis = true;
+                }
+
+                var date = control as DateTimePicker;
+                if (date != null)
+                {
+                    date.CalendarForeColor = TextPrimary;
+                    date.CalendarMonthBackground = Surface;
+                }
 
                 var checkBox = control as CheckBox;
                 if (checkBox != null)

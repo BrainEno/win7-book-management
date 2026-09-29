@@ -113,18 +113,20 @@ ORDER BY it.occurred_at, it.id;", fromDate, toDate);
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = @"
-SELECT b.isbn AS ISBN,
+SELECT b.self_code AS 店内编码,
+       b.isbn AS ISBN,
        b.title AS 书名,
        b.author AS 作者,
        b.publisher AS 出版社,
        b.category AS 分类,
+       b.shelf_code AS 货架位,
        COALESCE(SUM(it.quantity), 0) AS 库存数量
 FROM books b
 LEFT JOIN inventory_transactions it
        ON it.book_id = b.id
       AND it.occurred_at < @endExclusive
 WHERE b.created_at < @endExclusive
-GROUP BY b.id, b.isbn, b.title, b.author, b.publisher, b.category
+GROUP BY b.id, b.self_code, b.isbn, b.title, b.author, b.publisher, b.category, b.shelf_code
 ORDER BY b.title, b.id;";
                 command.Parameters.AddWithValue("@endExclusive", FormatDate(endExclusive));
                 using (var adapter = new SQLiteDataAdapter(command))

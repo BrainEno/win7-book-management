@@ -14,27 +14,23 @@ namespace Win7BookManagement.Forms
         private readonly CheckBox _lowOnly = new CheckBox();
         private readonly DataGridView _grid = new DataGridView();
         private readonly Label _summary = new Label();
+        private readonly DataGridViewColumn _authorColumn;
+        private readonly DataGridViewColumn _categoryColumn;
+        private readonly DataGridViewColumn _shelfColumn;
 
         public InventoryForm(ApplicationServices services)
         {
             _services = services;
 
-            var toolbar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 58,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                BackColor = UiTheme.Surface,
-                Padding = new Padding(12, 8, 12, 8)
-            };
-            _search.Width = 280;
+            var toolbar = UiTheme.CreateResponsiveToolbar();
+            _search.Width = 300;
             _search.Margin = new Padding(0, 5, 8, 5);
-            var searchButton = new Button { Text = "查询", Width = 72, Height = 32, Margin = new Padding(0, 3, 8, 3) };
-            var adjustButton = new Button { Text = "库存调整", Width = 90, Height = 32, Margin = new Padding(0, 3, 8, 3) };
+
+            var searchButton = new Button { Text = "查询", Width = 76, Height = 32, Margin = new Padding(0, 3, 8, 3) };
+            var adjustButton = new Button { Text = "库存调整", Width = 96, Height = 32, Margin = new Padding(0, 3, 8, 3) };
             _lowOnly.Text = "仅看低库存";
             _lowOnly.AutoSize = true;
-            _lowOnly.Margin = new Padding(8, 9, 0, 0);
+            _lowOnly.Margin = new Padding(8, 9, 6, 0);
 
             searchButton.Click += delegate { Reload(); };
             adjustButton.Click += delegate { AdjustSelected(); };
@@ -47,14 +43,26 @@ namespace Win7BookManagement.Forms
                     e.SuppressKeyPress = true;
                 }
             };
+
             toolbar.Controls.Add(_search);
             toolbar.Controls.Add(searchButton);
             toolbar.Controls.Add(adjustButton);
             toolbar.Controls.Add(_lowOnly);
 
+            var hint = new Label
+            {
+                Text = "库存数量只能来自采购、销售、退货或“库存调整”。可按店内编码、ISBN、书名、作者、分类和货架位查找。",
+                Dock = DockStyle.Top,
+                Height = 34,
+                Padding = new Padding(12, 8, 8, 0),
+                BackColor = UiTheme.Surface,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8F)
+            };
+
             _summary.Dock = DockStyle.Bottom;
-            _summary.Height = 30;
-            _summary.Padding = new Padding(10, 7, 0, 0);
+            _summary.Height = 32;
+            _summary.Padding = new Padding(10, 8, 8, 0);
             _summary.BackColor = UiTheme.Surface;
             _summary.ForeColor = UiTheme.TextSecondary;
 
@@ -67,17 +75,40 @@ namespace Win7BookManagement.Forms
             _grid.AutoGenerateColumns = false;
             _grid.RowHeadersVisible = false;
             _grid.BackgroundColor = UiTheme.Surface;
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "ISBN", DataPropertyName = "Isbn", Width = 140 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "书名", DataPropertyName = "Title", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "作者", DataPropertyName = "Author", Width = 140 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "分类", DataPropertyName = "Category", Width = 100 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "库存", DataPropertyName = "StockQuantity", Width = 90 });
+
+            var isbnColumn = new DataGridViewTextBoxColumn { HeaderText = "ISBN", DataPropertyName = "Isbn", Width = 138 };
+            var titleColumn = new DataGridViewTextBoxColumn { HeaderText = "书名", DataPropertyName = "Title", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 190 };
+            _authorColumn = new DataGridViewTextBoxColumn { HeaderText = "作者", DataPropertyName = "Author", Width = 130 };
+            _categoryColumn = new DataGridViewTextBoxColumn { HeaderText = "分类", DataPropertyName = "Category", Width = 100 };
+            _shelfColumn = new DataGridViewTextBoxColumn { HeaderText = "货架位", DataPropertyName = "ShelfCode", Width = 94 };
+            var stockColumn = new DataGridViewTextBoxColumn
+            {
+                HeaderText = "库存",
+                DataPropertyName = "StockQuantity",
+                Width = 82,
+                DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight }
+            };
+
+            _grid.Columns.Add(isbnColumn);
+            _grid.Columns.Add(titleColumn);
+            _grid.Columns.Add(_authorColumn);
+            _grid.Columns.Add(_categoryColumn);
+            _grid.Columns.Add(_shelfColumn);
+            _grid.Columns.Add(stockColumn);
             _grid.CellFormatting += HighlightLowStock;
+            _grid.CellDoubleClick += delegate { AdjustSelected(); };
 
             Controls.Add(_grid);
             Controls.Add(_summary);
+            Controls.Add(hint);
             Controls.Add(toolbar);
-            Shown += delegate { Reload(); };
+
+            Resize += delegate { ApplyResponsiveColumns(); };
+            Shown += delegate
+            {
+                Reload();
+                ApplyResponsiveColumns();
+            };
         }
 
         private void Reload()
@@ -88,7 +119,15 @@ namespace Win7BookManagement.Forms
                 books = books.Where(book => book.StockQuantity <= threshold).ToList();
 
             _grid.DataSource = books;
-            _summary.Text = "显示 " + books.Count + " 个启用品种 · 低库存阈值 ≤ " + threshold + " 册";
+            _summary.Text = "显示 " + books.Count + " 个启用品种 · 低库存阈值 ≤ " + threshold + " 册 · 双击图书可调整库存";
+        }
+
+        private void ApplyResponsiveColumns()
+        {
+            var width = ClientSize.Width;
+            _authorColumn.Visible = width >= 760;
+            _categoryColumn.Visible = width >= 900;
+            _shelfColumn.Visible = width >= 680;
         }
 
         private void HighlightLowStock(object sender, DataGridViewCellFormattingEventArgs e)
@@ -137,46 +176,82 @@ namespace Win7BookManagement.Forms
 
             public AdjustmentDialog(Book book)
             {
-                Text = "库存调整 - " + book.Title;
+                UiTheme.ConfigureForm(this);
+                Text = "库存调整";
                 StartPosition = FormStartPosition.CenterParent;
-                Width = 480;
-                Height = 270;
+                Width = 520;
+                Height = 360;
+                MinimumSize = new Size(460, 330);
                 BackColor = UiTheme.Background;
+                ShowInTaskbar = false;
 
                 _delta.Minimum = -1000000;
                 _delta.Maximum = 1000000;
                 _delta.Value = 0;
+                _note.Multiline = true;
+
+                var header = new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 78,
+                    BackColor = UiTheme.Surface,
+                    Padding = new Padding(22, 14, 22, 8)
+                };
+                header.Controls.Add(new Label
+                {
+                    Text = book.Title,
+                    Dock = DockStyle.Top,
+                    Height = 28,
+                    Font = UiTheme.Font(12F, FontStyle.Bold),
+                    ForeColor = UiTheme.TextPrimary
+                });
+                header.Controls.Add(new Label
+                {
+                    Text = "当前库存 " + book.StockQuantity + " 册" +
+                           (string.IsNullOrWhiteSpace(book.ShelfCode) ? "" : " · 货架位 " + book.ShelfCode),
+                    Dock = DockStyle.Bottom,
+                    Height = 24,
+                    ForeColor = UiTheme.TextSecondary
+                });
 
                 var table = new TableLayoutPanel
                 {
                     Dock = DockStyle.Fill,
                     ColumnCount = 2,
-                    RowCount = 4,
-                    Padding = new Padding(22),
+                    RowCount = 3,
+                    Padding = new Padding(22, 18, 22, 10),
                     BackColor = UiTheme.Surface
                 };
                 table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
                 table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                table.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+                table.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                table.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
 
-                table.Controls.Add(new Label { Text = "当前库存", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
-                table.Controls.Add(new Label { Text = book.StockQuantity.ToString(), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft }, 1, 0);
-                table.Controls.Add(new Label { Text = "调整数量 *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 1);
+                table.Controls.Add(new Label { Text = "调整数量 *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
                 _delta.Dock = DockStyle.Fill;
-                _delta.Margin = new Padding(6);
-                table.Controls.Add(_delta, 1, 1);
-                table.Controls.Add(new Label { Text = "原因", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 2);
-                _note.Dock = DockStyle.Fill;
-                _note.Margin = new Padding(6);
-                table.Controls.Add(_note, 1, 2);
+                _delta.Margin = new Padding(8, 7, 0, 7);
+                table.Controls.Add(_delta, 1, 0);
 
-                var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, BackColor = UiTheme.Surface };
-                var ok = new Button { Text = "确认", Width = 84, Height = 32, Tag = "primary" };
-                var cancel = new Button { Text = "取消", Width = 84, Height = 32, DialogResult = DialogResult.Cancel };
+                table.Controls.Add(new Label { Text = "调整原因 *", Dock = DockStyle.Fill, TextAlign = ContentAlignment.TopRight, Padding = new Padding(0, 9, 0, 0) }, 0, 1);
+                _note.Dock = DockStyle.Fill;
+                _note.Margin = new Padding(8, 7, 0, 7);
+                table.Controls.Add(_note, 1, 1);
+
+                var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
+                var ok = new Button { Text = "确认调整", Width = 96, Height = 34, Tag = "primary" };
+                var cancel = new Button { Text = "取消", Width = 84, Height = 34, DialogResult = DialogResult.Cancel };
                 ok.Click += delegate
                 {
                     if (Delta == 0)
                     {
-                        MessageBox.Show(this, "调整数量不能为 0。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(this, "调整数量不能为 0。正数表示增加，负数表示减少。", "请填写数量", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(Note))
+                    {
+                        MessageBox.Show(this, "请填写调整原因，例如“盘点差异”或“破损报废”。", "请填写原因", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        _note.Focus();
                         return;
                     }
                     DialogResult = DialogResult.OK;
@@ -184,9 +259,10 @@ namespace Win7BookManagement.Forms
                 };
                 buttons.Controls.Add(ok);
                 buttons.Controls.Add(cancel);
-                table.Controls.Add(buttons, 1, 3);
+                table.Controls.Add(buttons, 1, 2);
 
                 Controls.Add(table);
+                Controls.Add(header);
                 AcceptButton = ok;
                 CancelButton = cancel;
                 UiTheme.Apply(this);

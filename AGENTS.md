@@ -49,6 +49,7 @@ Do not add architectural layers without a concrete need.
 - ISBN is a business identifier, not the primary key.
 - Primary keys are internal integer IDs.
 - Historical documents preserve snapshots.
+- Default purchase price is master-data assistance only; it may prefill a new purchase line but must never rewrite historical purchase prices.
 - Every stock-changing operation must execute inside one SQLite transaction, update current stock, append an inventory transaction row, and either commit all changes or none.
 - Never mutate historical inventory transaction rows to "fix" current stock. Use an explicit adjustment transaction.
 - Historical inventory for a date must be reproducible from the inventory ledger.
@@ -78,6 +79,7 @@ Do not add architectural layers without a concrete need.
 - Use consistent palette, typography, spacing, button hierarchy, selected navigation state, cards and grid styling.
 - Prefer installed-font fallback suitable for Win7.
 - Responsive behavior should reduce spacing/navigation width before scrolling.
+- All primary Forms and dialogs must remain usable at Windows 7-era 1024×768 as well as Windows 10/11 4K with display scaling. Prefer `AutoScaleMode.Dpi`, wrapping/adaptive toolbars, non-wrapping grid headers, and hiding secondary table columns at narrow widths before forcing horizontal scrolling.
 - Third-party WinForms UI libraries are allowed only when they explicitly support net48, add clear UX value, have acceptable licensing, and pass Win7 smoke-test expectations.
 
 ## Offline packaging rules
