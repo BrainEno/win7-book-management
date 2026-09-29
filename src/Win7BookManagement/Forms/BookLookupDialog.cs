@@ -318,8 +318,9 @@ namespace Win7BookManagement.Forms
             if (_grid.Rows.Count > 0)
             {
                 _grid.Rows[0].Selected = true;
-                if (_grid.Rows[0].Cells.Count > 0)
-                    _grid.CurrentCell = _grid.Rows[0].Cells[0];
+                var firstVisible = FirstVisibleColumnIndex();
+                if (firstVisible >= 0)
+                    _grid.CurrentCell = _grid.Rows[0].Cells[firstVisible];
             }
         }
 
@@ -331,6 +332,17 @@ namespace Win7BookManagement.Forms
             _authorColumn.Visible = width >= 700;
             _priceColumn.Visible = width >= 650;
             _isbnColumn.Visible = width >= 580;
+        }
+
+        private int FirstVisibleColumnIndex()
+        {
+            for (var i = 0; i < _grid.Columns.Count; i++)
+            {
+                if (_grid.Columns[i].Visible)
+                    return i;
+            }
+
+            return -1;
         }
 
         private void Choose()
