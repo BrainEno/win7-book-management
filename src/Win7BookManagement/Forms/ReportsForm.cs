@@ -273,7 +273,8 @@ namespace Win7BookManagement.Forms
                 Text = "报表明细",
                 Dock = DockStyle.Top,
                 Height = 38,
-                Padding = new Padding(12, 10, 0, 0),
+                Padding = new Padding(12, 0, 0, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,
                 Font = UiTheme.Font(9.2F, FontStyle.Bold)
