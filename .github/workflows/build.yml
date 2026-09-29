@@ -32,9 +32,21 @@ jobs:
             throw "Self test failed with exit code $($process.ExitCode)"
           }
 
+      - name: Build offline installer
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\build-installer.ps1" -SkipBuild
+
       - name: Upload Windows executable
         uses: actions/upload-artifact@v4
         with:
           name: win7-book-management-x86
           path: src/Win7BookManagement/bin/x86/Release/
+          if-no-files-found: error
+
+      - name: Upload offline installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: win7-book-management-offline-installer
+          path: installer/output/Win7BookManagement-Offline-Setup.exe
           if-no-files-found: error

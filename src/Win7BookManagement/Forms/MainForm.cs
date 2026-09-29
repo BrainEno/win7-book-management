@@ -18,6 +18,7 @@ namespace Win7BookManagement.Forms
         private readonly Dictionary<string, Button> _navButtons = new Dictionary<string, Button>();
         private string _currentKey;
         private Form _currentPage;
+        private bool _guideOpen;
 
         public MainForm(ApplicationServices services)
         {
@@ -85,6 +86,7 @@ namespace Win7BookManagement.Forms
             AddNavigation("suppliers", "供应商");
             AddNavigation("reports", "报表与导出");
             AddNavigation("backup", "备份与恢复");
+            AddNavigation("help", "使用帮助");
             AddNavigation("settings", "系统设置");
 
             var sidebarFoot = new Panel
@@ -158,7 +160,7 @@ namespace Win7BookManagement.Forms
                 ForeColor = UiTheme.TextSecondary,
                 Padding = new Padding(22, 5, 8, 0),
                 Font = UiTheme.Font(7.8F),
-                Text = "数据库：" + _services.Database.DatabasePath
+                Text = "完全离线 · 数据库：" + _services.Database.DatabasePath
             };
 
             _contentHost = new Panel
@@ -177,7 +179,12 @@ namespace Win7BookManagement.Forms
 
             Resize += delegate { ApplyResponsiveLayout(); };
             FormClosing += HandleFormClosing;
-            Shown += delegate { Navigate("dashboard"); };
+            Shown += delegate
+            {
+                Navigate("dashboard");
+                if (!_services.Settings.IsOnboardingCompleted())
+                    BeginInvoke(new Action(StartOnboardingGuide));
+            };
             ApplyResponsiveLayout();
         }
 
@@ -198,8 +205,8 @@ namespace Win7BookManagement.Forms
             {
                 case "dashboard":
                     title = "经营概览";
-                    subtitle = "销售、库存和提醒集中查看";
-                    child = new DashboardForm(_services, Navigate);
+                    subtitle = "今天做什么、从哪里开始，都可以从这里看";
+                    child = new DashboardForm(_services, Navigate, StartOnboardingGuide);
                     break;
                 case "books":
                     title = "图书资料";
@@ -213,7 +220,7 @@ namespace Win7BookManagement.Forms
                     break;
                 case "sales":
                     title = "销售开单";
-                    subtitle = "支持扫码枪输入 ISBN，结账后自动扣减库存";
+                    subtitle = "扫描 ISBN，确认后自动扣减库存";
                     child = new SalesForm(_services);
                     break;
                 case "documents":
@@ -238,8 +245,13 @@ namespace Win7BookManagement.Forms
                     break;
                 case "backup":
                     title = "备份与恢复";
-                    subtitle = "保护本机 SQLite 数据";
+                    subtitle = "保护本机 SQLite 数据，建议每天关店前备份";
                     child = new BackupForm(_services);
+                    break;
+                case "help":
+                    title = "使用帮助";
+                    subtitle = "按最简单的路线完成日常书店操作";
+                    child = new HelpForm(_services, StartOnboardingGuide, Navigate);
                     break;
                 case "settings":
                     title = "系统设置";
@@ -268,6 +280,31 @@ namespace Win7BookManagement.Forms
             UiTheme.Apply(child);
             _contentHost.Controls.Add(child);
             child.Show();
+        }
+
+        public void StartOnboardingGuide()
+        {
+            if (_guideOpen) return;
+
+            _guideOpen = true;
+            try
+            {
+                using (var guide = new OnboardingGuideForm(this, _services))
+                    guide.ShowDialog(this);
+            }
+            finally
+            {
+                _guideOpen = false;
+            }
+        }
+
+        public Rectangle GetNavigationScreenBounds(string key)
+        {
+            Button button;
+            if (!_navButtons.TryGetValue(key, out button) || !button.Visible)
+                return Rectangle.Empty;
+
+            return button.RectangleToScreen(button.ClientRectangle);
         }
 
         private void HandleFormClosing(object sender, FormClosingEventArgs e)

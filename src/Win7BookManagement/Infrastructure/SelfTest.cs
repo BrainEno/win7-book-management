@@ -25,6 +25,17 @@ namespace Win7BookManagement.Infrastructure
                 if (services.Settings.GetLowStockThreshold() != 5)
                     throw new InvalidOperationException("设置保存自检失败。");
 
+                if (services.Settings.IsOnboardingCompleted())
+                    throw new InvalidOperationException("新数据库不应默认完成新手引导。");
+
+                services.Settings.SetOnboardingCompleted(true);
+                if (!services.Settings.IsOnboardingCompleted())
+                    throw new InvalidOperationException("新手引导完成状态保存失败。");
+
+                services.Settings.SetHomeGuideExpanded(false);
+                if (services.Settings.IsHomeGuideExpanded())
+                    throw new InvalidOperationException("首页指南展开状态保存失败。");
+
                 var supplierId = services.Suppliers.Insert(new Supplier { Name = "测试供应商" });
                 var bookId = services.Books.Insert(new Book
                 {

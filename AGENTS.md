@@ -1,13 +1,14 @@
 # AGENTS.md
 
 ## Project goal
-Build a small, dependable, completely offline bookstore inventory/sales application for Windows 7 SP1.
+Build a small, dependable, beginner-friendly, completely offline bookstore inventory/sales application for Windows 7 SP1.
 
 ## Hard compatibility constraints
 - Runtime target: **.NET Framework 4.8**.
 - Desktop UI: **Windows Forms (WinForms)**.
 - Database: **SQLite**, stored locally as a file.
 - The released application must run without Internet access.
+- Final installer must bundle all application runtime DLLs and the .NET Framework 4.8 offline runtime.
 - Do not introduce runtime dependencies that require Windows 10/11.
 - Do not migrate the application to .NET (Core/5+/6+/8+), Electron, Flutter, or a browser-hosted runtime.
 - Prefer conservative dependencies with explicit .NET Framework 4.8 support.
@@ -19,13 +20,14 @@ The commercial baseline is intentionally small:
 2. Suppliers.
 3. Purchase receiving.
 4. Sales checkout.
-5. Document center for sales, purchases, sales returns and purchase returns.
-6. Sales returns and purchase returns based on original documents.
+5. Document center.
+6. Sales returns and purchase returns.
 7. Inventory query and inventory movement history.
 8. Reports and Excel export by date.
 9. SQLite backup and restore.
 10. Minimal settings and low-stock reminders.
-11. A lightweight operating dashboard.
+11. Operating dashboard.
+12. First-run onboarding and persistent beginner help.
 
 Out of scope unless explicitly requested: cloud sync, mobile apps, multi-store networking, online accounts, complex accounting, CRM, microservices.
 
@@ -37,16 +39,16 @@ Keep one Windows desktop solution with clear folders/layers:
 - Repositories: SQLite reads/writes.
 - Database: connection/bootstrap/schema/migrations.
 - Reporting: queries and Excel export.
-- Infrastructure: backup, file paths, visual theme, logging/helpers.
+- Infrastructure: backup, file paths, visual theme, onboarding/settings helpers.
 
 Do not add architectural layers without a concrete need.
 
 ## Data invariants
 - Money is stored as integer cents (long), never binary floating point.
-- Quantities are integers for the initial book-only scope.
+- Quantities are integers for the book-only scope.
 - ISBN is a business identifier, not the primary key.
 - Primary keys are internal integer IDs.
-- Sales and purchase documents preserve item snapshots needed for historical reporting.
+- Historical documents preserve snapshots.
 - Every stock-changing operation must execute inside one SQLite transaction, update current stock, append an inventory transaction row, and either commit all changes or none.
 - Never mutate historical inventory transaction rows to "fix" current stock. Use an explicit adjustment transaction.
 - Historical inventory for a date must be reproducible from the inventory ledger.
@@ -59,70 +61,65 @@ Do not add architectural layers without a concrete need.
 - Purchase returns decrease stock and create negative PURCHASE_RETURN inventory movements.
 - A source line cannot be returned beyond its original quantity across all return documents.
 - Purchase return cannot reduce current stock below zero.
-- Return prices/costs come from the original document snapshot, not from the current book master price.
-- Original documents must expose returned and remaining-returnable quantities.
-- Dashboard net sales must deduct sales returns by the return date.
+- Return prices/costs come from the original document snapshot.
+- Dashboard net sales must deduct sales returns by return date.
+
+## UI and onboarding rules
+- Chinese UI by default.
+- Assume the operator may be a complete computer beginner.
+- Every primary workflow should explain what to do next in plain language.
+- The home page must retain a visible beginner workflow summary.
+- First fresh database launch must automatically show an interactive onboarding overlay.
+- The onboarding must be replayable later without clearing user data.
+- Use explicit action labels such as “确认入库” and “确认退货”; avoid jargon-only buttons.
+- Warn before navigating away from unfinished sales/purchase work.
+- Destructive actions require confirmation.
+- Validation errors must say what the user should correct.
+- Use consistent palette, typography, spacing, button hierarchy, selected navigation state, cards and grid styling.
+- Prefer installed-font fallback suitable for Win7.
+- Responsive behavior should reduce spacing/navigation width before scrolling.
+- Third-party WinForms UI libraries are allowed only when they explicitly support net48, add clear UX value, have acceptable licensing, and pass Win7 smoke-test expectations.
+
+## Offline packaging rules
+- The target customer PC must never need to search the web for DLLs.
+- Installer must recursively include the full Release output, including native SQLite folders.
+- Installer must bundle the official .NET Framework 4.8 offline runtime and install it only when missing.
+- Installer minimum OS is Windows 7 SP1.
+- If a prerequisite installation may require reboot, do not force-launch the app immediately.
+- Packaging script must validate core runtime files before generating installer.
+- Packaging process may use Internet on the development/CI machine to fetch official build prerequisites; the generated installer must not need Internet.
+- Keep installer build reproducible through `build-installer.cmd`.
 
 ## SQLite rules
 - Enable foreign keys for every connection.
-- Prefer WAL where it is safe, but checkpoint before database-file backup.
+- Prefer WAL where safe, but checkpoint before database-file backup.
 - Schema changes must be versioned and forward-only.
 - Database bootstrap must create a new usable database automatically.
-- Backups must use a consistent SQLite backup/copy procedure, not copy an actively-written file blindly.
-
-## Date/time rules
-- Store timestamps in an unambiguous sortable format.
-- Report date filters are inclusive by local calendar date.
-- A stock snapshot for a date means stock at the end of that local calendar day.
-- Returns belong to the date/time when the return is actually processed.
+- Backups must use a consistent SQLite backup/copy procedure.
 
 ## Excel/reporting rules
 Required exports:
-- Sales detail by date range.
-- Sales return detail by date range.
-- Purchase detail by date range.
-- Purchase return detail by date range.
-- Inventory snapshot for a selected date.
-- Inventory movement detail by date range.
-Exports must be valid .xlsx files and must not require Microsoft Excel to be installed.
-
-## UI rules
-- Chinese UI by default.
-- The application should feel modern and calm without sacrificing Windows 7 compatibility.
-- Use a consistent palette, typography, spacing, button hierarchy, navigation selected state, cards and grid styling.
-- Prefer Segoe UI / Microsoft YaHei UI / Microsoft YaHei with safe installed-font fallback.
-- Optimize for keyboard/mouse desktop use, barcode scanners acting as keyboard input, and common 1366x768-or-larger displays.
-- Responsive behavior should reduce spacing and navigation width before introducing scrolling.
-- Preserve strong contrast and visible focus/selection states.
-- Primary actions must be visually distinct from secondary actions.
-- Warn before navigating away from unfinished sales/purchase work.
-- Destructive actions require confirmation.
-- Validation errors must explain what the operator should correct.
-- Long operations must not silently freeze without feedback.
-- Third-party WinForms UI libraries are allowed only when they explicitly support net48, add clear UX value, have acceptable licensing, and pass the same build plus Win7 smoke-test expectations. Do not couple core business logic to a UI vendor.
-
-## Build and dependency rules
-- Solution must build in Release mode for .NET Framework 4.8.
-- Keep NuGet dependency count low.
-- SQLite and Excel libraries must be pinned to known versions.
-- UI packages, if introduced, must also be pinned.
-- Do not depend on a network service at runtime.
-- Do not commit bin/, obj/, packages/, database files, exports, or user backups.
+- Sales detail.
+- Sales return detail.
+- Purchase detail.
+- Purchase return detail.
+- Inventory snapshot.
+- Inventory movement detail.
+Exports must be valid .xlsx files and must not require Microsoft Excel.
 
 ## Testing expectations
 At minimum, verify:
 - clean database creation and forward schema upgrade;
-- purchase increases stock and creates ledger rows;
-- sale decreases stock and creates ledger rows;
-- sales return restores stock and cannot exceed source quantity;
-- purchase return deducts stock and cannot exceed source quantity/current stock;
-- failed sale/purchase/return rolls back completely;
-- original document return status/quantities remain correct;
-- historical inventory snapshot remains correct after returns;
-- dashboard net sales deducts sales returns;
-- date-range sales/purchase/return/movement queries use correct inclusive boundaries;
-- Excel export creates a readable workbook;
-- backup produces a restorable database.
+- onboarding/settings persistence;
+- purchase/sale/return inventory correctness and rollback;
+- document return statuses;
+- historical inventory snapshot;
+- dashboard net sales;
+- report date boundaries;
+- Excel export;
+- backup;
+- Release self-test from the exact folder copied into installer;
+- installer generation succeeds and contains app runtime plus .NET 4.8 offline prerequisite.
 
 ## Change discipline
 Before changing behavior:
@@ -131,4 +128,4 @@ Before changing behavior:
 3. Prefer the smallest coherent change.
 4. Keep business logic out of Forms.
 5. Update README/docs when user-visible behavior or setup changes.
-6. Do not weaken inventory or return invariants for convenience.
+6. Do not weaken inventory, return, offline packaging, or beginner-safety invariants for convenience.

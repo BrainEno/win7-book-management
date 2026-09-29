@@ -1,25 +1,14 @@
-# Visual Studio / MSBuild
-.vs/
-*.user
-*.suo
 bin/
 obj/
 packages/
-TestResults/
-
-# Runtime data
-data/
-backup/
-exports/
+.vs/
+*.user
+*.suo
 *.db
 *.db-shm
 *.db-wal
-
-# Build/release
-artifacts/
-release/
-*.zip
-
-# OS/editor
-Thumbs.db
-.DS_Store
+*.xlsx
+*.log
+installer/output/
+installer/prerequisites/*.exe
+.tools/
