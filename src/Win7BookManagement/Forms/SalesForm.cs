@@ -116,7 +116,7 @@ namespace Win7BookManagement.Forms
         {
             var toolbar = UiTheme.CreateResponsiveToolbar();
             toolbar.BackColor = UiTheme.Surface;
-            toolbar.BorderStyle = BorderStyle.FixedSingle;
+            toolbar.BorderStyle = BorderStyle.None;
 
             var newOrder = new Button { Text = "＋ 新单", Width = 88, Height = UiTheme.ButtonHeight };
             var pick = new Button { Text = "选择图书", Width = 100, Height = UiTheme.ButtonHeight };
@@ -157,7 +157,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(14, 12, 14, 12),
                 Margin = new Padding(0, 10, 0, 10),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 94));
@@ -231,7 +231,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.FixedSingle,
+                BorderStyle = BorderStyle.None,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
@@ -261,7 +261,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(14, 11, 14, 11),
                 Margin = new Padding(0, 10, 0, 0),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 68));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -317,7 +317,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.SurfaceMuted,
                 Padding = new Padding(16, 11, 16, 11),
                 Margin = new Padding(0, 8, 0, 0),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 146));
