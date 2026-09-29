@@ -267,7 +267,7 @@ namespace Win7BookManagement.Forms
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var title = new Label
             {
