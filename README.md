@@ -20,7 +20,7 @@
 - NPOI 2.6.2
 - SQLite
 - 自定义 Win7-safe UI theme
-- Inno Setup 离线 installer
+- NSIS 3.13 离线 installer
 
 运行时不依赖网络服务，也不要求安装 Microsoft Excel。
 
@@ -93,7 +93,7 @@ build-installer.cmd
 4. 运行应用自检；
 5. 检查关键 SQLite 运行 DLL；
 6. 准备 .NET Framework 4.8 官方离线运行时；
-7. 准备 Inno Setup 编译器（本机未安装时）；
+7. 准备 NSIS 3.13 编译器（本机未安装时自动使用官方便携版）；
 8. 生成最终离线安装包。
 
 成功后直接得到：
@@ -102,9 +102,8 @@ build-installer.cmd
 installer\output\Win7BookManagement-Offline-Setup.exe
 ```
 
-本地生成 installer 需要开发机安装 Visual Studio / MSBuild。首次构建若本机没有缓存 .NET 4.8 离线安装程序或 Inno Setup 编译器，**构建过程**需要网络；生成出来的最终 installer 在目标 Win7 上不需要网络。
+本地生成 installer 需要开发机安装 Visual Studio / MSBuild。首次构建若本机没有缓存 .NET 4.8 离线安装程序或 NSIS 编译器，**构建过程**需要网络；生成出来的最终 installer 在目标 Win7 上不需要网络。
 
-> 如果用于商业用途，请留意 Inno Setup 当前的商业许可要求。
 
 ## GitHub 自动构建
 
@@ -138,3 +137,14 @@ GitHub Actions 在 push / pull request 时会：
 ## 开发约束
 
 修改代码前请先阅读根目录的 [AGENTS.md](AGENTS.md)。Win7 / .NET Framework 4.8 / 离线运行属于硬约束。
+
+
+## 已验证的离线 installer
+
+GitHub Actions 已实际完成离线 installer 构建，生成文件：
+
+`Win7BookManagement-Offline-Setup.exe`
+
+当前验证构建中的 installer 约 **125.6 MB**，构建脚本会在生成后检查其体积，若异常偏小则直接判定失败，以避免漏打包 .NET Framework 4.8 离线运行时。
+
+目标 Win7 SP1 电脑安装时不需要联网寻找 DLL，也不需要单独安装 Microsoft Excel、SQLite、NPOI 或 Visual C++ Redistributable。安装程序会携带应用 Release 目录中的全部运行文件，并在检测到缺少 .NET Framework 4.8 时使用内置的微软离线运行时安装。

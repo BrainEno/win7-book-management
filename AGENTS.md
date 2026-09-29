@@ -88,6 +88,7 @@ Do not add architectural layers without a concrete need.
 - If a prerequisite installation may require reboot, do not force-launch the app immediately.
 - Packaging script must validate core runtime files before generating installer.
 - Packaging process may use Internet on the development/CI machine to fetch official build prerequisites; the generated installer must not need Internet.
+- Use NSIS 3.x as the installer compiler; keep the packaging tool replaceable and outside business logic.
 - Keep installer build reproducible through `build-installer.cmd`.
 
 ## SQLite rules
