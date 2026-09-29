@@ -191,7 +191,9 @@ namespace Win7BookManagement.Forms
             var brand = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 76,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 76),
                 BackColor = UiTheme.NavigationSurface,
                 Padding = new Padding(4, 4, 4, 0)
             };
@@ -239,7 +241,9 @@ namespace Win7BookManagement.Forms
             var footer = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 58,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 58),
                 BackColor = UiTheme.NavigationSurface,
                 Padding = new Padding(4, 9, 4, 0)
             };
@@ -419,7 +423,9 @@ namespace Win7BookManagement.Forms
             {
                 Name = "navrow_" + key,
                 Width = 180,
-                Height = 42,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(180, 42),
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 1, 0, 1),
@@ -428,7 +434,7 @@ namespace Win7BookManagement.Forms
             };
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 4));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            row.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var indicator = new Panel
             {
