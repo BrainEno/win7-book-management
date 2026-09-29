@@ -11,12 +11,14 @@ namespace Win7BookManagement.Forms
         private readonly MainForm _main;
         private readonly ApplicationServices _services;
         private readonly IList<GuideStep> _steps;
-        private readonly Panel _card = new Panel();
+
+        private readonly TableLayoutPanel _card = new TableLayoutPanel();
         private readonly Label _stepLabel = new Label();
         private readonly Label _titleLabel = new Label();
         private readonly Label _bodyLabel = new Label();
         private readonly Button _previous = new Button();
         private readonly Button _next = new Button();
+
         private Rectangle _targetBounds = Rectangle.Empty;
         private int _index;
 
@@ -25,6 +27,8 @@ namespace Win7BookManagement.Forms
             _main = main;
             _services = services;
             _steps = CreateSteps();
+
+            UiTheme.ConfigureForm(this);
 
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
@@ -35,53 +39,89 @@ namespace Win7BookManagement.Forms
             TopMost = false;
             KeyPreview = true;
 
-            _card.Width = 470;
-            _card.Height = 270;
-            _card.BackColor = Color.White;
-            _card.Padding = new Padding(24);
+            ConfigureCard();
             Controls.Add(_card);
 
+            UiTheme.Apply(_card);
+
+            KeyDown += HandleKeyDown;
+            Shown += delegate
+            {
+                // AutoScaleMode.Dpi may resize the borderless form while the
+                // handle is created. Re-bind to the main window afterwards so
+                // the overlay always covers exactly the current application.
+                Bounds = _main.Bounds;
+                ResizeCard();
+                ShowStep(0);
+            };
+            Resize += delegate
+            {
+                ResizeCard();
+                PositionCard();
+                Invalidate();
+            };
+        }
+
+        private void ConfigureCard()
+        {
+            _card.ColumnCount = 1;
+            _card.RowCount = 4;
+            _card.BackColor = UiTheme.Surface;
+            _card.Padding = new Padding(24, 20, 24, 18);
+            _card.Margin = Padding.Empty;
+            _card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _card.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _card.BorderStyle = BorderStyle.FixedSingle;
+
+            _stepLabel.AutoSize = true;
             _stepLabel.Dock = DockStyle.Top;
-            _stepLabel.Height = 24;
             _stepLabel.ForeColor = UiTheme.Accent;
             _stepLabel.Font = UiTheme.Font(8.5F, FontStyle.Bold);
+            _stepLabel.Margin = new Padding(0, 0, 0, 6);
 
+            _titleLabel.AutoSize = true;
             _titleLabel.Dock = DockStyle.Top;
-            _titleLabel.Height = 42;
             _titleLabel.ForeColor = UiTheme.TextPrimary;
-            _titleLabel.Font = UiTheme.Font(16F, FontStyle.Bold);
+            _titleLabel.Font = UiTheme.Font(15F, FontStyle.Bold);
+            _titleLabel.Margin = new Padding(0, 0, 0, 10);
 
+            _bodyLabel.AutoSize = true;
             _bodyLabel.Dock = DockStyle.Top;
-            _bodyLabel.Height = 112;
             _bodyLabel.ForeColor = UiTheme.TextSecondary;
-            _bodyLabel.Font = UiTheme.Font(9.5F);
-            _bodyLabel.AutoEllipsis = true;
+            _bodyLabel.Font = UiTheme.Font(9.2F);
+            _bodyLabel.Margin = new Padding(0, 0, 0, 16);
 
             var footer = new FlowLayoutPanel
             {
-                Dock = DockStyle.Bottom,
-                Height = 48,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Dock = DockStyle.Top,
                 FlowDirection = FlowDirection.RightToLeft,
                 WrapContents = false,
-                BackColor = Color.White
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
             };
 
             _next.Text = "下一步";
-            _next.Width = 90;
-            _next.Height = 32;
+            _next.Width = 92;
+            _next.Height = UiTheme.ButtonHeight;
             _next.Tag = "primary";
             _next.Click += delegate { NextStep(); };
 
             _previous.Text = "上一步";
-            _previous.Width = 90;
-            _previous.Height = 32;
+            _previous.Width = 92;
+            _previous.Height = UiTheme.ButtonHeight;
             _previous.Click += delegate { PreviousStep(); };
 
             var skip = new Button
             {
                 Text = "以后再看",
-                Width = 92,
-                Height = 32
+                Width = 96,
+                Height = UiTheme.ButtonHeight
             };
             skip.Click += delegate { FinishGuide(); };
 
@@ -89,29 +129,23 @@ namespace Win7BookManagement.Forms
             footer.Controls.Add(_previous);
             footer.Controls.Add(skip);
 
-            _card.Controls.Add(footer);
-            _card.Controls.Add(_bodyLabel);
-            _card.Controls.Add(_titleLabel);
-            _card.Controls.Add(_stepLabel);
-
-            UiTheme.Apply(_card);
-            KeyDown += HandleKeyDown;
-            Shown += delegate { ShowStep(0); };
+            _card.Controls.Add(_stepLabel, 0, 0);
+            _card.Controls.Add(_titleLabel, 0, 1);
+            _card.Controls.Add(_bodyLabel, 0, 2);
+            _card.Controls.Add(footer, 0, 3);
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
-            if (_targetBounds != Rectangle.Empty)
-            {
-                using (var pen = new Pen(Color.FromArgb(255, 220, 80), 4F))
-                {
-                    e.Graphics.DrawRectangle(pen, _targetBounds);
-                }
+            if (_targetBounds == Rectangle.Empty)
+                return;
 
-                DrawArrow(e.Graphics);
-            }
+            using (var pen = new Pen(Color.FromArgb(255, 220, 80), 4F))
+                e.Graphics.DrawRectangle(pen, _targetBounds);
+
+            DrawArrow(e.Graphics);
         }
 
         private void DrawArrow(Graphics graphics)
@@ -122,9 +156,9 @@ namespace Win7BookManagement.Forms
 
             Point start;
             if (_card.Left > targetCenter.X)
-                start = new Point(_card.Left - 12, _card.Top + Math.Min(110, _card.Height / 2));
+                start = new Point(_card.Left - 12, _card.Top + Math.Min(120, _card.Height / 2));
             else
-                start = new Point(_card.Right + 12, _card.Top + Math.Min(110, _card.Height / 2));
+                start = new Point(_card.Right + 12, _card.Top + Math.Min(120, _card.Height / 2));
 
             using (var pen = new Pen(Color.FromArgb(255, 220, 80), 5F))
             {
@@ -147,18 +181,40 @@ namespace Win7BookManagement.Forms
             _previous.Enabled = _index > 0;
             _next.Text = _index == _steps.Count - 1 ? "完成" : "下一步";
 
+            ResizeCard();
             UpdateTarget(step.TargetNavigationKey);
             PositionCard();
             Invalidate();
         }
 
+        private void ResizeCard()
+        {
+            if (ClientSize.Width <= 0)
+                return;
+
+            var cardWidth = Math.Min(540, Math.Max(420, ClientSize.Width - 96));
+            var contentWidth = Math.Max(320, cardWidth - _card.Padding.Horizontal);
+
+            _card.Width = cardWidth;
+            _titleLabel.MaximumSize = new Size(contentWidth, 0);
+            _bodyLabel.MaximumSize = new Size(contentWidth, 0);
+
+            _card.PerformLayout();
+
+            var preferred = _card.GetPreferredSize(new Size(cardWidth, 0));
+            var maxHeight = Math.Max(280, ClientSize.Height - 48);
+            _card.Height = Math.Min(maxHeight, Math.Max(280, preferred.Height));
+        }
+
         private void UpdateTarget(string navigationKey)
         {
             _targetBounds = Rectangle.Empty;
-            if (string.IsNullOrWhiteSpace(navigationKey)) return;
+            if (string.IsNullOrWhiteSpace(navigationKey))
+                return;
 
             var screen = _main.GetNavigationScreenBounds(navigationKey);
-            if (screen == Rectangle.Empty) return;
+            if (screen == Rectangle.Empty)
+                return;
 
             var topLeft = PointToClient(screen.Location);
             _targetBounds = new Rectangle(topLeft, screen.Size);
@@ -167,6 +223,9 @@ namespace Win7BookManagement.Forms
 
         private void PositionCard()
         {
+            if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
+                return;
+
             if (_targetBounds == Rectangle.Empty)
             {
                 _card.Left = Math.Max(24, (ClientSize.Width - _card.Width) / 2);
@@ -174,7 +233,7 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            var rightCandidate = _targetBounds.Right + 52;
+            var rightCandidate = _targetBounds.Right + 48;
             if (rightCandidate + _card.Width <= ClientSize.Width - 24)
                 _card.Left = rightCandidate;
             else
@@ -182,7 +241,9 @@ namespace Win7BookManagement.Forms
 
             _card.Top = Math.Max(
                 24,
-                Math.Min(_targetBounds.Top - 34, ClientSize.Height - _card.Height - 24));
+                Math.Min(
+                    _targetBounds.Top - 28,
+                    ClientSize.Height - _card.Height - 24));
         }
 
         private void NextStep()
@@ -233,7 +294,7 @@ namespace Win7BookManagement.Forms
                 new GuideStep(
                     null,
                     null,
-                    "欢迎使用 BOOK DESK",
+                    "欢迎使用 BOOK",
                     "第一次使用不需要记住所有功能。最简单的顺序是：先建立图书资料 → 做采购入库 → 日常销售开单 → 需要时从单据中心退货 → 定期导出报表和备份。接下来会逐项指给你看。"),
                 new GuideStep(
                     "books",
@@ -244,17 +305,17 @@ namespace Win7BookManagement.Forms
                     "purchase",
                     "purchase",
                     "第二步：采购入库",
-                    "进货时选供应商，再扫描或搜索图书，填写数量和本次进价，最后点“确认入库”。库存会自动增加，不需要再手工改库存。"),
+                    "进货时可以选择供应商，也可以先不指定供应商。扫描或搜索图书，填写数量和本次进价，最后点“确认入库”。库存会自动增加。"),
                 new GuideStep(
                     "sales",
                     "sales",
                     "第三步：销售开单",
-                    "卖书时直接扫描 ISBN，系统会加入商品并使用当前售价。确认数量无误后点“结账”，库存会自动扣减。未结账就离开页面时，系统会提醒你避免误丢单据。"),
+                    "卖书时直接扫描 ISBN，系统会加入商品并使用当前售价。确认数量无误后点“确认结账”，库存会自动扣减。未结账就离开页面时，系统会提醒你避免误丢单据。"),
                 new GuideStep(
                     "documents",
                     "documents",
                     "第四步：查单据和处理退货",
-                    "所有销售、采购和退货都集中在“单据中心”。要退货，不要手工改库存：选中原销售单或采购单，再点“发起退货”，系统会自动限制可退数量。"),
+                    "所有销售、采购和退货都集中在“单据中心”。要退货，不要手工改库存：选中原销售单或采购单，再从原单发起退货，系统会自动限制可退数量。"),
                 new GuideStep(
                     "reports",
                     "reports",
