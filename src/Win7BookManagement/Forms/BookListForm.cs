@@ -93,7 +93,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 2,
                 RowCount = 3,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 12, 14, 12),
+                Padding = new Padding(16, 14, 16, 14),
                 Margin = Padding.Empty,
                 BorderStyle = BorderStyle.None
             };
@@ -210,7 +210,7 @@ namespace Win7BookManagement.Forms
             var hint = new Label
             {
                 AutoSize = true,
-                Text = "支持店内编码、ISBN、书名、作者、出版社、分类、出版年、版次、装帧、货架位和备注。",
+                Text = "可按编码、ISBN、书名、作者、出版社、分类、出版信息、货架位或备注搜索。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(4, 5, 0, 0)
@@ -252,7 +252,7 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 MinimumSize = new Size(0, 42),
-                Text = "图书表格",
+                Text = "查询结果",
                 Padding = new Padding(12, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = UiTheme.Font(9F, FontStyle.Bold),
@@ -292,7 +292,7 @@ namespace Win7BookManagement.Forms
 
             var title = new Label
             {
-                Text = "基本信息",
+                Text = "图书详情",
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = UiTheme.Font(11F, FontStyle.Bold),
