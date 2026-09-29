@@ -56,7 +56,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(18, 16, 18, 16),
                 Margin = new Padding(0, 0, 0, 12),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -149,7 +149,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(18, 16, 18, 16),
                 Margin = Padding.Empty,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));

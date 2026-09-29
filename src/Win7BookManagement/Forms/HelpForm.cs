@@ -44,7 +44,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(18, 15, 18, 14),
                 Margin = new Padding(0, 0, 0, 12),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 

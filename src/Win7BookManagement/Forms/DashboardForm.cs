@@ -201,7 +201,7 @@ namespace Win7BookManagement.Forms
             _guideCard.BackColor = UiTheme.Surface;
             _guideCard.Margin = new Padding(2, 0, 2, 10);
             _guideCard.Padding = new Padding(14, 10, 14, 10);
-            _guideCard.BorderStyle = BorderStyle.FixedSingle;
+            _guideCard.BorderStyle = BorderStyle.None;
             _guideCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             _guideCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _guideCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));

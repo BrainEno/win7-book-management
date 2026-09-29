@@ -116,7 +116,7 @@ namespace Win7BookManagement.Forms
         {
             var toolbar = UiTheme.CreateResponsiveToolbar();
             toolbar.BackColor = UiTheme.Surface;
-            toolbar.BorderStyle = BorderStyle.FixedSingle;
+            toolbar.BorderStyle = BorderStyle.None;
 
             var newOrder = new Button { Text = "＋ 新单", Width = 88, Height = UiTheme.ButtonHeight };
             var pick = new Button { Text = "选择图书", Width = 100, Height = UiTheme.ButtonHeight };
@@ -152,16 +152,17 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                ColumnCount = 3,
+                ColumnCount = 4,
                 RowCount = 3,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 12, 14, 12),
+                Padding = new Padding(16, 14, 16, 14),
                 Margin = new Padding(0, 10, 0, 10),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 94));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 98));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -170,12 +171,23 @@ namespace Win7BookManagement.Forms
             {
                 Text = "商品输入区",
                 AutoSize = true,
-                Font = UiTheme.Font(9.4F, FontStyle.Bold),
+                Font = UiTheme.Font(10F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
-                Margin = new Padding(0, 0, 0, 8)
+                Margin = new Padding(0, 0, 0, 10)
             };
             section.Controls.Add(title, 0, 0);
-            section.SetColumnSpan(title, 3);
+            section.SetColumnSpan(title, 4);
+
+            var isbnLabel = new Label
+            {
+                Text = "ISBN / 条码",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 3, 8, 3)
+            };
+            section.Controls.Add(isbnLabel, 0, 1);
 
             _isbn.Dock = DockStyle.Fill;
             _isbn.Margin = new Padding(0, 3, 10, 3);
@@ -188,7 +200,7 @@ namespace Win7BookManagement.Forms
                     e.SuppressKeyPress = true;
                 }
             };
-            section.Controls.Add(_isbn, 0, 1);
+            section.Controls.Add(_isbn, 1, 1);
 
             var add = new Button
             {
@@ -198,7 +210,7 @@ namespace Win7BookManagement.Forms
                 Tag = "primary"
             };
             add.Click += delegate { AddByIsbn(); };
-            section.Controls.Add(add, 1, 1);
+            section.Controls.Add(add, 2, 1);
 
             var pick = new Button
             {
@@ -207,17 +219,17 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 3, 0, 3)
             };
             pick.Click += delegate { PickBook(); };
-            section.Controls.Add(pick, 2, 1);
+            section.Controls.Add(pick, 3, 1);
 
             var inputHint = new Label
             {
-                Text = "输入或扫描 ISBN。当前轻量版以 ISBN 精确匹配启用中的图书资料。",
+                Text = "扫码枪可直接扫描后回车；也可以输入 ISBN 后搜索，或打开图书选择器。",
                 AutoSize = true,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
-                Margin = new Padding(0, 4, 0, 0)
+                Margin = new Padding(0, 5, 0, 0)
             };
-            section.Controls.Add(inputHint, 0, 2);
+            section.Controls.Add(inputHint, 1, 2);
             section.SetColumnSpan(inputHint, 3);
 
             return section;
@@ -227,26 +239,75 @@ namespace Win7BookManagement.Forms
         {
             ConfigureGrid();
 
-            var host = new Panel
+            var host = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            host.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            var header = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                MinimumSize = new Size(0, 44),
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(14, 8, 14, 8),
+                Margin = Padding.Empty
+            };
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            header.Controls.Add(new Label
+            {
+                Text = "销售明细",
+                AutoSize = true,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = UiTheme.Font(9.5F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary
+            }, 0, 0);
+
+            header.Controls.Add(new Label
+            {
+                Text = "数量和零售价可直接在表格中修改",
+                AutoSize = true,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleRight,
+                Font = UiTheme.Font(8F),
+                ForeColor = UiTheme.TextSecondary,
+                Margin = new Padding(12, 2, 0, 0)
+            }, 1, 0);
+
+            var content = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.FixedSingle,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
+                Padding = Padding.Empty,
+                Margin = Padding.Empty
             };
 
             _emptyState.Dock = DockStyle.Fill;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "购物车为空，请先扫码或搜索添加图书";
+            _emptyState.Text = "购物车为空\r\n请扫描 ISBN、搜索加入，或从图书资料中选择";
             _emptyState.ForeColor = UiTheme.TextSecondary;
             _emptyState.Font = UiTheme.Font(9F);
             _emptyState.BackColor = UiTheme.Surface;
 
-            host.Controls.Add(_grid);
-            host.Controls.Add(_emptyState);
+            content.Controls.Add(_grid);
+            content.Controls.Add(_emptyState);
             _emptyState.BringToFront();
 
+            host.Controls.Add(header, 0, 0);
+            host.Controls.Add(content, 0, 1);
             return host;
         }
 
@@ -261,7 +322,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(14, 11, 14, 11),
                 Margin = new Padding(0, 10, 0, 0),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 68));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -271,9 +332,9 @@ namespace Win7BookManagement.Forms
 
             var title = new Label
             {
-                Text = "结算区",
+                Text = "结算信息",
                 AutoSize = true,
-                Font = UiTheme.Font(9.4F, FontStyle.Bold),
+                Font = UiTheme.Font(10F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Margin = new Padding(0, 0, 0, 7)
             };
@@ -317,7 +378,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.SurfaceMuted,
                 Padding = new Padding(16, 11, 16, 11),
                 Margin = new Padding(0, 8, 0, 0),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 146));
