@@ -132,7 +132,8 @@ namespace Win7BookManagement.Forms
             var filters = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Height = 50,
+                AutoSize = true,
+                MinimumSize = new Size(0, 48),
                 ColumnCount = 9,
                 RowCount = 1,
                 Margin = new Padding(0, 2, 0, 0)
@@ -251,8 +252,9 @@ namespace Win7BookManagement.Forms
             {
                 Text = "单据列表",
                 Dock = DockStyle.Top,
-                Height = 38,
-                Padding = new Padding(12, 0, 0, 0),
+                AutoSize = true,
+                MinimumSize = new Size(0, 42),
+                Padding = new Padding(12, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 Font = UiTheme.Font(9.2F, FontStyle.Bold),
@@ -278,8 +280,9 @@ namespace Win7BookManagement.Forms
             };
             _detailTitle.Text = "单据明细";
             _detailTitle.Dock = DockStyle.Top;
-            _detailTitle.Height = 38;
-            _detailTitle.Padding = new Padding(12, 10, 0, 0);
+            _detailTitle.AutoSize = true;
+            _detailTitle.MinimumSize = new Size(0, 42);
+            _detailTitle.Padding = new Padding(12, 10, 0, 10);
             _detailTitle.BackColor = UiTheme.Surface;
             _detailTitle.Font = UiTheme.Font(9.2F, FontStyle.Bold);
             _detailTitle.ForeColor = UiTheme.TextPrimary;
