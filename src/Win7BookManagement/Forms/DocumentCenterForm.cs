@@ -238,8 +238,8 @@ namespace Win7BookManagement.Forms
             _split.SplitterDistance = 330;
             _split.SplitterWidth = 8;
             _split.BackColor = UiTheme.Background;
-            _split.Panel1MinSize = 180;
-            _split.Panel2MinSize = 150;
+            // Keep constructor-time panel minimums at WinForms defaults; the
+            // real minimums are applied arithmetically after layout.
             _split.Margin = new Padding(0, 10, 0, 0);
 
             var documentHost = new Panel
@@ -513,9 +513,11 @@ namespace Win7BookManagement.Forms
                 return;
 
             var target = (int)(_split.Height * 0.56);
-            var max = _split.Height - _split.Panel2MinSize - _split.SplitterWidth;
-            if (max > _split.Panel1MinSize)
-                _split.SplitterDistance = Math.Max(_split.Panel1MinSize, Math.Min(max, target));
+            const int minimumTopHeight = 180;
+            const int minimumBottomHeight = 150;
+            var max = _split.Height - minimumBottomHeight - _split.SplitterWidth;
+            if (max > minimumTopHeight)
+                _split.SplitterDistance = Math.Max(minimumTopHeight, Math.Min(max, target));
         }
 
         private void LoadSelectedDetails()
