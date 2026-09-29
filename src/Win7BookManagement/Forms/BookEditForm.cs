@@ -363,7 +363,7 @@ namespace Win7BookManagement.Forms
 
         private Control CreateField(string labelText, Control input, string toolTip)
         {
-            return CreateField(labelText, input, toolTip, 72);
+            return CreateField(labelText, input, toolTip, 78);
         }
 
         private Control CreateField(string labelText, Control input, string toolTip, int height)
@@ -380,7 +380,7 @@ namespace Win7BookManagement.Forms
                 Padding = Padding.Empty
             };
             field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            field.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+            field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             var label = new Label

@@ -15,7 +15,12 @@ namespace Win7BookManagement.Forms
         private readonly Label _pageTitle;
         private readonly Label _pageSubtitle;
         private readonly Label _status;
+
         private readonly Dictionary<string, Button> _navButtons = new Dictionary<string, Button>();
+        private readonly Dictionary<string, TableLayoutPanel> _navRows = new Dictionary<string, TableLayoutPanel>();
+        private readonly Dictionary<string, Panel> _navIndicators = new Dictionary<string, Panel>();
+        private readonly List<Label> _navGroupLabels = new List<Label>();
+
         private string _currentKey;
         private Form _currentPage;
         private bool _guideOpen;
@@ -27,8 +32,8 @@ namespace Win7BookManagement.Forms
 
             Text = "简易图书管理系统";
             StartPosition = FormStartPosition.CenterScreen;
-            Width = 1360;
-            Height = 840;
+            Width = 1400;
+            Height = 860;
             MinimumSize = new Size(960, 640);
             BackColor = UiTheme.Background;
             Font = UiTheme.Font(9F);
@@ -36,85 +41,34 @@ namespace Win7BookManagement.Forms
             _sidebar = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 206,
-                BackColor = UiTheme.Sidebar,
-                Padding = new Padding(14, 18, 14, 14)
+                Width = 212,
+                BackColor = UiTheme.NavigationSurface,
+                Padding = new Padding(14, 16, 14, 12)
             };
 
-            var brand = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 84,
-                BackColor = UiTheme.Sidebar
-            };
-            var brandTitle = new Label
-            {
-                Text = "BOOK DESK",
-                Dock = DockStyle.Top,
-                Height = 32,
-                ForeColor = Color.White,
-                Font = UiTheme.Font(15F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            var brandSub = new Label
-            {
-                Text = "离线书店进销存",
-                Dock = DockStyle.Top,
-                Height = 24,
-                ForeColor = Color.FromArgb(160, 174, 192),
-                Font = UiTheme.Font(8.5F),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            brand.Controls.Add(brandSub);
-            brand.Controls.Add(brandTitle);
+            var brand = CreateBrand();
+            _navigation = CreateNavigation();
 
-            _navigation = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                BackColor = UiTheme.Sidebar,
-                Padding = new Padding(0, 8, 0, 0),
-                AutoScroll = true
-            };
-
+            AddNavigationGroup("工作台");
             AddNavigation("dashboard", "经营概览");
+
+            AddNavigationGroup("核心业务");
+            AddNavigation("sales", "销售开单");
             AddNavigation("books", "图书资料");
             AddNavigation("purchase", "采购入库");
-            AddNavigation("sales", "销售开单");
-            AddNavigation("documents", "单据中心");
             AddNavigation("inventory", "库存管理");
+            AddNavigation("documents", "单据中心");
+
+            AddNavigationGroup("经营管理");
             AddNavigation("suppliers", "供应商");
             AddNavigation("reports", "报表与导出");
+
+            AddNavigationGroup("系统");
             AddNavigation("backup", "备份与恢复");
             AddNavigation("help", "使用帮助");
             AddNavigation("settings", "系统设置");
 
-            var sidebarFoot = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 58,
-                BackColor = UiTheme.Sidebar,
-                Padding = new Padding(2, 10, 2, 0)
-            };
-            var offline = new Label
-            {
-                Text = "●  本机离线模式",
-                Dock = DockStyle.Top,
-                Height = 22,
-                ForeColor = Color.FromArgb(134, 239, 172),
-                Font = UiTheme.Font(8.5F)
-            };
-            var version = new Label
-            {
-                Text = ".NET Framework 4.8 · SQLite",
-                Dock = DockStyle.Top,
-                Height = 20,
-                ForeColor = Color.FromArgb(126, 142, 164),
-                Font = UiTheme.Font(7.8F)
-            };
-            sidebarFoot.Controls.Add(version);
-            sidebarFoot.Controls.Add(offline);
+            var sidebarFoot = CreateSidebarFooter();
 
             _sidebar.Controls.Add(_navigation);
             _sidebar.Controls.Add(sidebarFoot);
@@ -126,40 +80,79 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Background
             };
 
-            var header = new Panel
+            var header = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 86,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 80),
+                ColumnCount = 2,
+                RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(24, 14, 24, 8)
+                Padding = new Padding(22, 11, 22, 9),
+                Margin = Padding.Empty
             };
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            var titles = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty
+            };
+            titles.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            titles.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            titles.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             _pageTitle = new Label
             {
-                Dock = DockStyle.Top,
-                Height = 34,
-                Font = UiTheme.Font(16F, FontStyle.Bold),
+                AutoSize = true,
+                Dock = DockStyle.Fill,
+                Font = UiTheme.Font(15F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
-                Text = "经营概览"
+                Text = "经营概览",
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true
             };
             _pageSubtitle = new Label
             {
-                Dock = DockStyle.Top,
-                Height = 24,
-                Font = UiTheme.Font(8.8F),
+                AutoSize = true,
+                Dock = DockStyle.Fill,
+                Font = UiTheme.Font(8.7F),
                 ForeColor = UiTheme.TextSecondary,
-                Text = "今天的销售与库存情况"
+                Text = "今天的销售与库存情况",
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true
             };
-            header.Controls.Add(_pageSubtitle);
-            header.Controls.Add(_pageTitle);
+            titles.Controls.Add(_pageTitle, 0, 0);
+            titles.Controls.Add(_pageSubtitle, 0, 1);
+
+            var offlineBadge = new Label
+            {
+                Text = "●  本机离线",
+                AutoSize = true,
+                Padding = new Padding(10, 6, 10, 6),
+                Margin = new Padding(12, 10, 0, 0),
+                BackColor = UiTheme.AccentSoft,
+                ForeColor = UiTheme.Success,
+                Font = UiTheme.Font(8F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            header.Controls.Add(titles, 0, 0);
+            header.Controls.Add(offlineBadge, 1, 0);
 
             _status = new Label
             {
+                AutoSize = true,
                 Dock = DockStyle.Bottom,
-                Height = 26,
-                BackColor = Color.FromArgb(248, 250, 252),
+                MinimumSize = new Size(0, 32),
+                BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextSecondary,
-                Padding = new Padding(22, 5, 8, 0),
+                Padding = new Padding(18, 7, 8, 0),
                 Font = UiTheme.Font(7.8F),
                 AutoEllipsis = true,
                 Text = "完全离线 · 数据库：" + _services.Database.DatabasePath
@@ -169,7 +162,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Background,
-                Padding = new Padding(22, 18, 22, 18)
+                Padding = new Padding(20, 16, 20, 16)
             };
 
             main.Controls.Add(_contentHost);
@@ -179,6 +172,8 @@ namespace Win7BookManagement.Forms
             Controls.Add(main);
             Controls.Add(_sidebar);
 
+            UiTheme.Apply(this);
+
             Resize += delegate { ApplyResponsiveLayout(); };
             FormClosing += HandleFormClosing;
             Shown += delegate
@@ -187,7 +182,88 @@ namespace Win7BookManagement.Forms
                 if (!_services.Settings.IsOnboardingCompleted())
                     BeginInvoke(new Action(StartOnboardingGuide));
             };
+
             ApplyResponsiveLayout();
+        }
+
+        private static Panel CreateBrand()
+        {
+            var brand = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 76,
+                BackColor = UiTheme.NavigationSurface,
+                Padding = new Padding(4, 4, 4, 0)
+            };
+
+            var title = new Label
+            {
+                Text = "BOOK",
+                AutoSize = true,
+                Dock = DockStyle.Top,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(15F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            var sub = new Label
+            {
+                Text = "离线书店进销存",
+                AutoSize = true,
+                Dock = DockStyle.Top,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.3F),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            brand.Controls.Add(sub);
+            brand.Controls.Add(title);
+            return brand;
+        }
+
+        private FlowLayoutPanel CreateNavigation()
+        {
+            return new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                BackColor = UiTheme.NavigationSurface,
+                Padding = new Padding(0, 2, 0, 2),
+                AutoScroll = true,
+                Margin = Padding.Empty
+            };
+        }
+
+        private static Panel CreateSidebarFooter()
+        {
+            var footer = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 58,
+                BackColor = UiTheme.NavigationSurface,
+                Padding = new Padding(4, 9, 4, 0)
+            };
+
+            var offline = new Label
+            {
+                Text = "●  本机离线模式",
+                AutoSize = true,
+                Dock = DockStyle.Top,
+                ForeColor = UiTheme.Success,
+                Font = UiTheme.Font(8.2F, FontStyle.Bold)
+            };
+            var version = new Label
+            {
+                Text = ".NET Framework 4.8 · SQLite",
+                AutoSize = true,
+                Dock = DockStyle.Top,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(7.5F)
+            };
+
+            footer.Controls.Add(version);
+            footer.Controls.Add(offline);
+            return footer;
         }
 
         public void Navigate(string key)
@@ -242,7 +318,7 @@ namespace Win7BookManagement.Forms
                     break;
                 case "reports":
                     title = "报表与导出";
-                    subtitle = "按日期查询并导出 Excel";
+                    subtitle = "按日期查询经营数据并导出 Excel";
                     child = new ReportsForm(_services);
                     break;
                 case "backup":
@@ -286,7 +362,8 @@ namespace Win7BookManagement.Forms
 
         public void StartOnboardingGuide()
         {
-            if (_guideOpen) return;
+            if (_guideOpen)
+                return;
 
             _guideOpen = true;
             try
@@ -316,31 +393,77 @@ namespace Win7BookManagement.Forms
                 e.Cancel = true;
         }
 
+        private void AddNavigationGroup(string text)
+        {
+            var label = new Label
+            {
+                Text = text,
+                AutoSize = true,
+                Width = 180,
+                MinimumSize = new Size(0, 30),
+                Margin = new Padding(8, 8, 0, 0),
+                Padding = new Padding(0, 7, 0, 0),
+                ForeColor = UiTheme.TextSecondary,
+                BackColor = UiTheme.NavigationSurface,
+                Font = UiTheme.Font(7.6F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            _navGroupLabels.Add(label);
+            _navigation.Controls.Add(label);
+        }
+
         private void AddNavigation(string key, string text)
         {
+            var row = new TableLayoutPanel
+            {
+                Name = "navrow_" + key,
+                Width = 180,
+                Height = 42,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = new Padding(0, 1, 0, 1),
+                Padding = Padding.Empty,
+                BackColor = UiTheme.NavigationSurface
+            };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 4));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            var indicator = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = UiTheme.NavigationSurface,
+                Margin = Padding.Empty
+            };
+
             var button = new Button
             {
                 Text = text,
                 Name = "nav_" + key,
                 Tag = "nav",
-                Width = 174,
-                Height = 42,
-                Margin = new Padding(0, 2, 0, 2),
-                Padding = new Padding(14, 0, 8, 0),
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+                Padding = new Padding(11, 0, 8, 0),
                 FlatStyle = FlatStyle.Flat,
                 TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = UiTheme.Sidebar,
-                ForeColor = Color.FromArgb(203, 213, 225),
-                Font = UiTheme.Font(9.2F, FontStyle.Regular),
+                BackColor = UiTheme.NavigationSurface,
+                ForeColor = UiTheme.NavigationText,
+                Font = UiTheme.Font(8.9F, FontStyle.Regular),
                 Cursor = Cursors.Hand
             };
             button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = UiTheme.SidebarHover;
-            button.FlatAppearance.MouseDownBackColor = UiTheme.SidebarHover;
+            button.FlatAppearance.MouseOverBackColor = UiTheme.NavigationHover;
+            button.FlatAppearance.MouseDownBackColor = UiTheme.NavigationSelected;
             button.Click += delegate { Navigate(key); };
 
+            row.Controls.Add(indicator, 0, 0);
+            row.Controls.Add(button, 1, 0);
+
             _navButtons[key] = button;
-            _navigation.Controls.Add(button);
+            _navRows[key] = row;
+            _navIndicators[key] = indicator;
+            _navigation.Controls.Add(row);
         }
 
         private void UpdateNavigationState()
@@ -348,22 +471,39 @@ namespace Win7BookManagement.Forms
             foreach (var pair in _navButtons)
             {
                 var active = string.Equals(pair.Key, _currentKey, StringComparison.OrdinalIgnoreCase);
-                pair.Value.BackColor = active ? UiTheme.Accent : UiTheme.Sidebar;
-                pair.Value.ForeColor = active ? Color.White : Color.FromArgb(203, 213, 225);
-                pair.Value.Font = UiTheme.Font(9.2F, active ? FontStyle.Bold : FontStyle.Regular);
+
+                pair.Value.BackColor = active ? UiTheme.NavigationSelected : UiTheme.NavigationSurface;
+                pair.Value.ForeColor = active ? UiTheme.Accent : UiTheme.NavigationText;
+                pair.Value.Font = UiTheme.Font(8.9F, active ? FontStyle.Bold : FontStyle.Regular);
+
+                Panel indicator;
+                if (_navIndicators.TryGetValue(pair.Key, out indicator))
+                    indicator.BackColor = active ? UiTheme.Accent : UiTheme.NavigationSurface;
+
+                TableLayoutPanel row;
+                if (_navRows.TryGetValue(pair.Key, out row))
+                    row.BackColor = active ? UiTheme.NavigationSelected : UiTheme.NavigationSurface;
             }
         }
 
         private void ApplyResponsiveLayout()
         {
-            var compact = ClientSize.Width < 1180;
-            _sidebar.Width = compact ? 178 : 212;
-            _contentHost.Padding = compact
-                ? new Padding(12, 12, 12, 12)
-                : new Padding(22, 18, 22, 18);
+            var compact = ClientSize.Width < UiTheme.WideBreakpoint;
+            _sidebar.Width = compact ? 174 : 212;
+            _sidebar.Padding = compact
+                ? new Padding(10, 14, 10, 10)
+                : new Padding(14, 16, 14, 12);
 
-            foreach (var pair in _navButtons)
-                pair.Value.Width = compact ? 146 : 180;
+            _contentHost.Padding = compact
+                ? new Padding(10, 10, 10, 10)
+                : new Padding(20, 16, 20, 16);
+
+            var rowWidth = compact ? 150 : 180;
+            foreach (var pair in _navRows)
+                pair.Value.Width = rowWidth;
+
+            foreach (var label in _navGroupLabels)
+                label.Width = rowWidth;
         }
     }
 }

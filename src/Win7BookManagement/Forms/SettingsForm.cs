@@ -10,95 +10,212 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly NumericUpDown _lowStock = new NumericUpDown();
+        private readonly Label _dataPath = new Label();
 
         public SettingsForm(ApplicationServices services)
         {
             _services = services;
+            UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
 
-            var card = UiTheme.CreateCard();
-            card.Dock = DockStyle.Top;
-            card.Height = 230;
-            card.Margin = new Padding(0);
-            card.Padding = new Padding(22);
-
-            var title = new Label
+            var root = new TableLayoutPanel
             {
-                Text = "库存提醒",
-                Dock = DockStyle.Top,
-                Height = 32,
-                Font = UiTheme.Font(13F, FontStyle.Bold),
-                ForeColor = UiTheme.TextPrimary
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                BackColor = UiTheme.Background,
+                Padding = Padding.Empty,
+                Margin = Padding.Empty
             };
-            var hint = new Label
-            {
-                Text = "当启用图书库存小于或等于这个数量时，在首页显示为低库存。建议小型书店先设为 3–5 册。",
-                Dock = DockStyle.Top,
-                Height = 48,
-                ForeColor = UiTheme.TextSecondary
-            };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            var row = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                Height = 52,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
-                BackColor = UiTheme.Surface
-            };
-            row.Controls.Add(new Label
-            {
-                Text = "低库存阈值",
-                AutoSize = true,
-                Margin = new Padding(0, 15, 12, 0)
-            });
-            _lowStock.Minimum = 0;
-            _lowStock.Maximum = 9999;
-            _lowStock.Width = 100;
-            _lowStock.Margin = new Padding(0, 10, 12, 0);
-            row.Controls.Add(_lowStock);
+            root.Controls.Add(CreateStockSection(), 0, 0);
+            root.Controls.Add(CreateDataSection(), 0, 1);
+            Controls.Add(root);
 
-            var save = new Button
-            {
-                Text = "保存",
-                Width = 88,
-                Height = 32,
-                Margin = new Padding(0, 8, 10, 0),
-                Tag = "primary"
-            };
-            save.Click += delegate { Save(); };
-            row.Controls.Add(save);
-
-            var openFolder = new Button
-            {
-                Text = "打开数据目录",
-                Width = 112,
-                Height = 32,
-                Margin = new Padding(0, 8, 0, 0)
-            };
-            openFolder.Click += delegate { OpenDataFolder(); };
-            row.Controls.Add(openFolder);
-
-            var dataHint = new Label
-            {
-                Text = "数据库位置：" + _services.Database.DatabasePath,
-                Dock = DockStyle.Top,
-                Height = 42,
-                ForeColor = UiTheme.TextSecondary
-            };
-
-            card.Controls.Add(dataHint);
-            card.Controls.Add(row);
-            card.Controls.Add(hint);
-            card.Controls.Add(title);
-
-            Controls.Add(card);
             UiTheme.Apply(this);
 
             Shown += delegate
             {
                 _lowStock.Value = _services.Settings.GetLowStockThreshold();
+                _dataPath.Text = _services.Database.DatabasePath;
             };
+        }
+
+        private Control CreateStockSection()
+        {
+            var section = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 3,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(18, 16, 18, 16),
+                Margin = new Padding(0, 0, 0, 12),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            section.Controls.Add(new Label
+            {
+                Text = "库存提醒",
+                AutoSize = true,
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                Margin = new Padding(0, 0, 0, 6)
+            }, 0, 0);
+
+            section.Controls.Add(new Label
+            {
+                Text = "当启用图书库存小于或等于这个数量时，经营概览和库存页会把它标记为低库存。小型书店可以先从 3–5 册开始。",
+                AutoSize = true,
+                MaximumSize = new Size(900, 0),
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.5F),
+                Margin = new Padding(0, 0, 0, 12)
+            }, 0, 1);
+
+            var row = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 4,
+                RowCount = 1,
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty
+            };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            row.Controls.Add(new Label
+            {
+                Text = "低库存阈值",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 9, 12, 0)
+            }, 0, 0);
+
+            _lowStock.Minimum = 0;
+            _lowStock.Maximum = 9999;
+            _lowStock.Dock = DockStyle.Fill;
+            _lowStock.Margin = new Padding(0, 3, 12, 3);
+            row.Controls.Add(_lowStock, 1, 0);
+
+            var save = new Button
+            {
+                Text = "保存",
+                Width = 88,
+                Height = UiTheme.ButtonHeight,
+                Margin = new Padding(0, 0, 10, 0),
+                Tag = "primary"
+            };
+            save.Click += delegate { Save(); };
+            row.Controls.Add(save, 2, 0);
+
+            row.Controls.Add(new Label
+            {
+                Text = "册",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                ForeColor = UiTheme.TextSecondary,
+                Margin = new Padding(0, 9, 0, 0)
+            }, 3, 0);
+
+            section.Controls.Add(row, 0, 2);
+            return section;
+        }
+
+        private Control CreateDataSection()
+        {
+            var section = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 2,
+                RowCount = 3,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(18, 16, 18, 16),
+                Margin = Padding.Empty,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            section.Controls.Add(new Label
+            {
+                Text = "本机数据",
+                AutoSize = true,
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                Margin = new Padding(0, 0, 0, 6)
+            }, 0, 0);
+
+            var openFolder = new Button
+            {
+                Text = "打开数据目录",
+                Width = 118,
+                Height = UiTheme.ButtonHeight,
+                Margin = Padding.Empty
+            };
+            openFolder.Click += delegate { OpenDataFolder(); };
+            section.Controls.Add(openFolder, 1, 0);
+
+            section.Controls.Add(new Label
+            {
+                Text = "数据库完全保存在本机。日常请通过“备份与恢复”创建备份，不要在程序运行时手工替换数据库文件。",
+                AutoSize = true,
+                MaximumSize = new Size(900, 0),
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.5F),
+                Margin = new Padding(0, 0, 0, 10)
+            }, 0, 1);
+            section.SetColumnSpan(section.GetControlFromPosition(0, 1), 2);
+
+            var pathRow = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = UiTheme.SurfaceMuted,
+                Padding = new Padding(10, 8, 10, 8),
+                Margin = Padding.Empty
+            };
+            pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            pathRow.Controls.Add(new Label
+            {
+                Text = "数据库位置",
+                AutoSize = true,
+                Font = UiTheme.Font(8.2F, FontStyle.Bold),
+                ForeColor = UiTheme.TextSecondary,
+                Margin = new Padding(0, 2, 12, 0)
+            }, 0, 0);
+
+            _dataPath.AutoSize = true;
+            _dataPath.AutoEllipsis = true;
+            _dataPath.ForeColor = UiTheme.TextPrimary;
+            _dataPath.Font = UiTheme.Font(8.2F);
+            _dataPath.Margin = new Padding(0, 2, 0, 0);
+            pathRow.Controls.Add(_dataPath, 1, 0);
+
+            section.Controls.Add(pathRow, 0, 2);
+            section.SetColumnSpan(pathRow, 2);
+            return section;
         }
 
         private void Save()
@@ -106,11 +223,11 @@ namespace Win7BookManagement.Forms
             try
             {
                 _services.Settings.SetLowStockThreshold(Decimal.ToInt32(_lowStock.Value));
-                MessageBox.Show(this, "设置已保存。首页会使用新的低库存阈值。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "设置已保存。经营概览和库存页会立即使用新的低库存阈值。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "保存失败：" + ex.Message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "保存失败：\r\n" + ex.Message, "无法保存设置", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -122,7 +239,7 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "无法打开目录：" + ex.Message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "无法打开数据目录：\r\n" + ex.Message, "打开失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

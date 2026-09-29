@@ -78,9 +78,10 @@ namespace Win7BookManagement.Forms
             root.Controls.Add(CreateSearchSection(), 0, 0);
             root.Controls.Add(CreateContentSection(), 0, 1);
 
+            _summary.AutoSize = true;
             _summary.Dock = DockStyle.Fill;
-            _summary.Height = 34;
-            _summary.Padding = new Padding(10, 8, 8, 0);
+            _summary.MinimumSize = new Size(0, 36);
+            _summary.Padding = new Padding(10, 8, 8, 8);
             _summary.BackColor = UiTheme.Surface;
             _summary.ForeColor = UiTheme.TextSecondary;
             _summary.Font = UiTheme.Font(8F);
@@ -272,7 +273,8 @@ namespace Win7BookManagement.Forms
                 Text = "供应商列表",
                 Dock = DockStyle.Top,
                 Height = 38,
-                Padding = new Padding(12, 10, 0, 0),
+                Padding = new Padding(12, 0, 0, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,
                 Font = UiTheme.Font(9.2F, FontStyle.Bold)
@@ -370,8 +372,8 @@ namespace Win7BookManagement.Forms
             {
                 Text = labelText,
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(0, 10, 8, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 0, 8, 0),
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F, FontStyle.Bold)
             }, 0, row);
@@ -380,8 +382,8 @@ namespace Win7BookManagement.Forms
             {
                 Text = "—",
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(9, 9, 9, 7),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(9, 0, 9, 0),
                 Margin = new Padding(0, 3, 0, 3),
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextPrimary,
@@ -719,7 +721,7 @@ namespace Win7BookManagement.Forms
                     Padding = Padding.Empty
                 };
                 field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                field.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+                field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
                 field.Controls.Add(new Label
