@@ -172,7 +172,7 @@ namespace Win7BookManagement.Forms
         {
             var bar = UiTheme.CreateResponsiveToolbar();
             bar.BackColor = UiTheme.Surface;
-            bar.BorderStyle = BorderStyle.FixedSingle;
+            bar.BorderStyle = BorderStyle.None;
             bar.Margin = new Padding(0, 10, 0, 10);
 
             var fill = new Button
@@ -295,7 +295,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.FixedSingle,
+                BorderStyle = BorderStyle.None,
                 Margin = Padding.Empty
             };
             host.Controls.Add(_grid);
@@ -327,7 +327,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(14, 10, 14, 10),
                 Margin = new Padding(0, 10, 0, 0),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -360,7 +360,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.SurfaceMuted,
                 Padding = new Padding(16, 12, 16, 12),
                 Margin = new Padding(0, 8, 0, 0),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 142));
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
