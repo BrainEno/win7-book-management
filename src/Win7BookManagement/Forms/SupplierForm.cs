@@ -273,7 +273,8 @@ namespace Win7BookManagement.Forms
                 Text = "供应商列表",
                 Dock = DockStyle.Top,
                 Height = 38,
-                Padding = new Padding(12, 10, 0, 0),
+                Padding = new Padding(12, 0, 0, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,
                 Font = UiTheme.Font(9.2F, FontStyle.Bold)
@@ -371,8 +372,8 @@ namespace Win7BookManagement.Forms
             {
                 Text = labelText,
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(0, 10, 8, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 0, 8, 0),
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F, FontStyle.Bold)
             }, 0, row);
@@ -381,8 +382,8 @@ namespace Win7BookManagement.Forms
             {
                 Text = "—",
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(9, 9, 9, 7),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(9, 0, 9, 0),
                 Margin = new Padding(0, 3, 0, 3),
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextPrimary,
