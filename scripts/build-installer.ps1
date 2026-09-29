@@ -12,12 +12,17 @@ $installerDir = Join-Path $root "installer"
 $prereqDir = Join-Path $installerDir "prerequisites"
 $toolsDir = Join-Path $root ".tools"
 $nsisDir = Join-Path $toolsDir "NSIS"
-$nsisZip = Join-Path $toolsDir "nsis-3.13.zip"
+$nsisInstaller = Join-Path $toolsDir "nsis-setup.exe"
 $nsiFile = Join-Path $installerDir "win7-book-management.nsi"
 $dotnetInstaller = Join-Path $prereqDir "NDP48-x86-x64-AllOS-ENU.exe"
 
 $dotnetUrl = "https://download.microsoft.com/download/f/3/a/f3a6af84-da23-40a5-8d1c-49cc10c8e76f/NDP48-x86-x64-AllOS-ENU.exe"
-$nsisUrl = "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13.zip"
+$nsisUrls = @(
+    "https://sourceforge.net/projects/nsis/files/NSIS%203/3.13/nsis-3.13-setup.exe/download",
+    "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-setup.exe",
+    "https://sourceforge.net/projects/nsis/files/NSIS%203/3.12/nsis-3.12-setup.exe/download",
+    "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.12/nsis-3.12-setup.exe"
+)
 
 function Find-MSBuild {
     $cmd = Get-Command msbuild.exe -ErrorAction SilentlyContinue
@@ -58,13 +63,71 @@ function Ensure-Download {
 
     $parent = Split-Path $Path -Parent
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    if (Test-Path $Path) { Remove-Item -Force $Path }
 
     Write-Host "Downloading build prerequisite: $Url"
-    Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Path
+    Invoke-WebRequest -UseBasicParsing -Headers @{ "User-Agent" = "Wget" } -Uri $Url -OutFile $Path
 
     if (-not (Test-Path $Path) -or ((Get-Item $Path).Length -lt $MinimumBytes)) {
         throw "Downloaded file is incomplete: $Path"
     }
+}
+
+function Test-PortableExe {
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][long]$MinimumBytes
+    )
+
+    if (-not (Test-Path $Path)) { return $false }
+    if ((Get-Item $Path).Length -lt $MinimumBytes) { return $false }
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $first = $stream.ReadByte()
+        $second = $stream.ReadByte()
+        return ($first -eq 0x4D -and $second -eq 0x5A)
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
+function Download-NSISInstaller {
+    param(
+        [Parameter(Mandatory=$true)][string[]]$Urls,
+        [Parameter(Mandatory=$true)][string]$Path
+    )
+
+    if (Test-PortableExe -Path $Path -MinimumBytes 1000000) {
+        return
+    }
+
+    if (Test-Path $Path) { Remove-Item -Force $Path }
+
+    $lastError = $null
+    foreach ($url in $Urls) {
+        try {
+            Write-Host "Trying NSIS download: $url"
+            Invoke-WebRequest -UseBasicParsing -Headers @{ "User-Agent" = "Wget" } -Uri $url -OutFile $Path
+
+            if (Test-PortableExe -Path $Path -MinimumBytes 1000000) {
+                Write-Host "NSIS compiler package downloaded successfully."
+                return
+            }
+
+            $size = 0
+            if (Test-Path $Path) { $size = (Get-Item $Path).Length }
+            throw "Response was not a valid NSIS setup executable (size=$size bytes)."
+        }
+        catch {
+            $lastError = $_
+            Write-Warning ("NSIS download attempt failed: " + $_.Exception.Message)
+            if (Test-Path $Path) { Remove-Item -Force $Path }
+        }
+    }
+
+    throw "Unable to download a valid NSIS compiler from the official SourceForge release mirrors. Last error: $lastError"
 }
 
 function Find-MakeNSIS {
@@ -149,19 +212,27 @@ try {
 
     $makeNsis = Find-MakeNSIS
     if (-not $makeNsis) {
-        Write-Host "== Prepare portable NSIS 3.13 compiler =="
+        Write-Host "== Prepare NSIS compiler =="
         New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
-        Ensure-Download -Url $nsisUrl -Path $nsisZip -MinimumBytes 1500000
+        Download-NSISInstaller -Urls $nsisUrls -Path $nsisInstaller
 
         if (Test-Path $nsisDir) {
             Remove-Item -Recurse -Force $nsisDir
         }
-        New-Item -ItemType Directory -Force -Path $nsisDir | Out-Null
-        Expand-Archive -Path $nsisZip -DestinationPath $nsisDir -Force
+
+        Write-Host "Installing NSIS compiler into project tools directory..."
+        $nsisArgs = @(
+            "/S",
+            ("/D=" + $nsisDir)
+        )
+        $nsisProcess = Start-Process -FilePath $nsisInstaller -ArgumentList $nsisArgs -Wait -PassThru
+        if ($nsisProcess.ExitCode -ne 0) {
+            throw "NSIS compiler setup failed with exit code $($nsisProcess.ExitCode)"
+        }
 
         $makeNsis = Find-MakeNSIS
         if (-not $makeNsis) {
-            throw "makensis.exe was not found after extracting NSIS 3.13."
+            throw "makensis.exe was not found after installing NSIS."
         }
     }
 
