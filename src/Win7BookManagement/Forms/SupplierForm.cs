@@ -719,7 +719,7 @@ namespace Win7BookManagement.Forms
                     Padding = Padding.Empty
                 };
                 field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                field.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+                field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
                 field.Controls.Add(new Label
