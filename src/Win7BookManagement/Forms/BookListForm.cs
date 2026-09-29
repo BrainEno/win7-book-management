@@ -251,7 +251,8 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 Height = 38,
                 Text = "图书表格",
-                Padding = new Padding(12, 10, 0, 0),
+                Padding = new Padding(12, 0, 0, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
                 Font = UiTheme.Font(9F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 BackColor = UiTheme.Surface
@@ -364,8 +365,8 @@ namespace Win7BookManagement.Forms
             {
                 Text = labelText,
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(0, 10, 8, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 0, 8, 0),
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F, FontStyle.Bold)
             };
@@ -373,8 +374,8 @@ namespace Win7BookManagement.Forms
             {
                 Text = "—",
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(9, 9, 9, 7),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(9, 0, 9, 0),
                 Margin = new Padding(0, 3, 0, 3),
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextPrimary,
