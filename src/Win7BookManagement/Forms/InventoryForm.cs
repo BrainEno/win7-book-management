@@ -242,8 +242,9 @@ namespace Win7BookManagement.Forms
             _split.Dock = DockStyle.Fill;
             _split.Orientation = Orientation.Vertical;
             _split.FixedPanel = FixedPanel.Panel2;
-            _split.Panel1MinSize = 420;
-            _split.Panel2MinSize = 300;
+            // Do not assign large Panel*MinSize values before the SplitContainer
+            // has been laid out. WinForms validates them against the default
+            // 150px constructor size and can throw before the page is shown.
             _split.SplitterWidth = 8;
             _split.BackColor = UiTheme.Background;
             _split.Margin = new Padding(0, 10, 0, 0);
@@ -466,8 +467,11 @@ namespace Win7BookManagement.Forms
             {
                 var desiredRightWidth = Math.Min(360, Math.Max(305, _split.Width / 3));
                 var distance = _split.Width - desiredRightWidth - _split.SplitterWidth;
-                if (distance >= _split.Panel1MinSize)
-                    _split.SplitterDistance = distance;
+                const int minimumLeftWidth = 420;
+                const int minimumRightWidth = 300;
+                var maximumDistance = _split.Width - minimumRightWidth - _split.SplitterWidth;
+                if (distance >= minimumLeftWidth && maximumDistance >= minimumLeftWidth)
+                    _split.SplitterDistance = Math.Min(distance, maximumDistance);
             }
 
             var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
