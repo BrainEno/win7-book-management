@@ -11,18 +11,13 @@ $releaseDir = Join-Path $root "src\Win7BookManagement\bin\x86\Release"
 $installerDir = Join-Path $root "installer"
 $prereqDir = Join-Path $installerDir "prerequisites"
 $toolsDir = Join-Path $root ".tools"
-$nsisDir = Join-Path $toolsDir "NSIS"
-$nsisInstaller = Join-Path $toolsDir "nsis-setup.exe"
-$nsiFile = Join-Path $installerDir "win7-book-management.nsi"
+$innoDir = Join-Path $toolsDir "InnoSetup6"
+$innoInstaller = Join-Path $toolsDir "innosetup-6.7.3.exe"
+$issFile = Join-Path $installerDir "win7-book-management.iss"
 $dotnetInstaller = Join-Path $prereqDir "NDP48-x86-x64-AllOS-ENU.exe"
 
 $dotnetUrl = "https://download.microsoft.com/download/f/3/a/f3a6af84-da23-40a5-8d1c-49cc10c8e76f/NDP48-x86-x64-AllOS-ENU.exe"
-$nsisUrls = @(
-    "https://sourceforge.net/projects/nsis/files/NSIS%203/3.13/nsis-3.13-setup.exe/download",
-    "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-setup.exe",
-    "https://sourceforge.net/projects/nsis/files/NSIS%203/3.12/nsis-3.12-setup.exe/download",
-    "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.12/nsis-3.12-setup.exe"
-)
+$innoUrl = "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe"
 
 function Find-MSBuild {
     $cmd = Get-Command msbuild.exe -ErrorAction SilentlyContinue
@@ -50,29 +45,6 @@ function Invoke-Checked {
     }
 }
 
-function Ensure-Download {
-    param(
-        [Parameter(Mandatory=$true)][string]$Url,
-        [Parameter(Mandatory=$true)][string]$Path,
-        [Parameter(Mandatory=$true)][long]$MinimumBytes
-    )
-
-    if ((Test-Path $Path) -and ((Get-Item $Path).Length -ge $MinimumBytes)) {
-        return
-    }
-
-    $parent = Split-Path $Path -Parent
-    New-Item -ItemType Directory -Force -Path $parent | Out-Null
-    if (Test-Path $Path) { Remove-Item -Force $Path }
-
-    Write-Host "Downloading build prerequisite: $Url"
-    Invoke-WebRequest -UseBasicParsing -Headers @{ "User-Agent" = "Wget" } -Uri $Url -OutFile $Path
-
-    if (-not (Test-Path $Path) -or ((Get-Item $Path).Length -lt $MinimumBytes)) {
-        throw "Downloaded file is incomplete: $Path"
-    }
-}
-
 function Test-PortableExe {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
@@ -93,63 +65,89 @@ function Test-PortableExe {
     }
 }
 
-function Download-NSISInstaller {
+function Ensure-Download {
     param(
-        [Parameter(Mandatory=$true)][string[]]$Urls,
-        [Parameter(Mandatory=$true)][string]$Path
+        [Parameter(Mandatory=$true)][string]$Url,
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][long]$MinimumBytes,
+        [switch]$RequireExe
     )
 
-    if (Test-PortableExe -Path $Path -MinimumBytes 1000000) {
-        return
+    if (Test-Path $Path) {
+        $validSize = (Get-Item $Path).Length -ge $MinimumBytes
+        $validType = (-not $RequireExe) -or (Test-PortableExe -Path $Path -MinimumBytes $MinimumBytes)
+        if ($validSize -and $validType) { return }
+        Remove-Item -Force $Path
     }
 
-    if (Test-Path $Path) { Remove-Item -Force $Path }
+    $parent = Split-Path $Path -Parent
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
 
-    $lastError = $null
-    foreach ($url in $Urls) {
-        try {
-            Write-Host "Trying NSIS download: $url"
-            Invoke-WebRequest -UseBasicParsing -Headers @{ "User-Agent" = "Wget" } -Uri $url -OutFile $Path
+    Write-Host "Downloading build prerequisite: $Url"
+    Invoke-WebRequest -UseBasicParsing -Headers @{ "User-Agent" = "Wget" } -Uri $Url -OutFile $Path
 
-            if (Test-PortableExe -Path $Path -MinimumBytes 1000000) {
-                Write-Host "NSIS compiler package downloaded successfully."
-                return
-            }
-
-            $size = 0
-            if (Test-Path $Path) { $size = (Get-Item $Path).Length }
-            throw "Response was not a valid NSIS setup executable (size=$size bytes)."
-        }
-        catch {
-            $lastError = $_
-            Write-Warning ("NSIS download attempt failed: " + $_.Exception.Message)
-            if (Test-Path $Path) { Remove-Item -Force $Path }
-        }
+    if (-not (Test-Path $Path) -or ((Get-Item $Path).Length -lt $MinimumBytes)) {
+        throw "Downloaded file is incomplete: $Path"
     }
 
-    throw "Unable to download a valid NSIS compiler from the official SourceForge release mirrors. Last error: $lastError"
+    if ($RequireExe -and -not (Test-PortableExe -Path $Path -MinimumBytes $MinimumBytes)) {
+        throw "Downloaded file is not a valid Windows executable: $Path"
+    }
 }
 
-function Find-MakeNSIS {
+function Find-ISCC {
     $candidates = @(
-        (Join-Path $nsisDir "makensis.exe"),
-        (Join-Path ${env:ProgramFiles(x86)} "NSIS\makensis.exe"),
-        (Join-Path $env:ProgramFiles "NSIS\makensis.exe")
+        (Join-Path $innoDir "ISCC.exe"),
+        (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
+        (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
+        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe")
     )
 
     foreach ($candidate in $candidates) {
-        if ($candidate -and (Test-Path $candidate)) {
-            return $candidate
-        }
-    }
-
-    if (Test-Path $nsisDir) {
-        $found = Get-ChildItem -Path $nsisDir -Filter "makensis.exe" -File -Recurse -ErrorAction SilentlyContinue |
-            Select-Object -First 1
-        if ($found) { return $found.FullName }
+        if ($candidate -and (Test-Path $candidate)) { return $candidate }
     }
 
     return $null
+}
+
+function Ensure-InnoSetupCompiler {
+    $iscc = Find-ISCC
+    if ($iscc) { return $iscc }
+
+    Write-Host "== Prepare Inno Setup 6.7.3 compiler =="
+    New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
+
+    Ensure-Download -Url $innoUrl -Path $innoInstaller -MinimumBytes 3000000 -RequireExe
+
+    $signature = Get-AuthenticodeSignature $innoInstaller
+    if ($signature.Status -ne "Valid") {
+        throw "Inno Setup installer Authenticode signature is not valid: $($signature.Status)"
+    }
+
+    if (Test-Path $innoDir) { Remove-Item -Recurse -Force $innoDir }
+    New-Item -ItemType Directory -Force -Path $innoDir | Out-Null
+
+    Write-Host "Installing Inno Setup 6.7.3 into project tools directory..."
+    $arguments = @(
+        "/VERYSILENT",
+        "/SUPPRESSMSGBOXES",
+        "/NORESTART",
+        "/PORTABLE=1",
+        "/CURRENTUSER",
+        ("/DIR=" + $innoDir)
+    )
+
+    $process = Start-Process -FilePath $innoInstaller -ArgumentList $arguments -Wait -PassThru
+    if ($process.ExitCode -ne 0) {
+        throw "Inno Setup compiler installation failed with exit code $($process.ExitCode)"
+    }
+
+    $iscc = Find-ISCC
+    if (-not $iscc) {
+        throw "ISCC.exe was not found after preparing Inno Setup 6.7.3."
+    }
+
+    return $iscc
 }
 
 Push-Location $root
@@ -175,9 +173,7 @@ try {
     }
 
     $exe = Join-Path $releaseDir "Win7BookManagement.exe"
-    if (-not (Test-Path $exe)) {
-        throw "Release executable was not found: $exe"
-    }
+    if (-not (Test-Path $exe)) { throw "Release executable was not found: $exe" }
 
     Write-Host "== Run application self-test =="
     $selfTest = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
@@ -197,63 +193,36 @@ try {
 
     foreach ($relative in $requiredFiles) {
         $full = Join-Path $releaseDir $relative
-        if (-not (Test-Path $full)) {
-            throw "Required runtime file is missing: $relative"
-        }
+        if (-not (Test-Path $full)) { throw "Required runtime file is missing: $relative" }
     }
 
     Write-Host "== Prepare .NET Framework 4.8 offline runtime =="
-    Ensure-Download -Url $dotnetUrl -Path $dotnetInstaller -MinimumBytes 100000000
+    Ensure-Download -Url $dotnetUrl -Path $dotnetInstaller -MinimumBytes 100000000 -RequireExe
 
     $dotnetSignature = Get-AuthenticodeSignature $dotnetInstaller
     if ($dotnetSignature.Status -ne "Valid") {
         Write-Warning ".NET Framework 4.8 installer signature status: $($dotnetSignature.Status)"
     }
 
-    $makeNsis = Find-MakeNSIS
-    if (-not $makeNsis) {
-        Write-Host "== Prepare NSIS compiler =="
-        New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
-        Download-NSISInstaller -Urls $nsisUrls -Path $nsisInstaller
+    $iscc = Ensure-InnoSetupCompiler
 
-        if (Test-Path $nsisDir) {
-            Remove-Item -Recurse -Force $nsisDir
-        }
-
-        Write-Host "Installing NSIS compiler into project tools directory..."
-        $nsisArgs = @(
-            "/S",
-            ("/D=" + $nsisDir)
-        )
-        $nsisProcess = Start-Process -FilePath $nsisInstaller -ArgumentList $nsisArgs -Wait -PassThru
-        if ($nsisProcess.ExitCode -ne 0) {
-            throw "NSIS compiler setup failed with exit code $($nsisProcess.ExitCode)"
-        }
-
-        $makeNsis = Find-MakeNSIS
-        if (-not $makeNsis) {
-            throw "makensis.exe was not found after installing NSIS."
-        }
-    }
-
-    Write-Host "== Build offline installer with NSIS =="
+    Write-Host "== Build offline installer with Inno Setup 6 =="
     New-Item -ItemType Directory -Force -Path (Join-Path $installerDir "output") | Out-Null
+
     Push-Location $installerDir
     try {
-        Invoke-Checked $makeNsis @("/V2", (Split-Path $nsiFile -Leaf))
+        Invoke-Checked $iscc @((Split-Path $issFile -Leaf))
     }
     finally {
         Pop-Location
     }
 
     $output = Join-Path $installerDir "output\Win7BookManagement-Offline-Setup.exe"
-    if (-not (Test-Path $output)) {
-        throw "Installer output was not found: $output"
-    }
+    if (-not (Test-Path $output)) { throw "Installer output was not found: $output" }
 
     $outputSize = (Get-Item $output).Length
     if ($outputSize -lt 100000000) {
-        throw "Installer is unexpectedly small and may not contain the .NET Framework offline runtime."
+        throw "Installer is unexpectedly small and may not contain the .NET Framework 4.8 offline runtime."
     }
 
     $sizeMb = [Math]::Round($outputSize / 1MB, 1)
@@ -261,6 +230,8 @@ try {
     Write-Host "==============================================="
     Write-Host "Installer ready: $output"
     Write-Host "Size: $sizeMb MB"
+    Write-Host "Builder: Inno Setup 6.7.3"
+    Write-Host "Minimum target OS: Windows 7 SP1"
     Write-Host "The package includes app DLLs, SQLite native DLLs, NPOI dependencies, and the .NET Framework 4.8 offline runtime."
     Write-Host "==============================================="
 }

@@ -88,7 +88,7 @@ Do not add architectural layers without a concrete need.
 - If a prerequisite installation may require reboot, do not force-launch the app immediately.
 - Packaging script must validate core runtime files before generating installer.
 - Packaging process may use Internet on the development/CI machine to fetch official build prerequisites; the generated installer must not need Internet.
-- Use NSIS 3.x as the installer compiler; keep the packaging tool replaceable and outside business logic.
+- Use Inno Setup 6.7.3 as the installer compiler. Keep `MinVersion=6.1sp1`, keep the packaging tool outside business logic, and preserve the ability to replace it later without changing application code.
 - Keep installer build reproducible through `build-installer.cmd`.
 
 ## SQLite rules

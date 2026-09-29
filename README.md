@@ -20,7 +20,7 @@
 - NPOI 2.6.2
 - SQLite
 - 自定义 Win7-safe UI theme
-- NSIS 3.13 离线 installer
+- Inno Setup 6.7.3 离线 installer
 
 运行时不依赖网络服务，也不要求安装 Microsoft Excel。
 
@@ -73,7 +73,7 @@
 - NPOI 及其运行依赖
 - Microsoft .NET Framework 4.8 离线运行时
 
-安装程序要求 **Windows 7 SP1 或更高**。如果检测到电脑还没有 .NET Framework 4.8，会直接运行安装包内部附带的微软离线安装程序，不需要联网下载。
+安装程序要求 **Windows 7 SP1 或更高**。Inno Setup 脚本明确设置 `MinVersion=6.1sp1`，因此未安装 SP1 的 Windows 7 会在安装前被阻止。如果检测到电脑还没有 .NET Framework 4.8，会直接运行安装包内部附带的微软离线安装程序，不需要联网下载。
 
 如果 .NET Framework 4.8 是本次安装中新装的，安装完成后不会强行立即启动 BOOK DESK；部分 Win7 机器可能需要先重启一次。
 
@@ -97,7 +97,7 @@ build-installer.cmd
 4. 运行应用自检；
 5. 检查关键 SQLite 运行 DLL；
 6. 准备 .NET Framework 4.8 官方离线运行时；
-7. 准备 NSIS 3.13 编译器（本机未安装时自动使用官方便携版）；
+7. 准备 Inno Setup 6.7.3 编译器（本机未安装时自动从官方 GitHub Release 获取）；
 8. 生成最终离线安装包。
 
 成功后直接得到：
@@ -106,7 +106,7 @@ build-installer.cmd
 installer\output\Win7BookManagement-Offline-Setup.exe
 ```
 
-本地生成 installer 需要开发机安装 Visual Studio / MSBuild。首次构建若本机没有缓存 .NET 4.8 离线安装程序或 NSIS 编译器，**构建过程**需要网络；生成出来的最终 installer 在目标 Win7 上不需要网络。
+本地生成 installer 需要开发机安装 Visual Studio / MSBuild。Inno Setup 6.7.3 会自动准备到项目的 `.tools` 目录；若用于符合 Inno Setup 官方定义的商业用途，请按其当前许可要求购买商业许可证。首次构建若本机没有缓存 .NET 4.8 离线安装程序或 Inno Setup 6.7.3 编译器，**构建过程**需要网络；生成出来的最终 installer 在目标 Win7 上不需要网络。
 
 
 ## GitHub 自动构建
