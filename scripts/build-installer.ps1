@@ -96,17 +96,8 @@ function Ensure-Download {
 }
 
 function Find-ISCC {
-    $candidates = @(
-        (Join-Path $innoDir "ISCC.exe"),
-        (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
-        (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe")
-    )
-
-    foreach ($candidate in $candidates) {
-        if ($candidate -and (Test-Path $candidate)) { return $candidate }
-    }
-
+    $candidate = Join-Path $innoDir "ISCC.exe"
+    if (Test-Path $candidate) { return $candidate }
     return $null
 }
 

@@ -118,9 +118,8 @@ begin
   else
   begin
     Result :=
-      Format(
-        'Microsoft .NET Framework 4.8 安装失败（错误代码 %d）。安装已停止。',
-        [ResultCode]);
+      'Microsoft .NET Framework 4.8 安装失败（错误代码 ' +
+      IntToStr(ResultCode) + '）。安装已停止。';
   end;
 end;
 
