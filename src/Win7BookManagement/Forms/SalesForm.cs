@@ -332,9 +332,9 @@ namespace Win7BookManagement.Forms
 
             var title = new Label
             {
-                Text = "结算区",
+                Text = "结算信息",
                 AutoSize = true,
-                Font = UiTheme.Font(9.4F, FontStyle.Bold),
+                Font = UiTheme.Font(10F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Margin = new Padding(0, 0, 0, 7)
             };
