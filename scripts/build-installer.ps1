@@ -166,6 +166,7 @@ try {
     }
 
     Write-Host "== Build offline installer with NSIS =="
+    New-Item -ItemType Directory -Force -Path (Join-Path $installerDir "output") | Out-Null
     Push-Location $installerDir
     try {
         Invoke-Checked $makeNsis @("/V2", (Split-Path $nsiFile -Leaf))
