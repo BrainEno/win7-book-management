@@ -162,8 +162,8 @@ namespace Win7BookManagement.Forms
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
@@ -310,7 +310,8 @@ namespace Win7BookManagement.Forms
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 62,
+                AutoSize = true,
+                MinimumSize = new Size(0, 62),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
@@ -342,7 +343,8 @@ namespace Win7BookManagement.Forms
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 74,
+                AutoSize = true,
+                MinimumSize = new Size(0, 74),
                 ColumnCount = 4,
                 RowCount = 1,
                 BackColor = UiTheme.SurfaceMuted,
