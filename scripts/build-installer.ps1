@@ -29,7 +29,7 @@ function Find-MSBuild {
         if ($path) { return $path }
     }
 
-    throw "找不到 MSBuild。请安装 Visual Studio 的“.NET 桌面开发”工作负载。"
+    throw "MSBuild was not found. Install the .NET desktop development workload in Visual Studio."
 }
 
 function Invoke-Checked {
@@ -40,7 +40,7 @@ function Invoke-Checked {
 
     & $FilePath @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "命令执行失败（退出码 $LASTEXITCODE）：$FilePath $($Arguments -join ' ')"
+        throw "Command failed with exit code $LASTEXITCODE : $FilePath $($Arguments -join ' ')"
     }
 }
 
@@ -58,11 +58,11 @@ function Ensure-Download {
     $parent = Split-Path $Path -Parent
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
 
-    Write-Host "下载构建依赖：$Url"
+    Write-Host "Downloading build prerequisite: $Url"
     Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Path
 
     if ((Get-Item $Path).Length -lt $MinimumBytes) {
-        throw "下载文件异常或不完整：$Path"
+        throw "Downloaded file is incomplete: $Path"
     }
 }
 
@@ -87,7 +87,7 @@ try {
     if (-not $SkipBuild) {
         $msbuild = Find-MSBuild
 
-        Write-Host "== 还原 NuGet =="
+        Write-Host "== Restore NuGet packages =="
         Invoke-Checked $msbuild @(
             $solution,
             "/t:Restore",
@@ -95,7 +95,7 @@ try {
             "/p:Platform=x86"
         )
 
-        Write-Host "== 编译 Release x86 =="
+        Write-Host "== Build Release x86 =="
         Invoke-Checked $msbuild @(
             $solution,
             "/m",
@@ -106,16 +106,16 @@ try {
 
     $exe = Join-Path $releaseDir "Win7BookManagement.exe"
     if (-not (Test-Path $exe)) {
-        throw "未找到 Release EXE：$exe"
+        throw "Release executable was not found: $exe"
     }
 
-    Write-Host "== 运行应用自检 =="
+    Write-Host "== Run application self-test =="
     $selfTest = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
     if ($selfTest.ExitCode -ne 0) {
-        throw "应用自检失败，退出码：$($selfTest.ExitCode)"
+        throw "Application self-test failed with exit code $($selfTest.ExitCode)"
     }
 
-    Write-Host "== 验证离线运行文件 =="
+    Write-Host "== Validate offline runtime files =="
     $requiredFiles = @(
         "Win7BookManagement.exe",
         "Win7BookManagement.exe.config",
@@ -126,65 +126,66 @@ try {
     foreach ($relative in $requiredFiles) {
         $full = Join-Path $releaseDir $relative
         if (-not (Test-Path $full)) {
-            throw "运行依赖缺失：$relative"
+            throw "Required runtime file is missing: $relative"
         }
     }
 
     $managedDlls = Get-ChildItem -Path $releaseDir -Filter "*.dll" -File -ErrorAction SilentlyContinue
     if ($managedDlls.Count -eq 0) {
-        throw "Release 目录没有发现托管依赖 DLL。"
+        throw "No managed dependency DLLs were found in the Release directory."
     }
 
-    Write-Host "== 准备 .NET Framework 4.8 离线运行时 =="
+    Write-Host "== Prepare .NET Framework 4.8 offline runtime =="
     Ensure-Download -Url $dotnetUrl -Path $dotnetInstaller -MinimumBytes 100000000
 
     $dotnetSignature = Get-AuthenticodeSignature $dotnetInstaller
     if ($dotnetSignature.Status -ne "Valid") {
-        Write-Warning ".NET 4.8 离线安装包签名状态：$($dotnetSignature.Status)。请在正式发布前人工核验。"
+        Write-Warning ".NET Framework 4.8 installer signature status: $($dotnetSignature.Status)"
     }
 
     $iscc = Find-ISCC
     if (-not $iscc) {
-        Write-Host "== 准备 Inno Setup 6.7.3 编译器 =="
+        Write-Host "== Prepare Inno Setup 6.7.3 compiler =="
         New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
         Ensure-Download -Url $innoUrl -Path $innoInstaller -MinimumBytes 3000000
 
         $innoSignature = Get-AuthenticodeSignature $innoInstaller
         if ($innoSignature.Status -ne "Valid") {
-            Write-Warning "Inno Setup 安装包签名状态：$($innoSignature.Status)。"
+            Write-Warning "Inno Setup installer signature status: $($innoSignature.Status)"
         }
 
+        $dirArg = '/DIR="' + $innoDir + '"'
         $arguments = @(
             "/VERYSILENT",
             "/SUPPRESSMSGBOXES",
             "/NORESTART",
-            "/DIR=$innoDir"
+            $dirArg
         )
         $process = Start-Process -FilePath $innoInstaller -ArgumentList $arguments -Wait -PassThru
         if ($process.ExitCode -ne 0) {
-            throw "Inno Setup 编译器安装失败，退出码：$($process.ExitCode)"
+            throw "Inno Setup compiler installation failed with exit code $($process.ExitCode)"
         }
 
         $iscc = Find-ISCC
         if (-not $iscc) {
-            throw "Inno Setup 已运行安装，但仍找不到 ISCC.exe。"
+            throw "ISCC.exe was not found after installing Inno Setup."
         }
     }
 
-    Write-Host "== 生成离线 installer =="
+    Write-Host "== Build offline installer =="
     Invoke-Checked $iscc @($issFile)
 
     $output = Join-Path $installerDir "output\Win7BookManagement-Offline-Setup.exe"
     if (-not (Test-Path $output)) {
-        throw "安装包生成后未找到：$output"
+        throw "Installer output was not found: $output"
     }
 
     $sizeMb = [Math]::Round((Get-Item $output).Length / 1MB, 1)
     Write-Host ""
     Write-Host "==============================================="
-    Write-Host "完成：$output"
-    Write-Host "大小：$sizeMb MB"
-    Write-Host "该安装包已包含应用 DLL、SQLite 原生 DLL 和 .NET Framework 4.8 离线运行时。"
+    Write-Host "Installer ready: $output"
+    Write-Host "Size: $sizeMb MB"
+    Write-Host "The package includes app DLLs, SQLite native DLLs, and the .NET Framework 4.8 offline runtime."
     Write-Host "==============================================="
 }
 finally {
