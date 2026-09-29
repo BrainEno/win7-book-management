@@ -29,6 +29,11 @@ jobs:
           $exe = Resolve-Path "src\Win7BookManagement\bin\x86\Release\Win7BookManagement.exe"
           $process = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
           if ($process.ExitCode -ne 0) {
+            $errorFile = Join-Path (Split-Path $exe) "self-test-error.txt"
+            if (Test-Path $errorFile) {
+              Write-Host "Self-test diagnostics:"
+              Get-Content $errorFile | Write-Host
+            }
             throw "Self test failed with exit code $($process.ExitCode)"
           }
 
