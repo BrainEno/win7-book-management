@@ -112,7 +112,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(14, 12, 14, 12),
                 Margin = Padding.Empty,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -246,7 +246,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             var documentHeader = new Label
             {
@@ -276,7 +276,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             _detailTitle.Text = "单据明细";
             _detailTitle.Dock = DockStyle.Top;
