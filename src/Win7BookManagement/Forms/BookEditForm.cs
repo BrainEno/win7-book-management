@@ -383,7 +383,7 @@ namespace Win7BookManagement.Forms
             };
             field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             var label = new Label
             {
