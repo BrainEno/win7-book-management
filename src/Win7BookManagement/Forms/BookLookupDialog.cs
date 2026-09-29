@@ -159,7 +159,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(16, 10, 16, 10),
                 Margin = new Padding(0, 10, 0, 10),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 88));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -240,7 +240,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.FixedSingle,
+                BorderStyle = BorderStyle.None,
                 Margin = Padding.Empty
             };
             host.Controls.Add(_grid);
