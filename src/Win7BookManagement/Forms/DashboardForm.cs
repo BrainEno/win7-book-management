@@ -87,7 +87,9 @@ namespace Win7BookManagement.Forms
             var hero = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 76,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 82),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Background,
@@ -106,13 +108,14 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
             text.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            text.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-            text.RowStyles.Add(new RowStyle(SizeType.Absolute, 23));
-            text.RowStyles.Add(new RowStyle(SizeType.Absolute, 18));
+            text.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            text.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            text.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             text.Controls.Add(new Label
             {
                 Text = "今天的书店，一眼看清",
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = UiTheme.Font(15F, FontStyle.Bold),
@@ -123,6 +126,7 @@ namespace Win7BookManagement.Forms
             text.Controls.Add(new Label
             {
                 Text = "净销售、库存和低库存提醒集中在这里；需要操作时直接从卡片进入对应模块。",
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = UiTheme.Font(8.7F),
@@ -130,6 +134,7 @@ namespace Win7BookManagement.Forms
                 AutoEllipsis = true
             }, 0, 1);
 
+            _updatedAt.AutoSize = true;
             _updatedAt.Dock = DockStyle.Fill;
             _updatedAt.TextAlign = ContentAlignment.MiddleLeft;
             _updatedAt.ForeColor = UiTheme.TextSecondary;
@@ -198,7 +203,7 @@ namespace Win7BookManagement.Forms
             _guideCard.Padding = new Padding(14, 10, 14, 10);
             _guideCard.BorderStyle = BorderStyle.FixedSingle;
             _guideCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _guideCard.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+            _guideCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _guideCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var header = new TableLayoutPanel
@@ -420,8 +425,8 @@ namespace Win7BookManagement.Forms
             var captionLabel = new Label
             {
                 Text = caption,
+                AutoSize = true,
                 Dock = DockStyle.Top,
-                Height = 22,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8.2F),
                 AutoEllipsis = true
@@ -429,8 +434,8 @@ namespace Win7BookManagement.Forms
             var valueLabel = new Label
             {
                 Text = value,
+                AutoSize = true,
                 Dock = DockStyle.Top,
-                Height = 34,
                 ForeColor = valueColor,
                 Font = UiTheme.Font(15.5F, FontStyle.Bold),
                 AutoEllipsis = true
@@ -438,8 +443,8 @@ namespace Win7BookManagement.Forms
             var footLabel = new Label
             {
                 Text = foot,
+                AutoSize = true,
                 Dock = DockStyle.Top,
-                Height = 20,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(7.8F),
                 AutoEllipsis = true
@@ -484,12 +489,13 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
             text.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            text.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-            text.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
+            text.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            text.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             text.Controls.Add(new Label
             {
                 Text = title,
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 Font = UiTheme.Font(10.2F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
@@ -499,6 +505,7 @@ namespace Win7BookManagement.Forms
             text.Controls.Add(new Label
             {
                 Text = subtitle,
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 Font = UiTheme.Font(8F),
                 ForeColor = UiTheme.TextSecondary,
