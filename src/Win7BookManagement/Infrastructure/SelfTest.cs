@@ -192,6 +192,15 @@ namespace Win7BookManagement.Infrastructure
             catch (Exception ex)
             {
                 Console.Error.WriteLine(ex.ToString());
+                try
+                {
+                    File.WriteAllText(
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "self-test-error.txt"),
+                        ex.ToString());
+                }
+                catch
+                {
+                }
                 return 1;
             }
             finally
