@@ -303,8 +303,9 @@ namespace Win7BookManagement.Forms
             {
                 Text = "退货明细",
                 Dock = DockStyle.Top,
-                Height = 38,
-                Padding = new Padding(12, 0, 0, 0),
+                AutoSize = true,
+                MinimumSize = new Size(0, 42),
+                Padding = new Padding(12, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,
@@ -319,7 +320,8 @@ namespace Win7BookManagement.Forms
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 72,
+                AutoSize = true,
+                MinimumSize = new Size(0, 72),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
@@ -351,7 +353,8 @@ namespace Win7BookManagement.Forms
             var footer = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 76,
+                AutoSize = true,
+                MinimumSize = new Size(0, 76),
                 ColumnCount = 4,
                 RowCount = 1,
                 BackColor = UiTheme.SurfaceMuted,
