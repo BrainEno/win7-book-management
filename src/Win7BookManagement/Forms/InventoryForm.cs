@@ -352,7 +352,7 @@ namespace Win7BookManagement.Forms
         {
             var row = table.RowCount;
             table.RowCount += 1;
-            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+            table.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
 
             table.Controls.Add(new Label
             {
