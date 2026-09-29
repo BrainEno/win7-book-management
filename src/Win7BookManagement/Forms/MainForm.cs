@@ -147,8 +147,9 @@ namespace Win7BookManagement.Forms
 
             _status = new Label
             {
+                AutoSize = true,
                 Dock = DockStyle.Bottom,
-                Height = 30,
+                MinimumSize = new Size(0, 32),
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextSecondary,
                 Padding = new Padding(18, 7, 8, 0),
@@ -395,8 +396,9 @@ namespace Win7BookManagement.Forms
             var label = new Label
             {
                 Text = text,
+                AutoSize = true,
                 Width = 180,
-                Height = 28,
+                MinimumSize = new Size(0, 30),
                 Margin = new Padding(8, 8, 0, 0),
                 Padding = new Padding(0, 7, 0, 0),
                 ForeColor = UiTheme.TextSecondary,
