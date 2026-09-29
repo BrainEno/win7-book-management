@@ -189,8 +189,9 @@ namespace Win7BookManagement.Infrastructure
 
                 return 0;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.Error.WriteLine(ex.ToString());
                 return 1;
             }
             finally
