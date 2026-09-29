@@ -157,7 +157,8 @@ namespace Win7BookManagement.Forms
             var searchRow = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Height = 50,
+                AutoSize = true,
+                MinimumSize = new Size(0, 48),
                 ColumnCount = 4,
                 RowCount = 1,
                 Margin = new Padding(0, 2, 0, 0)
@@ -272,8 +273,9 @@ namespace Win7BookManagement.Forms
             {
                 Text = "供应商列表",
                 Dock = DockStyle.Top,
-                Height = 38,
-                Padding = new Padding(12, 0, 0, 0),
+                AutoSize = true,
+                MinimumSize = new Size(0, 42),
+                Padding = new Padding(12, 10, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.Surface,
                 ForeColor = UiTheme.TextPrimary,
@@ -298,7 +300,8 @@ namespace Win7BookManagement.Forms
             var header = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 46,
+                AutoSize = true,
+                MinimumSize = new Size(0, 48),
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = Padding.Empty
@@ -366,12 +369,13 @@ namespace Win7BookManagement.Forms
         {
             var row = table.RowCount;
             table.RowCount += 1;
-            table.RowStyles.Add(new RowStyle(SizeType.Absolute, height));
+            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             table.Controls.Add(new Label
             {
                 Text = labelText,
                 Dock = DockStyle.Fill,
+                MinimumSize = new Size(0, height),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(0, 0, 8, 0),
                 ForeColor = UiTheme.TextSecondary,
@@ -382,6 +386,7 @@ namespace Win7BookManagement.Forms
             {
                 Text = "—",
                 Dock = DockStyle.Fill,
+                MinimumSize = new Size(0, Math.Max(40, height - 6)),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(9, 0, 9, 0),
                 Margin = new Padding(0, 3, 0, 3),
@@ -635,7 +640,8 @@ namespace Win7BookManagement.Forms
                 var footer = new TableLayoutPanel
                 {
                     Dock = DockStyle.Bottom,
-                    Height = 70,
+                    AutoSize = true,
+                    MinimumSize = new Size(0, 70),
                     ColumnCount = 2,
                     RowCount = 1,
                     BackColor = UiTheme.Surface,
@@ -712,7 +718,8 @@ namespace Win7BookManagement.Forms
                 var field = new TableLayoutPanel
                 {
                     Dock = DockStyle.Fill,
-                    Height = height,
+                    AutoSize = true,
+                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
                     MinimumSize = new Size(0, height),
                     ColumnCount = 1,
                     RowCount = 2,
@@ -722,7 +729,7 @@ namespace Win7BookManagement.Forms
                 };
                 field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
                 field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
                 field.Controls.Add(new Label
                 {
