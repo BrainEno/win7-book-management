@@ -81,9 +81,10 @@ namespace Win7BookManagement.Forms
             root.Controls.Add(CreateSearchSection(), 0, 0);
             root.Controls.Add(CreateContentSection(), 0, 1);
 
+            _summary.AutoSize = true;
             _summary.Dock = DockStyle.Fill;
-            _summary.Height = 34;
-            _summary.Padding = new Padding(10, 8, 8, 0);
+            _summary.MinimumSize = new Size(0, 36);
+            _summary.Padding = new Padding(10, 8, 8, 8);
             _summary.BackColor = UiTheme.Surface;
             _summary.ForeColor = UiTheme.TextSecondary;
             _summary.Font = UiTheme.Font(8F);
