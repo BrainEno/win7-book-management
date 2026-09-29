@@ -72,7 +72,7 @@ namespace Win7BookManagement.Infrastructure
         {
             return new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, 52),
