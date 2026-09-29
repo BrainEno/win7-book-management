@@ -9,9 +9,9 @@ namespace Win7BookManagement.Infrastructure
     {
         // Warm neutral palette. Keep the implementation on stock WinForms/GDI so
         // Windows 7 SP1 remains a first-class runtime target.
-        public static readonly Color Background = Color.FromArgb(248, 246, 241);
+        public static readonly Color Background = Color.FromArgb(246, 244, 239);
         public static readonly Color Surface = Color.FromArgb(255, 255, 253);
-        public static readonly Color SurfaceMuted = Color.FromArgb(250, 248, 244);
+        public static readonly Color SurfaceMuted = Color.FromArgb(246, 243, 237);
 
         public static readonly Color NavigationSurface = Color.FromArgb(247, 242, 232);
         public static readonly Color NavigationHover = Color.FromArgb(241, 235, 223);
@@ -28,7 +28,7 @@ namespace Win7BookManagement.Infrastructure
         public static readonly Color AccentSoft = Color.FromArgb(231, 242, 238);
         public static readonly Color TextPrimary = Color.FromArgb(42, 47, 44);
         public static readonly Color TextSecondary = Color.FromArgb(104, 111, 106);
-        public static readonly Color Border = Color.FromArgb(225, 220, 210);
+        public static readonly Color Border = Color.FromArgb(222, 217, 207);
         public static readonly Color Success = Color.FromArgb(29, 132, 88);
         public static readonly Color Warning = Color.FromArgb(184, 111, 31);
         public static readonly Color Danger = Color.FromArgb(190, 54, 54);
@@ -102,7 +102,7 @@ namespace Win7BookManagement.Infrastructure
                 BackColor = Surface,
                 Padding = new Padding(padding),
                 Margin = Padding.Empty,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
         }
 
@@ -113,7 +113,7 @@ namespace Win7BookManagement.Infrastructure
                 BackColor = Surface,
                 Padding = new Padding(18),
                 Margin = new Padding(0, 0, 14, 14),
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.None
             };
         }
 
@@ -203,10 +203,10 @@ namespace Win7BookManagement.Infrastructure
             grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             grid.MultiSelect = false;
 
-            grid.ColumnHeadersDefaultCellStyle.BackColor = SurfaceMuted;
+            grid.ColumnHeadersDefaultCellStyle.BackColor = NavigationSurface;
             grid.ColumnHeadersDefaultCellStyle.ForeColor = TextSecondary;
             grid.ColumnHeadersDefaultCellStyle.Font = Font(8.8F, FontStyle.Bold);
-            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = SurfaceMuted;
+            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = NavigationSurface;
             grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = TextSecondary;
             grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
             grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
@@ -230,7 +230,7 @@ namespace Win7BookManagement.Infrastructure
             button.FlatStyle = FlatStyle.Flat;
             button.FlatAppearance.BorderSize = 1;
             button.Cursor = Cursors.Hand;
-            button.Font = Font(8.8F, FontStyle.Bold);
+            button.Font = Font(8.8F, primary ? FontStyle.Bold : FontStyle.Regular);
 
             var minimumHeight = Math.Max(ButtonHeight, button.Font.Height + 16);
             button.MinimumSize = new Size(button.MinimumSize.Width, minimumHeight);
