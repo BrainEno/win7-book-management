@@ -11,7 +11,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("输入店内编码、ISBN、书名、作者或出版社");
-        private readonly CheckBox _includeInactive = new CheckBox();
+        private readonly AntdUI.Checkbox _includeInactive = new AntdUI.Checkbox();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
         private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
@@ -130,7 +130,7 @@ namespace Win7BookManagement.Forms
             _includeInactive.Text = "包含停用";
             _includeInactive.AutoSize = true;
             _includeInactive.Margin = new Padding(12, 11, 0, 0);
-            _includeInactive.CheckedChanged += delegate { Reload(); };
+            _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
 
             actions.Controls.Add(addButton);
             actions.Controls.Add(editButton);
@@ -247,14 +247,9 @@ namespace Win7BookManagement.Forms
         {
             _grid.Dock = DockStyle.Fill;
             _grid.Margin = Padding.Empty;
-            _grid.BackColor = UiTheme.Surface;
-            _grid.ForeColor = UiTheme.TextPrimary;
-            _grid.ColumnBack = UiTheme.NavigationSurface;
-            _grid.ColumnFore = UiTheme.TextSecondary;
-            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            _grid.BorderColor = UiTheme.Border;
+
             _grid.Bordered = false;
-            _grid.Radius = 8;
+
             _grid.Gap = 12;
             _grid.RowHeight = 46;
             _grid.RowHeightHeader = 46;
@@ -262,9 +257,6 @@ namespace Win7BookManagement.Forms
             _grid.ColumnDragSort = false;
             _grid.ShowTip = true;
             _grid.EmptyText = "没有找到符合条件的图书资料";
-            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
-            _grid.RowSelectedBg = UiTheme.AccentSoft;
-            _grid.RowSelectedFore = UiTheme.TextPrimary;
 
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
