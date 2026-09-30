@@ -63,6 +63,30 @@ namespace Win7BookManagement.Infrastructure
                     storedBook.PublicationYear != "2026")
                     throw new InvalidOperationException("扩展图书资料字段保存自检失败。");
 
+                var selfPublishedId = services.Books.Insert(new Book
+                {
+                    Title = "无 ISBN 自出版物",
+                    Author = "独立作者",
+                    Publisher = "",
+                    Isbn = "",
+                    SelfCode = "",
+                    ListPriceCent = 4200,
+                    SalePriceCent = 4200,
+                    DefaultPurchasePriceCent = 1800
+                });
+                var selfPublished = services.Books.GetById(selfPublishedId);
+                if (selfPublished == null ||
+                    string.IsNullOrWhiteSpace(selfPublished.SelfCode) ||
+                    !selfPublished.SelfCode.StartsWith("BK-", StringComparison.Ordinal) ||
+                    selfPublished.Isbn != "")
+                    throw new InvalidOperationException("无 ISBN 图书自动店内编码自检失败。");
+
+                var selfCodeMatches = services.Books.SearchActiveByIsbnOrTitle(selfPublished.SelfCode);
+                var authorMatches = services.Books.SearchActiveByIsbnOrTitle("独立作者");
+                if (selfCodeMatches.Count != 1 || selfCodeMatches[0].Id != selfPublishedId ||
+                    authorMatches.Count != 1 || authorMatches[0].Id != selfPublishedId)
+                    throw new InvalidOperationException("无 ISBN 图书编码 / 作者检索自检失败。");
+
                 var titleMatches = services.Books.SearchActiveByIsbnOrTitle("自检");
                 var isbnMatches = services.Books.SearchActiveByIsbnOrTitle("000000");
                 if (titleMatches.Count != 1 || titleMatches[0].Id != bookId ||
@@ -163,7 +187,7 @@ namespace Win7BookManagement.Infrastructure
                 }
 
                 var dashboard = services.Dashboard.GetSummary(5);
-                if (dashboard.ActiveTitles != 1 ||
+                if (dashboard.ActiveTitles != 2 ||
                     dashboard.StockUnits != 7 ||
                     dashboard.TodaySalesOrders != 1 ||
                     dashboard.TodaySalesQuantity != 1 ||
@@ -177,7 +201,17 @@ namespace Win7BookManagement.Infrastructure
                     throw new InvalidOperationException("销售/退货报表自检失败。");
 
                 var snapshot = services.Reports.InventorySnapshot(DateTime.Today);
-                if (snapshot.Rows.Count != 1 || Convert.ToInt32(snapshot.Rows[0]["库存数量"]) != 7)
+                var selfPublishedSnapshotFound = false;
+                foreach (System.Data.DataRow row in snapshot.Rows)
+                {
+                    if (Convert.ToInt64(row["图书ID"]) == selfPublishedId &&
+                        Convert.ToInt32(row["库存数量"]) == 0)
+                    {
+                        selfPublishedSnapshotFound = true;
+                        break;
+                    }
+                }
+                if (snapshot.Rows.Count != 2 || !selfPublishedSnapshotFound)
                     throw new InvalidOperationException("库存快照自检失败。");
 
                 var excelPath = Path.Combine(root, "sales-returns.xlsx");
