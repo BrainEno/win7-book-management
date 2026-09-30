@@ -461,9 +461,9 @@ namespace Win7BookManagement.Forms
             var displayPrice = book.SalePriceCent > 0
                 ? Money.ToYuan(book.SalePriceCent)
                 : Money.ToYuan(book.ListPriceCent);
-            _price.Value = Math.Min(_price.Maximum, displayPrice);
+            _price.Value = Math.Min(_price.Maximum ?? displayPrice, displayPrice);
             _defaultPurchasePrice.Value = Math.Min(
-                _defaultPurchasePrice.Maximum,
+                _defaultPurchasePrice.Maximum ?? Money.ToYuan(book.DefaultPurchasePriceCent),
                 Money.ToYuan(book.DefaultPurchasePriceCent));
             _active.Checked = book.IsActive;
         }
