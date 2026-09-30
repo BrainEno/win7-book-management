@@ -355,7 +355,7 @@ namespace Win7BookManagement.Forms
             if (_lastSummary == null)
                 return;
 
-            var compact = ClientSize.Width < 1080;
+            var compact = ClientSize.Width < 700;
             if (!force && _metricLayoutInitialized && compact == _metricsCompact)
                 return;
 
@@ -374,7 +374,7 @@ namespace Win7BookManagement.Forms
 
             _metrics.ColumnCount = compact ? 2 : 4;
             _metrics.RowCount = compact ? 2 : 1;
-            _metrics.Height = compact ? 216 : 116;
+            _metrics.Height = compact ? 196 : 116;
 
             for (var column = 0; column < _metrics.ColumnCount; column++)
                 _metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / _metrics.ColumnCount));
@@ -517,8 +517,10 @@ namespace Win7BookManagement.Forms
             var actionButton = new Button
             {
                 Text = actionText,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(6, 8, 0, 8)
+                AutoSize = true,
+                MinimumSize = new Size(118, UiTheme.ButtonHeight),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Margin = new Padding(8, 8, 0, 8)
             };
             actionButton.Click += action;
 
@@ -532,6 +534,9 @@ namespace Win7BookManagement.Forms
 
         private static void ConfigureGrid(DataGridView grid)
         {
+            grid.Dock = DockStyle.Fill;
+            grid.Margin = Padding.Empty;
+            grid.BorderStyle = BorderStyle.None;
             grid.ReadOnly = true;
             grid.AllowUserToAddRows = false;
             grid.AllowUserToDeleteRows = false;
@@ -586,6 +591,9 @@ namespace Win7BookManagement.Forms
             RebuildMetricCards(false);
 
             var compact = ClientSize.Width < UiTheme.WideBreakpoint;
+            if ((ClientSize.Width < 1080 || ClientSize.Height < 700) && _guideExpanded)
+                ApplyGuideExpanded(false, false);
+
             _lower.ColumnStyles.Clear();
             _lower.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, compact ? 55F : 60F));
             _lower.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, compact ? 45F : 40F));

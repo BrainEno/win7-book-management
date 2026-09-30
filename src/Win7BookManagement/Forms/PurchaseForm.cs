@@ -177,10 +177,12 @@ namespace Win7BookManagement.Forms
 
             var supplierRow = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 3,
                 RowCount = 1,
-                Margin = Padding.Empty
+                Margin = new Padding(0, 2, 0, 2)
             };
             supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -189,10 +191,12 @@ namespace Win7BookManagement.Forms
             supplierRow.Controls.Add(new Label
             {
                 Text = "供应商",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 14, 0)
             }, 0, 0);
 
             _supplier.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -203,20 +207,24 @@ namespace Win7BookManagement.Forms
             supplierRow.Controls.Add(new Label
             {
                 Text = "可不指定供应商",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F)
+                Font = UiTheme.Font(8F),
+                Margin = new Padding(6, 10, 0, 0)
             }, 2, 0);
 
             section.Controls.Add(supplierRow, 0, 1);
 
             var scanRow = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 4,
                 RowCount = 1,
-                Margin = Padding.Empty
+                Margin = new Padding(0, 2, 0, 0)
             };
             scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -226,10 +234,12 @@ namespace Win7BookManagement.Forms
             scanRow.Controls.Add(new Label
             {
                 Text = "ISBN",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 14, 0)
             }, 0, 0);
 
             _isbn.Dock = DockStyle.Fill;
@@ -248,7 +258,9 @@ namespace Win7BookManagement.Forms
             var add = new Button
             {
                 Text = "搜索加入",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                MinimumSize = new Size(96, UiTheme.ButtonHeight),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Margin = new Padding(0, 4, 8, 4),
                 Tag = "primary"
             };
@@ -258,7 +270,9 @@ namespace Win7BookManagement.Forms
             var pick = new Button
             {
                 Text = "选择图书",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                MinimumSize = new Size(104, UiTheme.ButtonHeight),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Margin = new Padding(0, 4, 0, 4)
             };
             pick.Click += delegate { PickBook(); };
@@ -272,7 +286,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
-                Margin = new Padding(82, 5, 0, 0)
+                Margin = new Padding(0, 6, 0, 0)
             }, 0, 3);
 
             return section;

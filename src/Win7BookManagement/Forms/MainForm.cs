@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 
@@ -224,7 +225,7 @@ namespace Win7BookManagement.Forms
 
         private FlowLayoutPanel CreateNavigation()
         {
-            return new FlowLayoutPanel
+            return new VerticalNavigationPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
@@ -405,7 +406,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 Width = 180,
                 MinimumSize = new Size(0, 30),
-                Margin = new Padding(8, 8, 0, 0),
+                Margin = new Padding(0, 8, 0, 0),
                 Padding = new Padding(0, 7, 0, 0),
                 ForeColor = UiTheme.TextSecondary,
                 BackColor = UiTheme.NavigationSurface,
@@ -495,7 +496,7 @@ namespace Win7BookManagement.Forms
         private void ApplyResponsiveLayout()
         {
             var compact = ClientSize.Width < UiTheme.WideBreakpoint;
-            _sidebar.Width = compact ? 174 : 212;
+            _sidebar.Width = compact ? 190 : 216;
             _sidebar.Padding = compact
                 ? new Padding(10, 14, 10, 10)
                 : new Padding(14, 16, 14, 12);
@@ -504,12 +505,54 @@ namespace Win7BookManagement.Forms
                 ? new Padding(10, 10, 10, 10)
                 : new Padding(20, 16, 20, 16);
 
-            var rowWidth = compact ? 150 : 180;
+            var rowWidth = Math.Max(
+                128,
+                _sidebar.Width -
+                _sidebar.Padding.Horizontal -
+                SystemInformation.VerticalScrollBarWidth -
+                6);
+
             foreach (var pair in _navRows)
                 pair.Value.Width = rowWidth;
 
             foreach (var label in _navGroupLabels)
                 label.Width = rowWidth;
+
+            _navigation.AutoScrollMinSize = new Size(0, 0);
+            _navigation.HorizontalScroll.Enabled = false;
+            _navigation.HorizontalScroll.Visible = false;
         }
+        private sealed class VerticalNavigationPanel : FlowLayoutPanel
+        {
+            private const int SbHorz = 0;
+
+            [DllImport("user32.dll")]
+            private static extern bool ShowScrollBar(IntPtr hWnd, int wBar, bool bShow);
+
+            protected override void OnHandleCreated(EventArgs e)
+            {
+                base.OnHandleCreated(e);
+                HideHorizontalScrollBar();
+            }
+
+            protected override void OnLayout(LayoutEventArgs levent)
+            {
+                base.OnLayout(levent);
+                HideHorizontalScrollBar();
+            }
+
+            protected override void OnSizeChanged(EventArgs e)
+            {
+                base.OnSizeChanged(e);
+                HideHorizontalScrollBar();
+            }
+
+            private void HideHorizontalScrollBar()
+            {
+                if (IsHandleCreated)
+                    ShowScrollBar(Handle, SbHorz, false);
+            }
+        }
+
     }
 }

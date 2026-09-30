@@ -30,7 +30,7 @@ namespace Win7BookManagement.Infrastructure
 
                 var services = new ApplicationServices(Path.Combine(root, "snapshot.db"));
                 services.Settings.SetOnboardingCompleted(true);
-                services.Settings.SetHomeGuideExpanded(true);
+                services.Settings.SetHomeGuideExpanded(false);
                 services.Settings.SetLowStockThreshold(3);
 
                 var books = SeedData(services);
@@ -61,6 +61,14 @@ namespace Win7BookManagement.Infrastructure
 
                 Capture(
                     outputDirectory,
+                    "08-sales-wide-1800x900.png",
+                    delegate { return new SalesForm(services); },
+                    new Size(1800, 900),
+                    true,
+                    delegate(Form form) { PopulateByIsbn(form, books, 3); });
+
+                Capture(
+                    outputDirectory,
                     "04-book-master-1366x768.png",
                     delegate { return new BookListForm(services); },
                     new Size(1366, 768),
@@ -72,6 +80,14 @@ namespace Win7BookManagement.Infrastructure
                     "05-book-master-1024x768.png",
                     delegate { return new BookListForm(services); },
                     new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "09-book-master-wide-1800x900.png",
+                    delegate { return new BookListForm(services); },
+                    new Size(1800, 900),
                     true,
                     null);
 
@@ -357,8 +373,61 @@ namespace Win7BookManagement.Infrastructure
                 form.Location = Point.Empty;
                 form.ShowInTaskbar = false;
 
-                if (embeddedPage)
-                    form.FormBorderStyle = FormBorderStyle.None;
+                var workingArea = Screen.PrimaryScreen == null
+                    ? Size.Empty
+                    : Screen.PrimaryScreen.WorkingArea.Size;
+                var useOffscreenHost =
+                    embeddedPage ||
+                    (workingArea.Width > 0 && size.Width > workingArea.Width) ||
+                    (workingArea.Height > 0 && size.Height > workingArea.Height);
+
+                if (useOffscreenHost)
+                {
+                    using (var host = new Panel())
+                    {
+                        host.Size = size;
+                        host.BackColor = UiTheme.Background;
+                        host.Padding = Padding.Empty;
+                        host.Margin = Padding.Empty;
+                        host.CreateControl();
+
+                        form.TopLevel = false;
+                        form.FormBorderStyle = FormBorderStyle.None;
+                        form.Dock = DockStyle.Fill;
+                        form.Margin = Padding.Empty;
+
+                        host.Controls.Add(form);
+                        UiTheme.Apply(form);
+                        form.Show();
+                        Application.DoEvents();
+
+                        if (afterShown != null)
+                        {
+                            afterShown(form);
+                            Application.DoEvents();
+                        }
+
+                        form.PerformLayout();
+                        host.PerformLayout();
+                        Application.DoEvents();
+
+                        using (var bitmap = new Bitmap(
+                            Math.Max(1, size.Width),
+                            Math.Max(1, size.Height)))
+                        {
+                            host.DrawToBitmap(
+                                bitmap,
+                                new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+                            bitmap.Save(
+                                Path.Combine(outputDirectory, fileName),
+                                ImageFormat.Png);
+                        }
+
+                        form.Hide();
+                    }
+
+                    return;
+                }
 
                 form.Size = size;
                 UiTheme.Apply(form);
