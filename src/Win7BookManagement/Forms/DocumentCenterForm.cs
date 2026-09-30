@@ -12,8 +12,8 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly AntdUI.Select _type = new AntdUI.Select();
         private readonly List<DocumentOption> _options = new List<DocumentOption>();
-        private readonly DateTimePicker _from = new DateTimePicker();
-        private readonly DateTimePicker _to = new DateTimePicker();
+        private readonly AntdUI.DatePicker _from = new AntdUI.DatePicker();
+        private readonly AntdUI.DatePicker _to = new AntdUI.DatePicker();
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("单号、ISBN、书名、备注或供应商");
         private readonly AntdUI.Table _documents = new AntdUI.Table();
         private readonly AntdUI.Table _items = new AntdUI.Table();
@@ -92,13 +92,11 @@ namespace Win7BookManagement.Forms
             foreach (var option in _options) _type.Items.Add(option.Text);
             _type.SelectedIndex = 0;
             _type.DropDownArrow = true;
-            _type.Radius = 7;
-            _type.BorderWidth = 1.2F;
-            _type.BorderColor = UiTheme.Border;
+
             _type.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e) { ReloadDocuments(); };
 
-            _from.Format = DateTimePickerFormat.Short;
-            _to.Format = DateTimePickerFormat.Short;
+            _from.Format = "yyyy-MM-dd";
+            _to.Format = "yyyy-MM-dd";
             _from.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             _to.Value = DateTime.Today;
 
@@ -112,6 +110,9 @@ namespace Win7BookManagement.Forms
             };
             _returnButton.Click += delegate { StartReturn(); };
         }
+
+        private DateTime FromDate { get { return (_from.Value ?? DateTime.Today).Date; } }
+        private DateTime ToDate { get { return (_to.Value ?? DateTime.Today).Date; } }
 
         private string CurrentKind
         {
@@ -294,29 +295,21 @@ namespace Win7BookManagement.Forms
         private static void ConfigureTable(AntdUI.Table table, string emptyText)
         {
             table.Dock = DockStyle.Fill;
-            table.BackColor = UiTheme.Surface;
-            table.ForeColor = UiTheme.TextPrimary;
-            table.ColumnBack = UiTheme.NavigationSurface;
-            table.ColumnFore = UiTheme.TextSecondary;
-            table.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            table.BorderColor = UiTheme.Border;
-            table.Radius = 8;
+
             table.RowHeight = 46;
             table.RowHeightHeader = 46;
             table.EnableHeaderResizing = true;
             table.ColumnDragSort = true;
             table.ShowTip = true;
             table.EmptyText = emptyText;
-            table.RowHoverBg = Color.FromArgb(248, 246, 241);
-            table.RowSelectedBg = UiTheme.AccentSoft;
-            table.RowSelectedFore = UiTheme.TextPrimary;
+
         }
 
         private void ReloadDocuments()
         {
             if (!IsHandleCreated) return;
 
-            if (_to.Value.Date < _from.Value.Date)
+            if (ToDate < FromDate)
             {
                 MessageBox.Show(this, "结束日期不能早于开始日期，请重新选择日期范围。", "日期范围不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 _to.Focus();
@@ -325,7 +318,7 @@ namespace Win7BookManagement.Forms
 
             try
             {
-                var table = _services.Documents.Search(CurrentKind, _from.Value.Date, _to.Value.Date, _search.Text);
+                var table = _services.Documents.Search(CurrentKind, FromDate, ToDate, _search.Text);
                 _selectedDocumentRecord = null;
                 BuildColumns(table, _documents, _documentColumns, true);
                 _documents.DataSource = table;

@@ -12,8 +12,8 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly AntdUI.Select _type = new AntdUI.Select();
         private readonly List<ReportOption> _reportOptions = new List<ReportOption>();
-        private readonly DateTimePicker _from = new DateTimePicker();
-        private readonly DateTimePicker _to = new DateTimePicker();
+        private readonly AntdUI.DatePicker _from = new AntdUI.DatePicker();
+        private readonly AntdUI.DatePicker _to = new AntdUI.DatePicker();
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Dictionary<string, AntdUI.Column> _columns = new Dictionary<string, AntdUI.Column>();
         private readonly Label _rowChip = new Label();
@@ -87,21 +87,22 @@ namespace Win7BookManagement.Forms
             foreach (var option in _reportOptions) _type.Items.Add(option.Text);
             _type.SelectedIndex = 0;
             _type.DropDownArrow = true;
-            _type.Radius = 7;
-            _type.BorderWidth = 1.2F;
-            _type.BorderColor = UiTheme.Border;
+
             _type.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e)
             {
                 UpdateDateControls();
                 Query();
             };
 
-            _from.Format = DateTimePickerFormat.Short;
-            _to.Format = DateTimePickerFormat.Short;
+            _from.Format = "yyyy-MM-dd";
+            _to.Format = "yyyy-MM-dd";
             _from.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             _to.Value = DateTime.Today;
             _exportButton.Click += delegate { Export(); };
         }
+
+        private DateTime FromDate { get { return (_from.Value ?? DateTime.Today).Date; } }
+        private DateTime ToDate { get { return (_to.Value ?? DateTime.Today).Date; } }
 
         private ReportOption SelectedOption
         {
@@ -250,22 +251,14 @@ namespace Win7BookManagement.Forms
         private void ConfigureGrid()
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.BackColor = UiTheme.Surface;
-            _grid.ForeColor = UiTheme.TextPrimary;
-            _grid.ColumnBack = UiTheme.NavigationSurface;
-            _grid.ColumnFore = UiTheme.TextSecondary;
-            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            _grid.BorderColor = UiTheme.Border;
-            _grid.Radius = 8;
+
             _grid.RowHeight = 46;
             _grid.RowHeightHeader = 46;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = true;
             _grid.ShowTip = true;
             _grid.EmptyText = "当前条件下没有可显示的数据";
-            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
-            _grid.RowSelectedBg = UiTheme.AccentSoft;
-            _grid.RowSelectedFore = UiTheme.TextPrimary;
+
         }
 
         private Control CreateGridSection()
@@ -303,7 +296,7 @@ namespace Win7BookManagement.Forms
                 var option = SelectedOption;
                 if (option == null) return;
 
-                if (option.Key != "snapshot" && _to.Value.Date < _from.Value.Date)
+                if (option.Key != "snapshot" && ToDate < FromDate)
                 {
                     MessageBox.Show(this, "结束日期不能早于开始日期，请重新选择日期范围。", "日期范围不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     _to.Focus();
@@ -312,12 +305,12 @@ namespace Win7BookManagement.Forms
 
                 switch (option.Key)
                 {
-                    case "sales": _current = _services.Reports.SalesDetail(_from.Value.Date, _to.Value.Date); break;
-                    case "sales_return": _current = _services.Reports.SalesReturnDetail(_from.Value.Date, _to.Value.Date); break;
-                    case "purchase": _current = _services.Reports.PurchaseDetail(_from.Value.Date, _to.Value.Date); break;
-                    case "purchase_return": _current = _services.Reports.PurchaseReturnDetail(_from.Value.Date, _to.Value.Date); break;
-                    case "movement": _current = _services.Reports.InventoryMovements(_from.Value.Date, _to.Value.Date); break;
-                    case "snapshot": _current = _services.Reports.InventorySnapshot(_to.Value.Date); break;
+                    case "sales": _current = _services.Reports.SalesDetail(FromDate, ToDate); break;
+                    case "sales_return": _current = _services.Reports.SalesReturnDetail(FromDate, ToDate); break;
+                    case "purchase": _current = _services.Reports.PurchaseDetail(FromDate, ToDate); break;
+                    case "purchase_return": _current = _services.Reports.PurchaseReturnDetail(FromDate, ToDate); break;
+                    case "movement": _current = _services.Reports.InventoryMovements(FromDate, ToDate); break;
+                    case "snapshot": _current = _services.Reports.InventorySnapshot(ToDate); break;
                     default: throw new InvalidOperationException("未知报表类型。");
                 }
 
@@ -412,8 +405,8 @@ namespace Win7BookManagement.Forms
             }
 
             _summary.Text = option.Key == "snapshot"
-                ? option.Text + " · 截至 " + _to.Value.ToString("yyyy-MM-dd") + " · " + rowCount + " 行"
-                : option.Text + " · " + _from.Value.ToString("yyyy-MM-dd") + " 至 " + _to.Value.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
+                ? option.Text + " · 截至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行"
+                : option.Text + " · " + FromDate.ToString("yyyy-MM-dd") + " 至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
         }
 
         private static string QuantityColumnName(string key)
@@ -495,7 +488,7 @@ namespace Win7BookManagement.Forms
 
                 var option = SelectedOption;
                 var title = option == null ? "报表" : option.Text;
-                var fileName = title + "_" + _to.Value.ToString("yyyyMMdd") + ".xlsx";
+                var fileName = title + "_" + ToDate.ToString("yyyyMMdd") + ".xlsx";
 
                 using (var dialog = new SaveFileDialog())
                 {

@@ -7,32 +7,30 @@ namespace Win7BookManagement.Infrastructure
 {
     public static class UiTheme
     {
-        // Warm neutral palette. AntdUI provides the modern WinForms control
-        // surface, while this class remains the single source of visual tokens
-        // and layout rules so Windows 7 SP1 stays a first-class runtime target.
-        public static readonly Color Background = Color.FromArgb(246, 244, 239);
-        public static readonly Color Surface = Color.FromArgb(255, 255, 253);
-        public static readonly Color SurfaceMuted = Color.FromArgb(246, 243, 237);
+        // Keep native WinForms surfaces aligned with Ant Design's built-in
+        // light palette. AntdUI controls themselves intentionally keep their
+        // own default appearance and state colors.
+        public static readonly Color Background = Color.FromArgb(245, 245, 245);
+        public static readonly Color Surface = Color.White;
+        public static readonly Color SurfaceMuted = Color.FromArgb(250, 250, 250);
 
-        public static readonly Color NavigationSurface = Color.FromArgb(247, 242, 232);
-        public static readonly Color NavigationHover = Color.FromArgb(241, 235, 223);
-        public static readonly Color NavigationSelected = Color.FromArgb(235, 226, 209);
-        public static readonly Color NavigationText = Color.FromArgb(49, 60, 55);
+        public static readonly Color NavigationSurface = Color.White;
+        public static readonly Color NavigationHover = Color.FromArgb(245, 245, 245);
+        public static readonly Color NavigationSelected = Color.FromArgb(230, 244, 255);
+        public static readonly Color NavigationText = Color.FromArgb(31, 31, 31);
 
-        // Legacy aliases kept for pages that have not yet migrated to the light
-        // navigation shell. They intentionally point to the same warm system.
         public static readonly Color Sidebar = NavigationSurface;
         public static readonly Color SidebarHover = NavigationHover;
 
-        public static readonly Color Accent = Color.FromArgb(31, 116, 96);
-        public static readonly Color AccentHover = Color.FromArgb(24, 96, 79);
-        public static readonly Color AccentSoft = Color.FromArgb(231, 242, 238);
-        public static readonly Color TextPrimary = Color.FromArgb(42, 47, 44);
-        public static readonly Color TextSecondary = Color.FromArgb(104, 111, 106);
-        public static readonly Color Border = Color.FromArgb(222, 217, 207);
-        public static readonly Color Success = Color.FromArgb(29, 132, 88);
-        public static readonly Color Warning = Color.FromArgb(184, 111, 31);
-        public static readonly Color Danger = Color.FromArgb(190, 54, 54);
+        public static readonly Color Accent = Color.FromArgb(22, 119, 255);
+        public static readonly Color AccentHover = Color.FromArgb(64, 150, 255);
+        public static readonly Color AccentSoft = Color.FromArgb(230, 244, 255);
+        public static readonly Color TextPrimary = Color.FromArgb(31, 31, 31);
+        public static readonly Color TextSecondary = Color.FromArgb(140, 140, 140);
+        public static readonly Color Border = Color.FromArgb(217, 217, 217);
+        public static readonly Color Success = Color.FromArgb(82, 196, 26);
+        public static readonly Color Warning = Color.FromArgb(250, 173, 20);
+        public static readonly Color Danger = Color.FromArgb(255, 77, 79);
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
@@ -43,6 +41,18 @@ namespace Win7BookManagement.Infrastructure
 
         private const string HostedInputTag = "ui-input-hosted";
         private static readonly string FontFamilyName = ResolveFontFamily();
+
+        public static void InitializeAntdUi()
+        {
+            // Use AntdUI's built-in Ant Design light theme and its own state
+            // palette. Do not override Primary/Success/Warning/Error colors.
+            AntdUI.Config.Mode = AntdUI.TMode.Light;
+            AntdUI.Config.Font = Font(9F);
+            AntdUI.Config.TextRenderingHighQuality = true;
+            AntdUI.Config.Animation = true;
+            AntdUI.Config.ShadowEnabled = true;
+            AntdUI.Config.ScrollBarHide = false;
+        }
 
         public static Font Font(float size)
         {
@@ -314,19 +324,15 @@ namespace Win7BookManagement.Infrastructure
 
         public static AntdUI.Button CreateAntdButton(string text, bool primary)
         {
-            var button = new AntdUI.Button
+            return new AntdUI.Button
             {
                 Text = text ?? "",
                 AutoSize = false,
                 Height = ButtonHeight,
                 MinimumSize = new Size(92, ButtonHeight),
-                Radius = 7,
-                BorderWidth = 1F,
-                Font = Font(9F, primary ? FontStyle.Bold : FontStyle.Regular),
                 Cursor = Cursors.Hand,
                 Type = primary ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default
             };
-            return button;
         }
 
         public static AntdUI.Input CreateAntdInput(string placeholder)
@@ -336,17 +342,6 @@ namespace Win7BookManagement.Infrastructure
                 PlaceholderText = placeholder ?? "",
                 Height = InputHeight,
                 MinimumSize = new Size(0, InputHeight),
-                Radius = 8,
-                BorderWidth = 1.35F,
-                BorderColor = Color.FromArgb(198, 194, 184),
-                BorderHover = AccentHover,
-                BorderActive = Accent,
-                Variant = AntdUI.TVariant.Outlined,
-                PaddGap = 0.55F,
-                Font = Font(9.5F),
-                BackColor = Color.White,
-                ForeColor = TextPrimary,
-                PlaceholderColor = TextSecondary,
                 Margin = Padding.Empty
             };
         }
@@ -470,17 +465,6 @@ namespace Win7BookManagement.Infrastructure
             var input = control as AntdUI.Input;
             if (input != null)
             {
-                input.BorderColor = Color.FromArgb(198, 194, 184);
-                input.BorderHover = AccentHover;
-                input.BorderActive = Accent;
-                input.BorderWidth = 1.35F;
-                input.Radius = 8;
-                input.Variant = AntdUI.TVariant.Outlined;
-                input.PaddGap = 0.55F;
-                input.BackColor = Color.White;
-                input.ForeColor = TextPrimary;
-                input.PlaceholderColor = TextSecondary;
-                input.Font = Font(9.5F);
                 input.Height = Math.Max(input.Height, InputHeight);
                 input.MinimumSize = new Size(input.MinimumSize.Width, InputHeight);
                 return;
@@ -489,8 +473,6 @@ namespace Win7BookManagement.Infrastructure
             var button = control as AntdUI.Button;
             if (button != null)
             {
-                button.Radius = 8;
-                button.BorderWidth = 1F;
                 button.MinimumSize = new Size(button.MinimumSize.Width, ButtonHeight);
                 if (button.Dock != DockStyle.Fill && button.Height < ButtonHeight)
                     button.Height = ButtonHeight;

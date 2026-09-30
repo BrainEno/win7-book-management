@@ -173,22 +173,13 @@ namespace Win7BookManagement.Forms
         private Control CreateGridSection()
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.BackColor = UiTheme.Surface;
-            _grid.ForeColor = UiTheme.TextPrimary;
-            _grid.ColumnBack = UiTheme.NavigationSurface;
-            _grid.ColumnFore = UiTheme.TextSecondary;
-            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            _grid.BorderColor = UiTheme.Border;
-            _grid.Radius = 8;
+
             _grid.RowHeight = 46;
             _grid.RowHeightHeader = 46;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = true;
             _grid.ShowTip = true;
             _grid.EmptyText = "没有找到匹配的图书";
-            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
-            _grid.RowSelectedBg = UiTheme.AccentSoft;
-            _grid.RowSelectedFore = UiTheme.TextPrimary;
 
             _grid.Columns = new AntdUI.ColumnCollection
             {

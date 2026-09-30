@@ -12,7 +12,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("按编码、ISBN、书名、作者、分类或货架位搜索");
-        private readonly CheckBox _lowOnly = new CheckBox();
+        private readonly AntdUI.Checkbox _lowOnly = new AntdUI.Checkbox();
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
@@ -151,7 +151,7 @@ namespace Win7BookManagement.Forms
             _lowOnly.AutoSize = true;
             _lowOnly.Anchor = AnchorStyles.Left;
             _lowOnly.Margin = new Padding(8, 11, 0, 0);
-            _lowOnly.CheckedChanged += delegate { Reload(); };
+            _lowOnly.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
             searchRow.Controls.Add(_lowOnly, 3, 0);
 
             section.Controls.Add(searchRow, 0, 1);
@@ -215,22 +215,14 @@ namespace Win7BookManagement.Forms
         private void ConfigureGrid()
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.BackColor = UiTheme.Surface;
-            _grid.ForeColor = UiTheme.TextPrimary;
-            _grid.ColumnBack = UiTheme.NavigationSurface;
-            _grid.ColumnFore = UiTheme.TextSecondary;
-            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            _grid.BorderColor = UiTheme.Border;
-            _grid.Radius = 8;
+
             _grid.RowHeight = 46;
             _grid.RowHeightHeader = 46;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = true;
             _grid.ShowTip = true;
             _grid.EmptyText = "没有符合条件的库存记录";
-            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
-            _grid.RowSelectedBg = UiTheme.AccentSoft;
-            _grid.RowSelectedFore = UiTheme.TextPrimary;
+
             _grid.Columns = new AntdUI.ColumnCollection
             {
                 _selfCodeColumn,
@@ -483,16 +475,10 @@ namespace Win7BookManagement.Forms
                 _direction.Items.Add("减少库存");
                 _direction.SelectedIndex = 0;
                 _direction.DropDownArrow = true;
-                _direction.Radius = 7;
-                _direction.BorderWidth = 1.2F;
-                _direction.BorderColor = UiTheme.Border;
 
                 _quantity.Minimum = 1;
                 _quantity.Maximum = 1000000;
                 _quantity.Value = 1;
-                _quantity.Radius = 7;
-                _quantity.BorderWidth = 1.2F;
-                _quantity.BorderColor = UiTheme.Border;
 
                 var header = new TableLayoutPanel
                 {

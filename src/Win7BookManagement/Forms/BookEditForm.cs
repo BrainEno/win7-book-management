@@ -21,14 +21,14 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Input _edition = new AntdUI.Input();
         private readonly AntdUI.Input _binding = new AntdUI.Input();
         private readonly AntdUI.Input _shelfCode = new AntdUI.Input();
-        private readonly TextBox _note = new TextBox();
+        private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：记录签名本、编号版、瑕疵或陈列提醒");
 
         // The user sees one selling price. The legacy database still keeps
         // list_price_cent and sale_price_cent for backward compatibility; both
         // are written with the same value from this field.
         private readonly AntdUI.InputNumber _price = new AntdUI.InputNumber();
         private readonly AntdUI.InputNumber _defaultPurchasePrice = new AntdUI.InputNumber();
-        private readonly CheckBox _active = new CheckBox();
+        private readonly AntdUI.Checkbox _active = new AntdUI.Checkbox();
 
         private readonly ErrorProvider _errors = new ErrorProvider();
         private readonly ToolTip _tips = new ToolTip();
@@ -62,10 +62,10 @@ namespace Win7BookManagement.Forms
             _active.Padding = new Padding(0, 8, 0, 0);
 
             _note.Multiline = true;
-            _note.ScrollBars = ScrollBars.Vertical;
+            _note.AutoScroll = true;
 
-            Button saveButton;
-            Button cancelButton;
+            AntdUI.Button saveButton;
+            AntdUI.Button cancelButton;
             var header = CreateHeader();
             var footer = CreateFooter(out saveButton, out cancelButton);
             var body = CreateBody();
@@ -131,7 +131,7 @@ namespace Win7BookManagement.Forms
             return header;
         }
 
-        private Control CreateFooter(out Button save, out Button cancel)
+        private Control CreateFooter(out AntdUI.Button save, out AntdUI.Button cancel)
         {
             var footer = new TableLayoutPanel
             {
@@ -167,20 +167,12 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
 
-            cancel = new Button
-            {
-                Text = "取消",
-                Width = 96,
-                Height = UiTheme.ButtonHeight,
-                DialogResult = DialogResult.Cancel
-            };
-            save = new Button
-            {
-                Text = "保存资料",
-                Width = 112,
-                Height = UiTheme.ButtonHeight,
-                Tag = "primary"
-            };
+            cancel = UiTheme.CreateAntdButton("取消", false);
+            cancel.Width = 96;
+            cancel.DialogResult = DialogResult.Cancel;
+
+            save = UiTheme.CreateAntdButton("保存资料", true);
+            save.Width = 112;
             save.Click += Save;
 
             buttons.Controls.Add(cancel);
@@ -409,8 +401,8 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 0, 0, 5)
             };
 
-            var multiline = input as TextBox;
-            if (multiline != null && multiline.Multiline)
+            var antdInput = input as AntdUI.Input;
+            if (antdInput != null && antdInput.Multiline)
             {
                 input.Dock = DockStyle.Fill;
                 input.MinimumSize = new Size(0, Math.Max(80, height - 34));
@@ -418,7 +410,7 @@ namespace Win7BookManagement.Forms
             else
             {
                 input.Dock = DockStyle.Top;
-                input.MinimumSize = new Size(0, 38);
+                input.MinimumSize = new Size(0, UiTheme.InputHeight);
             }
 
             input.Margin = new Padding(0, 0, 0, 2);

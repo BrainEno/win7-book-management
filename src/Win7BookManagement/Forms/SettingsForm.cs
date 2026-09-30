@@ -107,9 +107,7 @@ namespace Win7BookManagement.Forms
             _lowStock.Maximum = 9999;
             _lowStock.Width = 120;
             _lowStock.Height = UiTheme.InputHeight;
-            _lowStock.Radius = 7;
-            _lowStock.BorderWidth = 1.2F;
-            _lowStock.BorderColor = UiTheme.Border;
+
             _lowStock.Margin = new Padding(0, 3, 6, 3);
             row.Controls.Add(_lowStock);
 

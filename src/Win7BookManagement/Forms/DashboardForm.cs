@@ -15,8 +15,8 @@ namespace Win7BookManagement.Forms
         private readonly TableLayoutPanel _metrics = new TableLayoutPanel();
         private readonly TableLayoutPanel _guideCard = new TableLayoutPanel();
         private readonly TableLayoutPanel _lower = new TableLayoutPanel();
-        private readonly DataGridView _recentSales = new DataGridView();
-        private readonly DataGridView _lowStock = new DataGridView();
+        private readonly AntdUI.Table _recentSales = new AntdUI.Table();
+        private readonly AntdUI.Table _lowStock = new AntdUI.Table();
         private readonly Label _updatedAt = new Label();
         private readonly Label _guideBody = new Label();
         private readonly AntdUI.Button _toggleGuide = UiTheme.CreateAntdButton("", false);
@@ -441,7 +441,7 @@ namespace Win7BookManagement.Forms
         private static Panel CreateTableCard(
             string title,
             string subtitle,
-            DataGridView grid,
+            AntdUI.Table grid,
             string actionText,
             EventHandler action)
         {
@@ -510,58 +510,54 @@ namespace Win7BookManagement.Forms
             return card;
         }
 
-        private static void ConfigureGrid(DataGridView grid)
+        private static void ConfigureGrid(AntdUI.Table grid)
         {
             grid.Dock = DockStyle.Fill;
             grid.Margin = Padding.Empty;
-            grid.BorderStyle = BorderStyle.None;
-            grid.ReadOnly = true;
-            grid.AllowUserToAddRows = false;
-            grid.AllowUserToDeleteRows = false;
-            grid.AutoGenerateColumns = true;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-            grid.RowHeadersVisible = false;
-            grid.MultiSelect = false;
-            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.BackgroundColor = UiTheme.Surface;
+            grid.RowHeight = 42;
+            grid.RowHeightHeader = 42;
+            grid.ShowTip = true;
+            grid.EnableHeaderResizing = true;
+            grid.ColumnDragSort = false;
         }
 
         private void StyleRecentSalesGrid()
         {
-            if (_recentSales.Columns.Contains("时间"))
-                _recentSales.Columns["时间"].Width = 138;
-            if (_recentSales.Columns.Contains("销售单号"))
+            _recentSales.Columns = new AntdUI.ColumnCollection
             {
-                _recentSales.Columns["销售单号"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                _recentSales.Columns["销售单号"].MinimumWidth = 120;
-                _recentSales.Columns["销售单号"].FillWeight = 180;
-            }
-            SetNumericColumn(_recentSales, "册数", 64);
-            SetNumericColumn(_recentSales, "金额", 86);
+                new AntdUI.Column("时间", "时间") { Width = "138", ReadOnly = true },
+                new AntdUI.Column("销售单号", "销售单号") { Width = "180", MinWidth = "130", Ellipsis = true, ReadOnly = true },
+                new AntdUI.Column("册数", "册数") { Width = "68", ReadOnly = true },
+                new AntdUI.Column("金额", "金额") { Width = "92", ReadOnly = true, DisplayFormat = "0.00" }
+            };
         }
 
         private void StyleLowStockGrid()
         {
-            if (_lowStock.Columns.Contains("ISBN"))
-                _lowStock.Columns["ISBN"].Width = 126;
-            if (_lowStock.Columns.Contains("书名"))
+            _lowStock.Columns = new AntdUI.ColumnCollection
             {
-                _lowStock.Columns["书名"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                _lowStock.Columns["书名"].MinimumWidth = 130;
-                _lowStock.Columns["书名"].FillWeight = 190;
-            }
-            if (_lowStock.Columns.Contains("货架位"))
-                _lowStock.Columns["货架位"].Width = 78;
-            SetNumericColumn(_lowStock, "当前库存", 78);
+                new AntdUI.Column("ISBN", "ISBN") { Width = "130", ReadOnly = true },
+                new AntdUI.Column("书名", "书名") { Width = "190", MinWidth = "130", Ellipsis = true, ReadOnly = true },
+                new AntdUI.Column("货架位", "货架位") { Width = "84", ReadOnly = true },
+                new AntdUI.Column("当前库存", "当前库存") { Width = "92", ReadOnly = true }
+            };
         }
 
-        private static void SetNumericColumn(DataGridView grid, string name, int width)
+        private void ApplyResponsiveGridColumns()
         {
-            if (!grid.Columns.Contains(name))
-                return;
+            var compact = ClientSize.Width < UiTheme.WideBreakpoint;
 
-            grid.Columns[name].Width = width;
-            grid.Columns[name].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            if (_recentSales.Columns != null && _recentSales.Columns.Count >= 1)
+                _recentSales.Columns[0].Visible = !compact;
+
+            if (_lowStock.Columns != null && _lowStock.Columns.Count >= 3)
+            {
+                _lowStock.Columns[0].Visible = !compact;
+                _lowStock.Columns[2].Visible = ClientSize.Width >= 1040;
+            }
+
+            _recentSales.LoadLayout();
+            _lowStock.LoadLayout();
         }
 
         private void ApplyResponsiveLayout()
@@ -577,20 +573,6 @@ namespace Win7BookManagement.Forms
             _lower.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, compact ? 45F : 40F));
 
             ApplyResponsiveGridColumns();
-        }
-
-        private void ApplyResponsiveGridColumns()
-        {
-            var compact = ClientSize.Width < UiTheme.WideBreakpoint;
-
-            if (_recentSales.Columns.Contains("时间"))
-                _recentSales.Columns["时间"].Visible = !compact;
-
-            if (_lowStock.Columns.Contains("ISBN"))
-                _lowStock.Columns["ISBN"].Visible = !compact;
-
-            if (_lowStock.Columns.Contains("货架位"))
-                _lowStock.Columns["货架位"].Visible = ClientSize.Width >= 1040;
         }
 
         private void UpdateGuideBodyWidth()
