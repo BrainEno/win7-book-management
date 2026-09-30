@@ -453,7 +453,7 @@ namespace Win7BookManagement.Forms
         {
             if (_split.Width <= 0) return;
 
-            var showDetails = ClientSize.Width >= 1560;
+            var showDetails = ClientSize.Width >= 1680;
             _split.Panel2Collapsed = !showDetails;
 
             if (showDetails)
