@@ -159,10 +159,10 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 10, 0, 10),
                 BorderStyle = BorderStyle.None
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 98));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
