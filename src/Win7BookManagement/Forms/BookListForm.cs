@@ -259,7 +259,7 @@ namespace Win7BookManagement.Forms
             _grid.RowHeight = 46;
             _grid.RowHeightHeader = 46;
             _grid.EnableHeaderResizing = true;
-            _grid.ColumnDragSort = true;
+            _grid.ColumnDragSort = false;
             _grid.ShowTip = true;
             _grid.EmptyText = "没有找到符合条件的图书资料";
             _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
