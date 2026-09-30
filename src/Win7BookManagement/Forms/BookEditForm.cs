@@ -39,9 +39,9 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             Text = book == null ? "新增图书资料" : "编辑图书资料";
             StartPosition = FormStartPosition.CenterParent;
-            Width = 900;
-            Height = 720;
-            MinimumSize = new Size(700, 520);
+            Width = 1040;
+            Height = 760;
+            MinimumSize = new Size(760, 560);
             BackColor = UiTheme.Background;
             ShowInTaskbar = false;
             MinimizeBox = false;
@@ -383,19 +383,30 @@ namespace Win7BookManagement.Forms
             };
             field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var label = new Label
             {
                 Text = labelText,
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Dock = DockStyle.Top,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = UiTheme.Font(8.6F, FontStyle.Bold),
-                ForeColor = UiTheme.TextPrimary
+                ForeColor = UiTheme.TextPrimary,
+                Margin = new Padding(0, 0, 0, 4)
             };
 
-            input.Dock = DockStyle.Fill;
-            input.Margin = new Padding(0, 2, 0, 2);
+            var multiline = input as TextBox;
+            if (multiline != null && multiline.Multiline)
+            {
+                input.Dock = DockStyle.Fill;
+                input.MinimumSize = new Size(0, Math.Max(76, height - 34));
+            }
+            else
+            {
+                input.Dock = DockStyle.Top;
+            }
+            input.Margin = new Padding(0, 0, 0, 2);
 
             field.Controls.Add(label, 0, 0);
             field.Controls.Add(input, 0, 1);
