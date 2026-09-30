@@ -191,9 +191,7 @@ namespace Win7BookManagement.Forms
             _supplier.Dock = DockStyle.Fill;
             _supplier.Margin = new Padding(0, 3, 12, 3);
             _supplier.DropDownArrow = true;
-            _supplier.Radius = 7;
-            _supplier.BorderWidth = 1.2F;
-            _supplier.BorderColor = UiTheme.Border;
+
             supplierRow.Controls.Add(_supplier, 1, 0);
 
             supplierRow.Controls.Add(new Label
@@ -331,13 +329,7 @@ namespace Win7BookManagement.Forms
         private void ConfigureGrid()
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.BackColor = UiTheme.Surface;
-            _grid.ForeColor = UiTheme.TextPrimary;
-            _grid.ColumnBack = UiTheme.NavigationSurface;
-            _grid.ColumnFore = UiTheme.TextSecondary;
-            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            _grid.BorderColor = UiTheme.Border;
-            _grid.Radius = 8;
+
             _grid.RowHeight = 48;
             _grid.RowHeightHeader = 48;
             _grid.EnableHeaderResizing = true;
@@ -345,9 +337,6 @@ namespace Win7BookManagement.Forms
             _grid.EditMode = AntdUI.TEditMode.Click;
             _grid.ShowTip = true;
             _grid.EmptyText = "当前入库单还没有图书";
-            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
-            _grid.RowSelectedBg = UiTheme.AccentSoft;
-            _grid.RowSelectedFore = UiTheme.TextPrimary;
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
