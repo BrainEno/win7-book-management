@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 
@@ -11,20 +10,18 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly Panel _sidebar;
-        private readonly FlowLayoutPanel _navigation;
+        private readonly AntdUI.Menu _navigation;
         private readonly Panel _contentHost;
         private readonly Label _pageTitle;
         private readonly Label _pageSubtitle;
         private readonly Label _status;
-
-        private readonly Dictionary<string, AntdUI.Button> _navButtons = new Dictionary<string, AntdUI.Button>();
-        private readonly Dictionary<string, TableLayoutPanel> _navRows = new Dictionary<string, TableLayoutPanel>();
-        private readonly Dictionary<string, Panel> _navIndicators = new Dictionary<string, Panel>();
-        private readonly List<Label> _navGroupLabels = new List<Label>();
+        private readonly Dictionary<string, AntdUI.MenuItem> _menuItems =
+            new Dictionary<string, AntdUI.MenuItem>();
 
         private string _currentKey;
         private Form _currentPage;
         private bool _guideOpen;
+        private bool _syncingNavigation;
 
         public MainForm(ApplicationServices services)
         {
@@ -42,33 +39,14 @@ namespace Win7BookManagement.Forms
             _sidebar = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 226,
+                Width = 240,
                 BackColor = UiTheme.NavigationSurface,
-                Padding = new Padding(14, 16, 14, 12)
+                Padding = Padding.Empty
             };
 
             var brand = CreateBrand();
             _navigation = CreateNavigation();
-
-            AddNavigationGroup("工作台");
-            AddNavigation("dashboard", "经营概览");
-
-            AddNavigationGroup("核心业务");
-            AddNavigation("sales", "销售开单");
-            AddNavigation("books", "图书资料");
-            AddNavigation("purchase", "采购入库");
-            AddNavigation("inventory", "库存管理");
-            AddNavigation("documents", "单据中心");
-
-            AddNavigationGroup("经营管理");
-            AddNavigation("suppliers", "供应商");
-            AddNavigation("reports", "报表与导出");
-
-            AddNavigationGroup("系统");
-            AddNavigation("backup", "备份与恢复");
-            AddNavigation("help", "使用帮助");
-            AddNavigation("settings", "系统设置");
-
+            BuildNavigation();
             var sidebarFoot = CreateSidebarFooter();
 
             _sidebar.Controls.Add(_navigation);
@@ -192,11 +170,9 @@ namespace Win7BookManagement.Forms
             var brand = new Panel
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, 76),
+                Height = 92,
                 BackColor = UiTheme.NavigationSurface,
-                Padding = new Padding(4, 4, 4, 0)
+                Padding = new Padding(20, 18, 16, 10)
             };
 
             var title = new Label
@@ -215,7 +191,8 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8.6F),
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 5, 0, 0)
             };
 
             brand.Controls.Add(sub);
@@ -223,18 +200,86 @@ namespace Win7BookManagement.Forms
             return brand;
         }
 
-        private FlowLayoutPanel CreateNavigation()
+        private AntdUI.Menu CreateNavigation()
         {
-            return new VerticalNavigationPanel
+            var menu = new AntdUI.Menu
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
+                Mode = AntdUI.TMenuMode.Inline,
+                AutoCollapse = false,
+                Collapsed = false,
+                Unique = false,
                 BackColor = UiTheme.NavigationSurface,
-                Padding = new Padding(0, 2, 0, 2),
-                AutoScroll = true,
-                Margin = Padding.Empty
+                Margin = Padding.Empty,
+                Padding = new Padding(8, 4, 8, 4)
             };
+
+            menu.SelectChanged += HandleNavigationSelection;
+            return menu;
+        }
+
+        private void BuildNavigation()
+        {
+            var workbench = AddGroup("工作台");
+            AddNavigation(workbench, "dashboard", "经营概览");
+
+            var core = AddGroup("核心业务");
+            AddNavigation(core, "sales", "销售开单");
+            AddNavigation(core, "books", "图书资料");
+            AddNavigation(core, "purchase", "采购入库");
+            AddNavigation(core, "inventory", "库存管理");
+            AddNavigation(core, "documents", "单据中心");
+
+            var management = AddGroup("经营管理");
+            AddNavigation(management, "suppliers", "供应商");
+            AddNavigation(management, "reports", "报表与导出");
+
+            var system = AddGroup("系统");
+            AddNavigation(system, "backup", "备份与恢复");
+            AddNavigation(system, "help", "使用帮助");
+            AddNavigation(system, "settings", "系统设置");
+        }
+
+        private AntdUI.MenuItem AddGroup(string text)
+        {
+            var group = new AntdUI.MenuItem(text)
+            {
+                Expand = true
+            };
+            _navigation.Items.Add(group);
+            return group;
+        }
+
+        private void AddNavigation(AntdUI.MenuItem parent, string key, string text)
+        {
+            var item = new AntdUI.MenuItem(text)
+            {
+                ID = key,
+                Name = key,
+                Tag = key
+            };
+            parent.Sub.Add(item);
+            _menuItems[key] = item;
+        }
+
+        private void HandleNavigationSelection(object sender, AntdUI.MenuSelectEventArgs e)
+        {
+            if (_syncingNavigation || e == null || e.Value == null)
+                return;
+
+            var key = Convert.ToString(e.Value.Tag);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                UpdateNavigationState();
+                return;
+            }
+
+            Navigate(key);
+
+            // A page can veto navigation when there is an unfinished sale or
+            // purchase. In that case restore the menu selection immediately.
+            if (!string.Equals(key, _currentKey, StringComparison.OrdinalIgnoreCase))
+                UpdateNavigationState();
         }
 
         private static Panel CreateSidebarFooter()
@@ -242,11 +287,9 @@ namespace Win7BookManagement.Forms
             var footer = new Panel
             {
                 Dock = DockStyle.Bottom,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, 58),
+                Height = 66,
                 BackColor = UiTheme.NavigationSurface,
-                Padding = new Padding(4, 9, 4, 0)
+                Padding = new Padding(20, 10, 12, 8)
             };
 
             var offline = new Label
@@ -263,7 +306,8 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 Dock = DockStyle.Top,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(7.5F)
+                Font = UiTheme.Font(7.5F),
+                Padding = new Padding(0, 4, 0, 0)
             };
 
             footer.Controls.Add(version);
@@ -274,11 +318,17 @@ namespace Win7BookManagement.Forms
         public void Navigate(string key)
         {
             if (string.Equals(key, _currentKey, StringComparison.OrdinalIgnoreCase))
+            {
+                UpdateNavigationState();
                 return;
+            }
 
             var guard = _currentPage as INavigationGuard;
             if (guard != null && !guard.CanNavigateAway(this))
+            {
+                UpdateNavigationState();
                 return;
+            }
 
             Form child;
             string title;
@@ -342,6 +392,7 @@ namespace Win7BookManagement.Forms
                     child = new SettingsForm(_services);
                     break;
                 default:
+                    UpdateNavigationState();
                     return;
             }
 
@@ -384,11 +435,49 @@ namespace Win7BookManagement.Forms
 
         public Rectangle GetNavigationScreenBounds(string key)
         {
-            AntdUI.Button button;
-            if (!_navButtons.TryGetValue(key, out button) || !button.Visible)
+            AntdUI.MenuItem target;
+            if (!_menuItems.TryGetValue(key, out target) ||
+                !_navigation.Visible ||
+                !_navigation.IsHandleCreated ||
+                _navigation.ClientSize.Width <= 0 ||
+                _navigation.ClientSize.Height <= 0)
+            {
+                return Rectangle.Empty;
+            }
+
+            // AntdUI.Menu intentionally owns item layout. HitTest lets the
+            // onboarding overlay discover the real rendered item rectangle
+            // without duplicating Menu's sizing rules.
+            var minX = int.MaxValue;
+            var minY = int.MaxValue;
+            var maxX = -1;
+            var maxY = -1;
+
+            for (var y = 0; y < _navigation.ClientSize.Height; y += 2)
+            {
+                for (var x = 4; x < _navigation.ClientSize.Width; x += 8)
+                {
+                    var hit = _navigation.HitTest(x, y);
+                    if (!ReferenceEquals(hit, target))
+                        continue;
+
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                }
+            }
+
+            if (maxX < minX || maxY < minY)
                 return Rectangle.Empty;
 
-            return button.RectangleToScreen(button.ClientRectangle);
+            var local = Rectangle.FromLTRB(
+                Math.Max(0, minX - 4),
+                Math.Max(0, minY - 2),
+                Math.Min(_navigation.ClientSize.Width, maxX + 12),
+                Math.Min(_navigation.ClientSize.Height, maxY + 4));
+
+            return _navigation.RectangleToScreen(local);
         }
 
         private void HandleFormClosing(object sender, FormClosingEventArgs e)
@@ -398,157 +487,37 @@ namespace Win7BookManagement.Forms
                 e.Cancel = true;
         }
 
-        private void AddNavigationGroup(string text)
-        {
-            var label = new Label
-            {
-                Text = text,
-                AutoSize = true,
-                Width = 180,
-                MinimumSize = new Size(0, 32),
-                Margin = new Padding(0, 8, 0, 0),
-                Padding = new Padding(0, 7, 0, 0),
-                ForeColor = UiTheme.TextSecondary,
-                BackColor = UiTheme.NavigationSurface,
-                Font = UiTheme.Font(8F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-
-            _navGroupLabels.Add(label);
-            _navigation.Controls.Add(label);
-        }
-
-        private void AddNavigation(string key, string text)
-        {
-            var row = new TableLayoutPanel
-            {
-                Name = "navrow_" + key,
-                Width = 180,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(180, 48),
-                ColumnCount = 2,
-                RowCount = 1,
-                Margin = new Padding(0, 1, 0, 1),
-                Padding = Padding.Empty,
-                BackColor = UiTheme.NavigationSurface
-            };
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 4));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            row.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-            var indicator = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = UiTheme.NavigationSurface,
-                Margin = Padding.Empty
-            };
-
-            var button = UiTheme.CreateAntdButton(text, false);
-            button.Name = "nav_" + key;
-            button.Tag = "nav";
-            button.Dock = DockStyle.Fill;
-            button.Margin = Padding.Empty;
-            button.Padding = new Padding(14, 0, 10, 0);
-            button.TextAlign = ContentAlignment.MiddleLeft;
-            button.BackColor = UiTheme.NavigationSurface;
-            button.ForeColor = UiTheme.NavigationText;
-            button.Font = UiTheme.Font(9.6F, FontStyle.Regular);
-            button.BorderWidth = 0F;
-            button.Radius = 6;
-            button.Click += delegate { Navigate(key); };
-
-            row.Controls.Add(indicator, 0, 0);
-            row.Controls.Add(button, 1, 0);
-
-            _navButtons[key] = button;
-            _navRows[key] = row;
-            _navIndicators[key] = indicator;
-            _navigation.Controls.Add(row);
-        }
-
         private void UpdateNavigationState()
         {
-            foreach (var pair in _navButtons)
+            if (string.IsNullOrWhiteSpace(_currentKey))
             {
-                var active = string.Equals(pair.Key, _currentKey, StringComparison.OrdinalIgnoreCase);
+                _navigation.USelect();
+                return;
+            }
 
-                pair.Value.BackColor = active ? UiTheme.NavigationSelected : UiTheme.NavigationSurface;
-                pair.Value.ForeColor = active ? UiTheme.Accent : UiTheme.NavigationText;
-                pair.Value.Font = UiTheme.Font(9.6F, active ? FontStyle.Bold : FontStyle.Regular);
-                pair.Value.Type = active ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default;
-                pair.Value.BorderWidth = 0F;
+            AntdUI.MenuItem item;
+            if (!_menuItems.TryGetValue(_currentKey, out item))
+                return;
 
-                Panel indicator;
-                if (_navIndicators.TryGetValue(pair.Key, out indicator))
-                    indicator.BackColor = active ? UiTheme.Accent : UiTheme.NavigationSurface;
-
-                TableLayoutPanel row;
-                if (_navRows.TryGetValue(pair.Key, out row))
-                    row.BackColor = active ? UiTheme.NavigationSelected : UiTheme.NavigationSurface;
+            try
+            {
+                _syncingNavigation = true;
+                _navigation.Select(item, false);
+            }
+            finally
+            {
+                _syncingNavigation = false;
             }
         }
 
         private void ApplyResponsiveLayout()
         {
             var compact = ClientSize.Width < UiTheme.WideBreakpoint;
-            _sidebar.Width = compact ? 202 : 228;
-            _sidebar.Padding = compact
-                ? new Padding(10, 14, 10, 10)
-                : new Padding(14, 16, 14, 12);
+            _sidebar.Width = compact ? 214 : 240;
 
             _contentHost.Padding = compact
                 ? new Padding(10, 10, 10, 10)
                 : new Padding(20, 16, 20, 16);
-
-            var rowWidth = Math.Max(
-                128,
-                _sidebar.Width -
-                _sidebar.Padding.Horizontal -
-                SystemInformation.VerticalScrollBarWidth -
-                6);
-
-            foreach (var pair in _navRows)
-                pair.Value.Width = rowWidth;
-
-            foreach (var label in _navGroupLabels)
-                label.Width = rowWidth;
-
-            _navigation.AutoScrollMinSize = new Size(0, 0);
-            _navigation.HorizontalScroll.Enabled = false;
-            _navigation.HorizontalScroll.Visible = false;
         }
-        private sealed class VerticalNavigationPanel : FlowLayoutPanel
-        {
-            private const int SbHorz = 0;
-
-            [DllImport("user32.dll")]
-            private static extern bool ShowScrollBar(IntPtr hWnd, int wBar, bool bShow);
-
-            protected override void OnHandleCreated(EventArgs e)
-            {
-                base.OnHandleCreated(e);
-                HideHorizontalScrollBar();
-            }
-
-            protected override void OnLayout(LayoutEventArgs levent)
-            {
-                base.OnLayout(levent);
-                HideHorizontalScrollBar();
-            }
-
-            protected override void OnSizeChanged(EventArgs e)
-            {
-                base.OnSizeChanged(e);
-                HideHorizontalScrollBar();
-            }
-
-            private void HideHorizontalScrollBar()
-            {
-                if (IsHandleCreated)
-                    ShowScrollBar(Handle, SbHorz, false);
-            }
-        }
-
     }
 }
