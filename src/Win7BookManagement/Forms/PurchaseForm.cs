@@ -262,11 +262,10 @@ namespace Win7BookManagement.Forms
             _supplier.Font = UiTheme.Font(9.3F);
             _supplier.Margin = Padding.Empty;
 
-            var supplierInput = UiTheme.CreateInputFrame(_supplier);
-            supplierInput.Dock = DockStyle.None;
-            supplierInput.Width = 320;
-            supplierInput.Margin = new Padding(0, 2, 12, 4);
-            supplierRow.Controls.Add(supplierInput);
+            _supplier.Width = 320;
+            _supplier.MinimumSize = new Size(320, 38);
+            _supplier.Margin = new Padding(0, 2, 12, 4);
+            supplierRow.Controls.Add(_supplier);
 
             supplierRow.Controls.Add(new Label
             {
@@ -315,9 +314,10 @@ namespace Win7BookManagement.Forms
                 }
             };
 
-            var isbnInput = UiTheme.CreateInputFrame(_isbn);
-            isbnInput.Margin = new Padding(0, 2, 10, 2);
-            scanRow.Controls.Add(isbnInput, 1, 0);
+            _isbn.Dock = DockStyle.Fill;
+            _isbn.MinimumSize = new Size(0, 38);
+            _isbn.Margin = new Padding(0, 2, 10, 2);
+            scanRow.Controls.Add(_isbn, 1, 0);
 
             var add = new Button
             {
@@ -480,11 +480,11 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 9, 14, 0)
             }, 0, 0);
 
-            _note.Margin = Padding.Empty;
+            _note.Dock = DockStyle.Fill;
+            _note.MinimumSize = new Size(0, 38);
+            _note.Margin = new Padding(0, 1, 0, 1);
             _note.Font = UiTheme.Font(9F);
-            var noteInput = UiTheme.CreateInputFrame(_note);
-            noteInput.Margin = new Padding(0, 1, 0, 1);
-            section.Controls.Add(noteInput, 1, 0);
+            section.Controls.Add(_note, 1, 0);
 
             return section;
         }
