@@ -121,10 +121,14 @@ namespace Win7BookManagement.Forms
             toolbar.BackColor = UiTheme.Surface;
             toolbar.BorderStyle = BorderStyle.None;
 
-            var newOrder = new Button { Text = "＋ 新单", Width = 88, Height = UiTheme.ButtonHeight };
-            var pick = new Button { Text = "选择图书", Width = 100, Height = UiTheme.ButtonHeight };
-            var remove = new Button { Text = "移除选中", Width = 100, Height = UiTheme.ButtonHeight };
-            var clear = new Button { Text = "清空当前单", Width = 108, Height = UiTheme.ButtonHeight };
+            var newOrder = UiTheme.CreateKryptonButton("＋ 新单", false);
+            newOrder.Width = 94;
+            var pick = UiTheme.CreateKryptonButton("选择图书", false);
+            pick.Width = 104;
+            var remove = UiTheme.CreateKryptonButton("移除选中", false);
+            remove.Width = 104;
+            var clear = UiTheme.CreateKryptonButton("清空当前单", false);
+            clear.Width = 114;
 
             newOrder.Click += delegate { StartNewOrder(); };
             pick.Click += delegate { PickBook(); };
@@ -205,22 +209,15 @@ namespace Win7BookManagement.Forms
             };
             section.Controls.Add(_isbn, 1, 1);
 
-            var add = new Button
-            {
-                Text = "搜索加入",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 8, 3),
-                Tag = "primary"
-            };
+            var add = UiTheme.CreateKryptonButton("搜索加入", true);
+            add.Dock = DockStyle.Fill;
+            add.Margin = new Padding(0, 3, 8, 3);
             add.Click += delegate { AddByIsbn(); };
             section.Controls.Add(add, 2, 1);
 
-            var pick = new Button
-            {
-                Text = "选择图书",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3)
-            };
+            var pick = UiTheme.CreateKryptonButton("选择图书", false);
+            pick.Dock = DockStyle.Fill;
+            pick.Margin = new Padding(0, 3, 0, 3);
             pick.Click += delegate { PickBook(); };
             section.Controls.Add(pick, 3, 1);
 
@@ -360,13 +357,9 @@ namespace Win7BookManagement.Forms
             _note.Margin = new Padding(0, 3, 12, 3);
             section.Controls.Add(_note, 1, 1);
 
-            var remove = new Button
-            {
-                Text = "移除选中",
-                AutoSize = true,
-                MinimumSize = new Size(104, UiTheme.ButtonHeight),
-                Margin = new Padding(0, 0, 0, 0)
-            };
+            var remove = UiTheme.CreateKryptonButton("移除选中", false);
+            remove.Width = 108;
+            remove.Margin = Padding.Empty;
             remove.Click += delegate { RemoveSelected(); };
             section.Controls.Add(remove, 2, 1);
 
@@ -411,14 +404,9 @@ namespace Win7BookManagement.Forms
             metrics.Controls.Add(_quantityTotal);
             metrics.Controls.Add(_total);
 
-            var submit = new Button
-            {
-                Text = "确认结账",
-                AutoSize = true,
-                MinimumSize = new Size(124, UiTheme.ButtonHeight),
-                Margin = new Padding(14, 0, 0, 0),
-                Tag = "primary"
-            };
+            var submit = UiTheme.CreateKryptonButton("确认结账", true);
+            submit.Width = 128;
+            submit.Margin = new Padding(14, 0, 0, 0);
             submit.Click += delegate { Submit(); };
 
             section.Controls.Add(metrics, 0, 0);

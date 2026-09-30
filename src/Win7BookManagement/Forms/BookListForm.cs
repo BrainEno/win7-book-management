@@ -123,8 +123,10 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
-            var addButton = new Button { Text = "＋ 新增图书", Width = 108, Height = UiTheme.ButtonHeight, Tag = "primary" };
-            var editButton = new Button { Text = "编辑资料", Width = 94, Height = UiTheme.ButtonHeight };
+            var addButton = UiTheme.CreateKryptonButton("＋ 新增图书", true);
+            addButton.Width = 118;
+            var editButton = UiTheme.CreateKryptonButton("编辑资料", false);
+            editButton.Width = 100;
             addButton.Click += delegate { EditBook(null); };
             editButton.Click += delegate { EditSelected(); };
 
@@ -176,15 +178,10 @@ namespace Win7BookManagement.Forms
             };
             searchRow.Controls.Add(_search, 1, 0);
 
-            var searchButton = new Button
-            {
-                Text = "查询",
-                AutoSize = true,
-                MinimumSize = new Size(92, UiTheme.ButtonHeight),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Margin = new Padding(0, 4, 0, 4),
-                Tag = "primary"
-            };
+            var searchButton = UiTheme.CreateKryptonButton("查询", true);
+            searchButton.Width = 96;
+            searchButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            searchButton.Margin = new Padding(0, 4, 0, 4);
             searchButton.Click += delegate { Reload(); };
             searchRow.Controls.Add(searchButton, 2, 0);
 
@@ -305,12 +302,9 @@ namespace Win7BookManagement.Forms
                 Font = UiTheme.Font(11F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary
             };
-            var edit = new Button
-            {
-                Text = "编辑资料",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3)
-            };
+            var edit = UiTheme.CreateKryptonButton("编辑资料", false);
+            edit.Dock = DockStyle.Fill;
+            edit.Margin = new Padding(0, 3, 0, 3);
             edit.Click += delegate { EditSelected(); };
             header.Controls.Add(title, 0, 0);
             header.Controls.Add(edit, 1, 0);

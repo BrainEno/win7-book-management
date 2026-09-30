@@ -37,8 +37,8 @@ namespace Win7BookManagement.Infrastructure
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
-        public const int InputHeight = 32;
-        public const int ButtonHeight = 38;
+        public const int InputHeight = 42;
+        public const int ButtonHeight = 42;
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
@@ -332,6 +332,49 @@ namespace Win7BookManagement.Infrastructure
                 if (!row.IsNewRow)
                     row.Height = bodyHeight;
             }
+        }
+
+        public static KryptonButton CreateKryptonButton(string text, bool primary)
+        {
+            var button = new KryptonButton
+            {
+                Text = text ?? "",
+                AutoSize = false,
+                Height = ButtonHeight,
+                MinimumSize = new Size(92, ButtonHeight),
+                Cursor = Cursors.Hand
+            };
+
+            button.StateCommon.Border.Rounding = 4F;
+            button.StateCommon.Border.Width = 1;
+            button.StateCommon.Content.ShortText.Font = Font(9F, primary ? FontStyle.Bold : FontStyle.Regular);
+
+            if (primary)
+            {
+                button.StateCommon.Back.Color1 = Accent;
+                button.StateCommon.Back.Color2 = Accent;
+                button.StateCommon.Border.Color1 = Accent;
+                button.StateCommon.Border.Color2 = Accent;
+                button.StateCommon.Content.ShortText.Color1 = Color.White;
+                button.StateCommon.Content.ShortText.Color2 = Color.White;
+                button.StateTracking.Back.Color1 = AccentHover;
+                button.StateTracking.Back.Color2 = AccentHover;
+                button.StatePressed.Back.Color1 = AccentHover;
+                button.StatePressed.Back.Color2 = AccentHover;
+            }
+            else
+            {
+                button.StateCommon.Back.Color1 = Surface;
+                button.StateCommon.Back.Color2 = Surface;
+                button.StateCommon.Border.Color1 = Border;
+                button.StateCommon.Border.Color2 = Border;
+                button.StateCommon.Content.ShortText.Color1 = TextPrimary;
+                button.StateCommon.Content.ShortText.Color2 = TextPrimary;
+                button.StateTracking.Back.Color1 = SurfaceMuted;
+                button.StateTracking.Back.Color2 = SurfaceMuted;
+            }
+
+            return button;
         }
 
         public static void StyleButton(Button button, bool primary)
