@@ -230,15 +230,28 @@ namespace Win7BookManagement.Infrastructure
                 new HelpForm(services, delegate { }, delegate(string key) { })
             };
 
+            var viewports = new[]
+            {
+                new Size(1024, 768),
+                new Size(1366, 768),
+                new Size(1920, 1080)
+            };
+
             try
             {
                 foreach (var form in forms)
                 {
-                    form.Size = new Size(1024, 768);
                     form.CreateControl();
-                    UiTheme.Apply(form);
-                    form.PerformLayout();
-                    VerifyControlTree(form, form.GetType().Name);
+
+                    foreach (var viewport in viewports)
+                    {
+                        form.Size = viewport;
+                        UiTheme.Apply(form);
+                        form.PerformLayout();
+                        VerifyControlTree(
+                            form,
+                            form.GetType().Name + "@" + viewport.Width + "x" + viewport.Height);
+                    }
                 }
             }
             finally
@@ -304,6 +317,39 @@ namespace Win7BookManagement.Infrastructure
                     {
                         throw new InvalidOperationException(
                             formName + " 仍存在小于 80px 的固定 TableLayout 行。");
+                    }
+                }
+
+                for (var column = 0; column < table.ColumnStyles.Count; column++)
+                {
+                    var style = table.ColumnStyles[column];
+                    if (style.SizeType != SizeType.Absolute || style.Width <= 0)
+                        continue;
+
+                    foreach (Control child in table.Controls)
+                    {
+                        if (!child.Visible ||
+                            table.GetColumn(child) != column ||
+                            table.GetColumnSpan(child) != 1)
+                        {
+                            continue;
+                        }
+
+                        if (!(child is Label) &&
+                            !(child is Button) &&
+                            !(child is CheckBox) &&
+                            !(child is ComboBox))
+                        {
+                            continue;
+                        }
+
+                        var preferred = child.GetPreferredSize(Size.Empty).Width + child.Margin.Horizontal;
+                        if (preferred > 0 && style.Width + 4 < preferred)
+                        {
+                            throw new InvalidOperationException(
+                                formName + " 存在可能横向裁字的固定 TableLayout 列：" +
+                                style.Width + "px < " + preferred + "px，控件：" + child.Text);
+                        }
                     }
                 }
             }
