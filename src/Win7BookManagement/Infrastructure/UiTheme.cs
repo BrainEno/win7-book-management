@@ -34,8 +34,8 @@ namespace Win7BookManagement.Infrastructure
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
-        public const int InputHeight = 46;
-        public const int ButtonHeight = 44;
+        public const int InputHeight = 40;
+        public const int ButtonHeight = 38;
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
@@ -98,11 +98,11 @@ namespace Win7BookManagement.Infrastructure
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, 54),
+                MinimumSize = new Size(0, 46),
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 BackColor = Surface,
-                Padding = new Padding(12, 8, 12, 8),
+                Padding = new Padding(10, 4, 10, 4),
                 Margin = Padding.Empty
             };
         }
