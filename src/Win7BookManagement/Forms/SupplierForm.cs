@@ -12,7 +12,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("按供应商、联系人、电话或备注搜索");
-        private readonly CheckBox _includeInactive = new CheckBox();
+        private readonly AntdUI.Checkbox _includeInactive = new AntdUI.Checkbox();
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _resultChip = new Label();
         private readonly Label _activeChip = new Label();
@@ -164,7 +164,7 @@ namespace Win7BookManagement.Forms
             _includeInactive.AutoSize = true;
             _includeInactive.Anchor = AnchorStyles.Left;
             _includeInactive.Margin = new Padding(8, 11, 0, 0);
-            _includeInactive.CheckedChanged += delegate { Reload(); };
+            _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
             searchRow.Controls.Add(_includeInactive, 3, 0);
 
             section.Controls.Add(searchRow, 0, 1);
@@ -226,22 +226,14 @@ namespace Win7BookManagement.Forms
         private void ConfigureGrid()
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.BackColor = UiTheme.Surface;
-            _grid.ForeColor = UiTheme.TextPrimary;
-            _grid.ColumnBack = UiTheme.NavigationSurface;
-            _grid.ColumnFore = UiTheme.TextSecondary;
-            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            _grid.BorderColor = UiTheme.Border;
-            _grid.Radius = 8;
+
             _grid.RowHeight = 46;
             _grid.RowHeightHeader = 46;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = true;
             _grid.ShowTip = true;
             _grid.EmptyText = "没有符合条件的供应商";
-            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
-            _grid.RowSelectedBg = UiTheme.AccentSoft;
-            _grid.RowSelectedFore = UiTheme.TextPrimary;
+
             _grid.Columns = new AntdUI.ColumnCollection
             {
                 new AntdUI.Column("Name", "供应商") { Width = "auto", MinWidth = "210", Ellipsis = true },
@@ -454,7 +446,7 @@ namespace Win7BookManagement.Forms
             private readonly AntdUI.Input _contact = UiTheme.CreateAntdInput("联系人（可选）");
             private readonly AntdUI.Input _phone = UiTheme.CreateAntdInput("电话（可选）");
             private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("备注（可选）");
-            private readonly CheckBox _active = new CheckBox();
+            private readonly AntdUI.Checkbox _active = new AntdUI.Checkbox();
             private readonly ErrorProvider _errors = new ErrorProvider();
 
             public SupplierEditDialog(ApplicationServices services, Supplier supplier)
