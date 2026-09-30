@@ -712,7 +712,8 @@ namespace Win7BookManagement.Forms
                 var field = new TableLayoutPanel
                 {
                     Dock = DockStyle.Fill,
-                    Height = height,
+                    AutoSize = true,
+                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
                     MinimumSize = new Size(0, height),
                     ColumnCount = 1,
                     RowCount = 2,
@@ -722,7 +723,7 @@ namespace Win7BookManagement.Forms
                 };
                 field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
                 field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
                 field.Controls.Add(new Label
                 {
