@@ -77,6 +77,22 @@ namespace Win7BookManagement.Infrastructure
 
             if (form.BackColor == SystemColors.Control)
                 form.BackColor = Background;
+
+            // The final WinForms autoscale pass happens when the handle is shown.
+            // Re-normalize text metrics afterwards so CJK fonts cannot be clipped
+            // by a row height that looked sufficient before DPI autoscaling.
+            form.Shown -= NormalizeShownForm;
+            form.Shown += NormalizeShownForm;
+        }
+
+        private static void NormalizeShownForm(object sender, EventArgs e)
+        {
+            var form = sender as Form;
+            if (form == null)
+                return;
+
+            NormalizeLayout(form);
+            form.PerformLayout();
         }
 
         public static FlowLayoutPanel CreateResponsiveToolbar()
@@ -346,6 +362,17 @@ namespace Win7BookManagement.Infrastructure
 
         private static void NormalizeControl(Control control)
         {
+            var table = control as TableLayoutPanel;
+            if (table != null &&
+                !table.AutoSize &&
+                table.Dock == DockStyle.Top)
+            {
+                var preferred = table.GetPreferredSize(
+                    new Size(Math.Max(1, table.Width), 0));
+                if (preferred.Height > table.Height)
+                    table.Height = preferred.Height;
+            }
+
             var label = control as Label;
             if (label != null && !label.AutoSize)
             {
