@@ -343,9 +343,8 @@ namespace Win7BookManagement.Forms
             AddDetailRow(details, "版次", "edition");
             AddDetailRow(details, "装帧", "binding");
             AddDetailRow(details, "货架位", "shelf");
-            AddDetailRow(details, "定价", "listPrice");
+            AddDetailRow(details, "零售价格", "salePrice");
             AddDetailRow(details, "默认进价", "purchasePrice");
-            AddDetailRow(details, "零售价", "salePrice");
             AddDetailRow(details, "库存", "stock");
             AddDetailRow(details, "状态", "status");
             AddDetailRow(details, "备注", "note", 62);
@@ -421,7 +420,7 @@ namespace Win7BookManagement.Forms
             };
             var priceColumn = new DataGridViewTextBoxColumn
             {
-                HeaderText = "售价",
+                HeaderText = "零售价格",
                 DataPropertyName = "SalePriceYuan",
                 Width = 82,
                 DefaultCellStyle = new DataGridViewCellStyle
@@ -453,6 +452,19 @@ namespace Win7BookManagement.Forms
             _grid.Columns.Add(priceColumn);
             _grid.Columns.Add(stockColumn);
             _grid.Columns.Add(_activeColumn);
+
+            ModernUi.PolishBusinessGrid(_grid, false);
+            ModernUi.PreferTitleFill(titleColumn, 220);
+            ModernUi.MakeColumnResizable(_selfCodeColumn, 90);
+            ModernUi.MakeColumnResizable(_isbnColumn, 118);
+            ModernUi.MakeColumnResizable(_authorColumn, 96);
+            ModernUi.MakeColumnResizable(_publisherColumn, 100);
+            ModernUi.MakeColumnResizable(_categoryColumn, 82);
+            ModernUi.MakeColumnResizable(_publicationColumn, 76);
+            ModernUi.MakeColumnResizable(_bindingColumn, 68);
+            ModernUi.MakeColumnResizable(_shelfColumn, 76);
+            ModernUi.MakeColumnResizable(priceColumn, 92);
+            ModernUi.MakeColumnResizable(stockColumn, 64);
 
             _grid.CellDoubleClick += delegate { EditSelected(); };
             _grid.CellFormatting += HighlightLowStock;
@@ -542,9 +554,8 @@ namespace Win7BookManagement.Forms
             _detailValues["edition"].Text = EmptyAsDash(book.Edition);
             _detailValues["binding"].Text = EmptyAsDash(book.Binding);
             _detailValues["shelf"].Text = EmptyAsDash(book.ShelfCode);
-            _detailValues["listPrice"].Text = "¥" + book.ListPriceYuan.ToString("0.00");
-            _detailValues["purchasePrice"].Text = "¥" + book.DefaultPurchasePriceYuan.ToString("0.00");
             _detailValues["salePrice"].Text = "¥" + book.SalePriceYuan.ToString("0.00");
+            _detailValues["purchasePrice"].Text = "¥" + book.DefaultPurchasePriceYuan.ToString("0.00");
             _detailValues["stock"].Text = book.StockQuantity + " 册";
             _detailValues["status"].Text = book.IsActive ? "启用" : "停用";
             _detailValues["note"].Text = EmptyAsDash(book.Note);
