@@ -36,8 +36,8 @@ namespace Win7BookManagement.Infrastructure
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
-        public const int InputHeight = 42;
-        public const int ButtonHeight = 42;
+        public const int InputHeight = 46;
+        public const int ButtonHeight = 44;
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
@@ -336,12 +336,17 @@ namespace Win7BookManagement.Infrastructure
                 PlaceholderText = placeholder ?? "",
                 Height = InputHeight,
                 MinimumSize = new Size(0, InputHeight),
-                Radius = 7,
-                BorderWidth = 1.2F,
-                BorderColor = Border,
+                Radius = 8,
+                BorderWidth = 1.35F,
+                BorderColor = Color.FromArgb(198, 194, 184),
+                BorderHover = AccentHover,
+                BorderActive = Accent,
+                Variant = AntdUI.TVariant.Outlined,
+                PaddGap = 0.55F,
                 Font = Font(9.5F),
-                BackColor = Surface,
+                BackColor = Color.White,
                 ForeColor = TextPrimary,
+                PlaceholderColor = TextSecondary,
                 Margin = Padding.Empty
             };
         }
@@ -465,12 +470,18 @@ namespace Win7BookManagement.Infrastructure
             var input = control as AntdUI.Input;
             if (input != null)
             {
-                input.BorderColor = Border;
-                input.BorderWidth = 1.2F;
-                input.Radius = 7;
-                input.BackColor = Surface;
+                input.BorderColor = Color.FromArgb(198, 194, 184);
+                input.BorderHover = AccentHover;
+                input.BorderActive = Accent;
+                input.BorderWidth = 1.35F;
+                input.Radius = 8;
+                input.Variant = AntdUI.TVariant.Outlined;
+                input.PaddGap = 0.55F;
+                input.BackColor = Color.White;
                 input.ForeColor = TextPrimary;
+                input.PlaceholderColor = TextSecondary;
                 input.Font = Font(9.5F);
+                input.Height = Math.Max(input.Height, InputHeight);
                 input.MinimumSize = new Size(input.MinimumSize.Width, InputHeight);
                 return;
             }
@@ -478,9 +489,11 @@ namespace Win7BookManagement.Infrastructure
             var button = control as AntdUI.Button;
             if (button != null)
             {
-                button.Radius = 7;
+                button.Radius = 8;
                 button.BorderWidth = 1F;
                 button.MinimumSize = new Size(button.MinimumSize.Width, ButtonHeight);
+                if (button.Dock != DockStyle.Fill && button.Height < ButtonHeight)
+                    button.Height = ButtonHeight;
             }
         }
 
