@@ -733,19 +733,30 @@ namespace Win7BookManagement.Forms
                 };
                 field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
                 field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
                 field.Controls.Add(new Label
                 {
                     Text = labelText,
-                    Dock = DockStyle.Fill,
+                    AutoSize = true,
+                    Dock = DockStyle.Top,
                     TextAlign = ContentAlignment.MiddleLeft,
                     ForeColor = UiTheme.TextPrimary,
-                    Font = UiTheme.Font(8.6F, FontStyle.Bold)
+                    Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                    Margin = new Padding(0, 0, 0, 4)
                 }, 0, 0);
 
-                input.Dock = DockStyle.Fill;
-                input.Margin = new Padding(0, 2, 0, 2);
+                var multiline = input as TextBox;
+                if (multiline != null && multiline.Multiline)
+                {
+                    input.Dock = DockStyle.Fill;
+                    input.MinimumSize = new Size(0, Math.Max(76, height - 34));
+                }
+                else
+                {
+                    input.Dock = DockStyle.Top;
+                }
+                input.Margin = new Padding(0, 0, 0, 2);
                 field.Controls.Add(input, 0, 1);
                 return field;
             }
