@@ -161,9 +161,9 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 10, 0, 10),
                 BorderStyle = BorderStyle.None
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 88));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 94));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
             {
