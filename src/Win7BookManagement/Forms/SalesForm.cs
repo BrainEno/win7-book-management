@@ -301,7 +301,7 @@ namespace Win7BookManagement.Forms
             _grid.RowHeight = 48;
             _grid.RowHeightHeader = 48;
             _grid.EnableHeaderResizing = true;
-            _grid.ColumnDragSort = true;
+            _grid.ColumnDragSort = false;
             _grid.EditMode = AntdUI.TEditMode.Click;
             _grid.ShowTip = true;
             _grid.EmptyText = "当前销售单还没有商品";
