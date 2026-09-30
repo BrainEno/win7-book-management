@@ -486,7 +486,8 @@ namespace Win7BookManagement.Forms
                 Width = 88,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
-                    Alignment = DataGridViewContentAlignment.MiddleRight
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    BackColor = UiTheme.AccentSoft
                 }
             });
             _grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -497,7 +498,8 @@ namespace Win7BookManagement.Forms
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
                     Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    BackColor = UiTheme.AccentSoft
                 }
             });
             _grid.Columns.Add(new DataGridViewTextBoxColumn
