@@ -338,7 +338,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Margin = Padding.Empty
             };
-            details.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78));
+            details.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             details.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             AddDetailRow(details, "名称", "name");
@@ -375,10 +375,11 @@ namespace Win7BookManagement.Forms
             table.Controls.Add(new Label
             {
                 Text = labelText,
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 MinimumSize = new Size(0, height),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(0, 0, 8, 0),
+                Padding = new Padding(0, 0, 12, 0),
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F, FontStyle.Bold)
             }, 0, row);
