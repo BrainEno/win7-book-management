@@ -9,7 +9,7 @@ namespace Win7BookManagement.Forms
     public sealed class SettingsForm : Form
     {
         private readonly ApplicationServices _services;
-        private readonly NumericUpDown _lowStock = new NumericUpDown();
+        private readonly AntdUI.InputNumber _lowStock = new AntdUI.InputNumber();
         private readonly Label _dataPath = new Label();
 
         public SettingsForm(ApplicationServices services)
@@ -106,6 +106,10 @@ namespace Win7BookManagement.Forms
             _lowStock.Minimum = 0;
             _lowStock.Maximum = 9999;
             _lowStock.Width = 120;
+            _lowStock.Height = UiTheme.InputHeight;
+            _lowStock.Radius = 7;
+            _lowStock.BorderWidth = 1.2F;
+            _lowStock.BorderColor = UiTheme.Border;
             _lowStock.Margin = new Padding(0, 3, 6, 3);
             row.Controls.Add(_lowStock);
 
@@ -117,14 +121,9 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 10, 16, 0)
             });
 
-            var save = new Button
-            {
-                Text = "保存设置",
-                AutoSize = true,
-                MinimumSize = new Size(96, UiTheme.ButtonHeight),
-                Margin = Padding.Empty,
-                Tag = "primary"
-            };
+            var save = UiTheme.CreateAntdButton("保存设置", true);
+            save.Width = 104;
+            save.Margin = Padding.Empty;
             save.Click += delegate { Save(); };
             row.Controls.Add(save);
 
@@ -158,13 +157,9 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 0, 0, 6)
             }, 0, 0);
 
-            var openFolder = new Button
-            {
-                Text = "打开数据目录",
-                Width = 118,
-                Height = UiTheme.ButtonHeight,
-                Margin = Padding.Empty
-            };
+            var openFolder = UiTheme.CreateAntdButton("打开数据目录", false);
+            openFolder.Width = 124;
+            openFolder.Margin = Padding.Empty;
             openFolder.Click += delegate { OpenDataFolder(); };
             section.Controls.Add(openFolder, 1, 0);
 

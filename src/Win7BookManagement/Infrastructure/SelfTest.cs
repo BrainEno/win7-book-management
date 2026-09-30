@@ -337,6 +337,24 @@ namespace Win7BookManagement.Infrastructure
                     formName + " 存在强制固定高度的单行 TextBox。");
             }
 
+            var antdInput = control as AntdUI.Input;
+            if (antdInput != null && antdInput.Visible &&
+                antdInput.Height > 0 && antdInput.Height < UiTheme.InputHeight)
+            {
+                throw new InvalidOperationException(
+                    formName + " 存在高度不足的 AntdUI 输入框：" +
+                    antdInput.Height + "px < " + UiTheme.InputHeight + "px。");
+            }
+
+            var antdButton = control as AntdUI.Button;
+            if (antdButton != null && antdButton.Visible &&
+                antdButton.Height > 0 && antdButton.Height < UiTheme.ButtonHeight)
+            {
+                throw new InvalidOperationException(
+                    formName + " 存在高度不足的 AntdUI 按钮：" +
+                    antdButton.Text + "。");
+            }
+
             if (string.Equals(Convert.ToString(control.Tag), "ui-input-frame", StringComparison.Ordinal) &&
                 control.Visible &&
                 control.Height > 52)

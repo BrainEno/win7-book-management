@@ -17,7 +17,7 @@ namespace Win7BookManagement.Forms
         private readonly Label _pageSubtitle;
         private readonly Label _status;
 
-        private readonly Dictionary<string, Button> _navButtons = new Dictionary<string, Button>();
+        private readonly Dictionary<string, AntdUI.Button> _navButtons = new Dictionary<string, AntdUI.Button>();
         private readonly Dictionary<string, TableLayoutPanel> _navRows = new Dictionary<string, TableLayoutPanel>();
         private readonly Dictionary<string, Panel> _navIndicators = new Dictionary<string, Panel>();
         private readonly List<Label> _navGroupLabels = new List<Label>();
@@ -384,7 +384,7 @@ namespace Win7BookManagement.Forms
 
         public Rectangle GetNavigationScreenBounds(string key)
         {
-            Button button;
+            AntdUI.Button button;
             if (!_navButtons.TryGetValue(key, out button) || !button.Visible)
                 return Rectangle.Empty;
 
@@ -444,24 +444,18 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
 
-            var button = new Button
-            {
-                Text = text,
-                Name = "nav_" + key,
-                Tag = "nav",
-                Dock = DockStyle.Fill,
-                Margin = Padding.Empty,
-                Padding = new Padding(14, 0, 10, 0),
-                FlatStyle = FlatStyle.Flat,
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = UiTheme.NavigationSurface,
-                ForeColor = UiTheme.NavigationText,
-                Font = UiTheme.Font(9.6F, FontStyle.Regular),
-                Cursor = Cursors.Hand
-            };
-            button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = UiTheme.NavigationHover;
-            button.FlatAppearance.MouseDownBackColor = UiTheme.NavigationSelected;
+            var button = UiTheme.CreateAntdButton(text, false);
+            button.Name = "nav_" + key;
+            button.Tag = "nav";
+            button.Dock = DockStyle.Fill;
+            button.Margin = Padding.Empty;
+            button.Padding = new Padding(14, 0, 10, 0);
+            button.TextAlign = ContentAlignment.MiddleLeft;
+            button.BackColor = UiTheme.NavigationSurface;
+            button.ForeColor = UiTheme.NavigationText;
+            button.Font = UiTheme.Font(9.6F, FontStyle.Regular);
+            button.BorderWidth = 0F;
+            button.Radius = 6;
             button.Click += delegate { Navigate(key); };
 
             row.Controls.Add(indicator, 0, 0);
@@ -482,6 +476,8 @@ namespace Win7BookManagement.Forms
                 pair.Value.BackColor = active ? UiTheme.NavigationSelected : UiTheme.NavigationSurface;
                 pair.Value.ForeColor = active ? UiTheme.Accent : UiTheme.NavigationText;
                 pair.Value.Font = UiTheme.Font(9.6F, active ? FontStyle.Bold : FontStyle.Regular);
+                pair.Value.Type = active ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default;
+                pair.Value.BorderWidth = 0F;
 
                 Panel indicator;
                 if (_navIndicators.TryGetValue(pair.Key, out indicator))

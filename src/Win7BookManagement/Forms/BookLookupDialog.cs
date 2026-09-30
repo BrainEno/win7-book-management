@@ -1,7 +1,6 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using Krypton.Toolkit;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -11,16 +10,17 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly bool _isbnOrTitleOnly;
-        private readonly KryptonTextBox _search = new KryptonTextBox();
-        private readonly KryptonDataGridView _grid = new KryptonDataGridView();
+        private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("输入关键词搜索");
+        private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _summary = new Label();
 
-        private readonly DataGridViewColumn _selfCodeColumn;
-        private readonly DataGridViewColumn _isbnColumn;
-        private readonly DataGridViewColumn _authorColumn;
-        private readonly DataGridViewColumn _shelfColumn;
-        private readonly DataGridViewColumn _priceColumn;
+        private readonly AntdUI.Column _selfCodeColumn;
+        private readonly AntdUI.Column _isbnColumn;
+        private readonly AntdUI.Column _authorColumn;
+        private readonly AntdUI.Column _shelfColumn;
+        private readonly AntdUI.Column _priceColumn;
 
+        private Book _selected;
         public Book SelectedBook { get; private set; }
 
         public BookLookupDialog(ApplicationServices services, string initialKeyword = "", bool isbnOrTitleOnly = false)
@@ -32,53 +32,19 @@ namespace Win7BookManagement.Forms
 
             Text = "选择图书";
             StartPosition = FormStartPosition.CenterParent;
-            Width = 920;
-            Height = 620;
-            MinimumSize = new Size(680, 460);
+            Width = 940;
+            Height = 640;
+            MinimumSize = new Size(700, 480);
             BackColor = UiTheme.Background;
             ShowInTaskbar = false;
             MinimizeBox = false;
+            KeyPreview = true;
 
-            _selfCodeColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "店内编码",
-                DataPropertyName = "SelfCode",
-                Width = 100
-            };
-            _isbnColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "ISBN",
-                DataPropertyName = "Isbn",
-                Width = 132
-            };
-            _authorColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "作者",
-                DataPropertyName = "Author",
-                Width = 118
-            };
-            _shelfColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "货架位",
-                DataPropertyName = "ShelfCode",
-                Width = 86
-            };
-            _priceColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "销售价格",
-                DataPropertyName = "SalePriceYuan",
-                Width = 82,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
-            };
-
-            var header = CreateHeader();
-            var searchSection = CreateSearchSection();
-            var gridHost = CreateGridSection();
-            var footer = CreateFooter(out Button select, out Button cancel);
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112" };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "138" };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "120" };
+            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "90" };
+            _priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格") { Width = "98", DisplayFormat = "0.00" };
 
             var root = new TableLayoutPanel
             {
@@ -95,16 +61,21 @@ namespace Win7BookManagement.Forms
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            root.Controls.Add(header, 0, 0);
-            root.Controls.Add(searchSection, 0, 1);
-            root.Controls.Add(gridHost, 0, 2);
-            root.Controls.Add(footer, 0, 3);
+            root.Controls.Add(CreateHeader(), 0, 0);
+            root.Controls.Add(CreateSearchSection(), 0, 1);
+            root.Controls.Add(CreateGridSection(), 0, 2);
+            root.Controls.Add(CreateFooter(), 0, 3);
             Controls.Add(root);
 
-            AcceptButton = select;
-            CancelButton = cancel;
-
             Resize += delegate { ApplyResponsiveColumns(); };
+            KeyDown += delegate(object sender, KeyEventArgs e)
+            {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    DialogResult = DialogResult.Cancel;
+                    Close();
+                }
+            };
 
             UiTheme.Apply(this);
             Shown += delegate
@@ -125,7 +96,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(20, 14, 20, 12),
+                Padding = new Padding(22, 16, 22, 13),
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -134,7 +105,7 @@ namespace Win7BookManagement.Forms
             {
                 Text = "查找并选择图书",
                 AutoSize = true,
-                Font = UiTheme.Font(12.5F, FontStyle.Bold),
+                Font = UiTheme.Font(13F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Margin = new Padding(0, 0, 0, 5)
             }, 0, 0);
@@ -143,11 +114,11 @@ namespace Win7BookManagement.Forms
             {
                 Text = _isbnOrTitleOnly
                     ? "支持店内编码、ISBN、书名和作者模糊搜索；无 ISBN 的自出版物也能直接选择。"
-                    : "支持店内编码、ISBN、书名、作者、出版社、分类、出版年、版次、装帧、货架位和备注。双击结果可直接选择。",
+                    : "支持店内编码、ISBN、书名、作者、出版社、分类、出版信息、货架位和备注。双击结果即可选择。",
                 AutoSize = true,
-                MaximumSize = new Size(850, 0),
+                MaximumSize = new Size(860, 0),
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F)
+                Font = UiTheme.Font(8.2F)
             }, 0, 1);
 
             return header;
@@ -158,14 +129,12 @@ namespace Win7BookManagement.Forms
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                MinimumSize = new Size(0, 66),
+                Height = 70,
                 ColumnCount = 3,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 10, 16, 10),
-                Margin = new Padding(0, 10, 0, 10),
-                BorderStyle = BorderStyle.None
+                Padding = new Padding(18, 11, 18, 11),
+                Margin = new Padding(0, 10, 0, 10)
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -173,16 +142,16 @@ namespace Win7BookManagement.Forms
 
             section.Controls.Add(new Label
             {
-                Text = _isbnOrTitleOnly ? "编码 / ISBN / 书名" : "综合搜索",
+                Text = _isbnOrTitleOnly ? "编码 / ISBN / 书名 / 作者" : "综合搜索",
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 14, 0)
             }, 0, 0);
 
             _search.Dock = DockStyle.Fill;
-            _search.Margin = new Padding(0, 4, 10, 4);
-            _search.Font = UiTheme.Font(9.5F);
+            _search.Margin = new Padding(0, 3, 10, 3);
             _search.KeyDown += delegate(object sender, KeyEventArgs e)
             {
                 if (e.KeyCode == Keys.Enter)
@@ -193,93 +162,77 @@ namespace Win7BookManagement.Forms
             };
             section.Controls.Add(_search, 1, 0);
 
-            var searchButton = new Button
-            {
-                Text = "查询",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 4, 0, 4)
-            };
+            var searchButton = UiTheme.CreateAntdButton("查询", true);
+            searchButton.Width = 98;
+            searchButton.Margin = new Padding(0, 3, 0, 3);
             searchButton.Click += delegate { Reload(); };
             section.Controls.Add(searchButton, 2, 0);
-
             return section;
         }
 
         private Control CreateGridSection()
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.ReadOnly = true;
-            _grid.AllowUserToAddRows = false;
-            _grid.AllowUserToDeleteRows = false;
-            _grid.AllowUserToResizeColumns = true;
-            _grid.AllowUserToResizeRows = false;
-            _grid.MultiSelect = false;
-            _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            _grid.AutoGenerateColumns = false;
-            _grid.RowHeadersVisible = false;
-            _grid.BackgroundColor = UiTheme.Surface;
+            _grid.BackColor = UiTheme.Surface;
+            _grid.ForeColor = UiTheme.TextPrimary;
+            _grid.ColumnBack = UiTheme.NavigationSurface;
+            _grid.ColumnFore = UiTheme.TextSecondary;
+            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
+            _grid.BorderColor = UiTheme.Border;
+            _grid.Radius = 8;
+            _grid.RowHeight = 46;
+            _grid.RowHeightHeader = 46;
+            _grid.EnableHeaderResizing = true;
+            _grid.ColumnDragSort = true;
+            _grid.ShowTip = true;
+            _grid.EmptyText = "没有找到匹配的图书";
+            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
+            _grid.RowSelectedBg = UiTheme.AccentSoft;
+            _grid.RowSelectedFore = UiTheme.TextPrimary;
 
-            _grid.Columns.Add(_selfCodeColumn);
-            _grid.Columns.Add(_isbnColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            _grid.Columns = new AntdUI.ColumnCollection
             {
-                HeaderText = "书名",
-                DataPropertyName = "Title",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                MinimumWidth = 210,
-                FillWeight = 220
-            });
-            _grid.Columns.Add(_authorColumn);
-            _grid.Columns.Add(_shelfColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
+                _selfCodeColumn,
+                _isbnColumn,
+                new AntdUI.Column("Title", "书名") { Width = "auto", MinWidth = "230", Ellipsis = true },
+                _authorColumn,
+                _shelfColumn,
+                new AntdUI.Column("StockQuantity", "库存") { Width = "72" },
+                _priceColumn
+            };
+
+            _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
-                HeaderText = "库存",
-                DataPropertyName = "StockQuantity",
-                Width = 70,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
-            });
-            _grid.Columns.Add(_priceColumn);
-            foreach (DataGridViewColumn column in _grid.Columns)
-                column.Resizable = DataGridViewTriState.True;
-            _grid.CellDoubleClick += delegate { Choose(); };
+                _selected = e.Record as Book;
+            };
+            _grid.CellDoubleClick += delegate(object sender, AntdUI.TableClickEventArgs e)
+            {
+                _selected = e.Record as Book;
+                Choose();
+            };
 
             var host = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.None,
+                Padding = Padding.Empty,
                 Margin = Padding.Empty
             };
             host.Controls.Add(_grid);
-            host.Controls.Add(new Label
-            {
-                Text = "搜索结果",
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                MinimumSize = new Size(0, 42),
-                Padding = new Padding(12, 10, 0, 10),
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = UiTheme.Surface,
-                ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(9F, FontStyle.Bold)
-            });
             return host;
         }
 
-        private Control CreateFooter(out Button select, out Button cancel)
+        private Control CreateFooter()
         {
             var footer = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                MinimumSize = new Size(0, 70),
+                MinimumSize = new Size(0, 72),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 11, 16, 11),
+                Padding = new Padding(18, 12, 18, 12),
                 Margin = new Padding(0, 8, 0, 0)
             };
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -300,26 +253,21 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
 
-            cancel = new Button
+            var cancel = UiTheme.CreateAntdButton("取消", false);
+            cancel.Width = 90;
+            cancel.Click += delegate
             {
-                Text = "取消",
-                Width = 88,
-                Height = UiTheme.ButtonHeight,
-                DialogResult = DialogResult.Cancel
+                DialogResult = DialogResult.Cancel;
+                Close();
             };
-            select = new Button
-            {
-                Text = "选择图书",
-                Width = 104,
-                Height = UiTheme.ButtonHeight,
-                Tag = "primary"
-            };
+
+            var select = UiTheme.CreateAntdButton("选择图书", true);
+            select.Width = 108;
             select.Click += delegate { Choose(); };
 
             buttons.Controls.Add(cancel);
             buttons.Controls.Add(select);
             footer.Controls.Add(buttons, 1, 0);
-
             return footer;
         }
 
@@ -328,16 +276,11 @@ namespace Win7BookManagement.Forms
             var result = _isbnOrTitleOnly
                 ? _services.Books.SearchActiveByIsbnOrTitle(_search.Text)
                 : _services.Books.Search(_search.Text, false);
-            _grid.DataSource = result;
-            _summary.Text = "找到 " + result.Count + " 条启用图书资料 · 可双击一行直接选择";
 
-            if (_grid.Rows.Count > 0)
-            {
-                _grid.Rows[0].Selected = true;
-                var firstVisible = FirstVisibleColumnIndex();
-                if (firstVisible >= 0)
-                    _grid.CurrentCell = _grid.Rows[0].Cells[firstVisible];
-            }
+            _selected = result.Count > 0 ? result[0] : null;
+            _grid.DataSource = result;
+            if (_selected != null) _grid.SetSelected(_selected, false);
+            _summary.Text = "找到 " + result.Count + " 条启用图书资料 · 单击选择，双击确认";
         }
 
         private void ApplyResponsiveColumns()
@@ -348,29 +291,18 @@ namespace Win7BookManagement.Forms
             _authorColumn.Visible = width >= 700;
             _priceColumn.Visible = width >= 650;
             _isbnColumn.Visible = width >= 580;
-        }
-
-        private int FirstVisibleColumnIndex()
-        {
-            for (var i = 0; i < _grid.Columns.Count; i++)
-            {
-                if (_grid.Columns[i].Visible)
-                    return i;
-            }
-
-            return -1;
+            _grid.LoadLayout();
         }
 
         private void Choose()
         {
-            var book = _grid.CurrentRow == null ? null : _grid.CurrentRow.DataBoundItem as Book;
-            if (book == null)
+            if (_selected == null)
             {
                 MessageBox.Show(this, "请先选择图书。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            SelectedBook = book;
+            SelectedBook = _selected;
             DialogResult = DialogResult.OK;
             Close();
         }

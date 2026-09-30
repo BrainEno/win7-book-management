@@ -1,7 +1,6 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using Krypton.Toolkit;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -12,23 +11,23 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly Book _book;
 
-        private readonly KryptonTextBox _selfCode = new KryptonTextBox();
-        private readonly KryptonTextBox _isbn = new KryptonTextBox();
-        private readonly KryptonTextBox _title = new KryptonTextBox();
-        private readonly KryptonTextBox _author = new KryptonTextBox();
-        private readonly KryptonTextBox _publisher = new KryptonTextBox();
-        private readonly KryptonTextBox _category = new KryptonTextBox();
-        private readonly KryptonTextBox _publicationYear = new KryptonTextBox();
-        private readonly KryptonTextBox _edition = new KryptonTextBox();
-        private readonly KryptonTextBox _binding = new KryptonTextBox();
-        private readonly KryptonTextBox _shelfCode = new KryptonTextBox();
+        private readonly AntdUI.Input _selfCode = new AntdUI.Input();
+        private readonly AntdUI.Input _isbn = new AntdUI.Input();
+        private readonly AntdUI.Input _title = new AntdUI.Input();
+        private readonly AntdUI.Input _author = new AntdUI.Input();
+        private readonly AntdUI.Input _publisher = new AntdUI.Input();
+        private readonly AntdUI.Input _category = new AntdUI.Input();
+        private readonly AntdUI.Input _publicationYear = new AntdUI.Input();
+        private readonly AntdUI.Input _edition = new AntdUI.Input();
+        private readonly AntdUI.Input _binding = new AntdUI.Input();
+        private readonly AntdUI.Input _shelfCode = new AntdUI.Input();
         private readonly TextBox _note = new TextBox();
 
         // The user sees one selling price. The legacy database still keeps
         // list_price_cent and sale_price_cent for backward compatibility; both
         // are written with the same value from this field.
-        private readonly KryptonNumericUpDown _price = new KryptonNumericUpDown();
-        private readonly KryptonNumericUpDown _defaultPurchasePrice = new KryptonNumericUpDown();
+        private readonly AntdUI.InputNumber _price = new AntdUI.InputNumber();
+        private readonly AntdUI.InputNumber _defaultPurchasePrice = new AntdUI.InputNumber();
         private readonly CheckBox _active = new CheckBox();
 
         private readonly ErrorProvider _errors = new ErrorProvider();
@@ -53,6 +52,7 @@ namespace Win7BookManagement.Forms
             ConfigureMoney(_defaultPurchasePrice);
 
             _selfCode.ReadOnly = true;
+            _selfCode.PlaceholderText = "系统自动生成";
             _selfCode.TabStop = false;
             _selfCode.Text = book == null ? "保存后自动生成" : "";
 
@@ -435,12 +435,11 @@ namespace Win7BookManagement.Forms
             return field;
         }
 
-        private static void ConfigureMoney(KryptonNumericUpDown control)
+        private static void ConfigureMoney(AntdUI.InputNumber control)
         {
             control.DecimalPlaces = 2;
             control.Maximum = 1000000m;
             control.ThousandsSeparator = true;
-            control.TextAlign = HorizontalAlignment.Right;
             control.MinimumSize = new Size(0, 38);
         }
 
@@ -461,9 +460,9 @@ namespace Win7BookManagement.Forms
             var displayPrice = book.SalePriceCent > 0
                 ? Money.ToYuan(book.SalePriceCent)
                 : Money.ToYuan(book.ListPriceCent);
-            _price.Value = Math.Min(_price.Maximum, displayPrice);
+            _price.Value = Math.Min(_price.Maximum ?? displayPrice, displayPrice);
             _defaultPurchasePrice.Value = Math.Min(
-                _defaultPurchasePrice.Maximum,
+                _defaultPurchasePrice.Maximum ?? Money.ToYuan(book.DefaultPurchasePriceCent),
                 Money.ToYuan(book.DefaultPurchasePriceCent));
             _active.Checked = book.IsActive;
         }
