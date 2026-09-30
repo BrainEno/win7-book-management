@@ -19,7 +19,7 @@
 - System.Data.SQLite.Core 1.0.118
 - NPOI 2.6.2
 - SQLite
-- Krypton Toolkit 95.25.4.111 + 自定义 Win7-safe Design System
+- AntdUI 2.4.12 + 自定义 Win7-safe Design System
 - Inno Setup 6.7.3 离线 installer
 
 运行时不依赖网络服务，也不要求安装 Microsoft Excel。
@@ -59,7 +59,7 @@
 
 ## UI 重构标准与第一阶段
 
-项目现在以 [docs/UI_DESIGN_STANDARD.md](docs/UI_DESIGN_STANDARD.md) 作为 UI 单一验收标准。本轮开始引入 **Krypton Toolkit 95.25.4.111**，用于替换核心流程中的输入框、下拉框、数值输入与数据表格，同时继续用内部 Design System 约束字体、间距、响应式布局和状态色。选择固定版本是为了继续保持 Win7 SP1 / .NET Framework 4.8 / x86 / 完全离线部署边界。
+项目现在以 [docs/UI_DESIGN_STANDARD.md](docs/UI_DESIGN_STANDARD.md) 作为 UI 单一验收标准。本轮开始引入 **AntdUI 2.4.12**，用于替换核心流程中的输入框、下拉框、数值输入、按钮与高频数据表格，同时继续用内部 Design System 约束字体、间距、响应式布局和状态色。选择固定版本是为了继续保持 Win7 SP1 / .NET Framework 4.8 / x86 / 完全离线部署边界。
 
 第一阶段已优先重构：
 
@@ -88,7 +88,7 @@
 
 第五阶段优先处理实际运行暴露出的高 DPI / 字体裁切问题，而不是继续堆视觉装饰：
 
-- **DPI-safe 基础层**：Label、按钮、输入、日期、数值框和 DataGridView 按实际字体高度计算安全最小尺寸；过小的 TableLayout 固定文本行自动改为 AutoSize 或扩高。
+- **DPI-safe 基础层**：Label、AntdUI 按钮、输入、日期、数值框和 Table / 兼容 DataGridView 按实际字体高度计算安全最小尺寸；过小的 TableLayout 固定文本行自动改为 AutoSize 或扩高。
 - **输入框基线**：不再把原生单行 TextBox 强行拉成固定高控件，避免文字贴顶和“只显示一半”；高度感由外层 Grid / Margin 提供。
 - **主框架 / Dashboard**：改为暖色浅导航、分组菜单、连续选中指示条，首页指标卡支持 4 列 ↔ 2×2 响应式布局。
 - **遗留页面扫尾**：设置、备份、帮助、新手引导和资料编辑表单全部移除容易裁字的 18–34px 文本固定高度，并统一垂直对齐。
