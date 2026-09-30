@@ -267,7 +267,7 @@ namespace Win7BookManagement.Forms
 
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
-                Width = "auto",
+                Width = "fill",
                 MinWidth = "220",
                 Ellipsis = true
             };
