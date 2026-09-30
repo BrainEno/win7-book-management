@@ -138,10 +138,14 @@ namespace Win7BookManagement.Infrastructure
             var frame = new Panel
             {
                 Dock = DockStyle.Fill,
+                AutoSize = false,
+                Height = 40,
                 BackColor = Border,
                 Padding = new Padding(1),
                 Margin = Padding.Empty,
-                MinimumSize = new Size(0, 42),
+                MinimumSize = new Size(0, 40),
+                MaximumSize = new Size(0, 40),
+                Tag = "ui-input-frame",
                 TabStop = false
             };
 

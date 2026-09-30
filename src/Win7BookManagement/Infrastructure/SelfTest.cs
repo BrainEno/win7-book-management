@@ -300,6 +300,15 @@ namespace Win7BookManagement.Infrastructure
                     formName + " 存在强制固定高度的单行 TextBox。");
             }
 
+            if (string.Equals(Convert.ToString(control.Tag), "ui-input-frame", StringComparison.Ordinal) &&
+                control.Visible &&
+                control.Height > 52)
+            {
+                throw new InvalidOperationException(
+                    formName + " 存在异常过高的单行输入容器：" +
+                    control.Height + "px。");
+            }
+
             var button = control as Button;
             if (button != null && button.Visible)
             {

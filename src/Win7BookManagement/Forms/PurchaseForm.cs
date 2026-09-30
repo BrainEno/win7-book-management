@@ -178,25 +178,28 @@ namespace Win7BookManagement.Forms
             toolbar.BackColor = UiTheme.Surface;
             toolbar.BorderStyle = BorderStyle.None;
 
-            var newOrder = new Button { Text = "新入库单", Width = 92, Height = UiTheme.ButtonHeight };
-            var pick = new Button { Text = "选择图书", Width = 100, Height = UiTheme.ButtonHeight };
-            var remove = new Button { Text = "移除选中", Width = 100, Height = UiTheme.ButtonHeight };
-            var clear = new Button { Text = "清空当前单", Width = 108, Height = UiTheme.ButtonHeight };
+            var newOrder = new Button
+            {
+                Text = "新入库单",
+                Width = 96,
+                Height = UiTheme.ButtonHeight
+            };
+            var clear = new Button
+            {
+                Text = "清空当前单",
+                Width = 108,
+                Height = UiTheme.ButtonHeight
+            };
 
             newOrder.Click += delegate { StartNewOrder(); };
-            pick.Click += delegate { PickBook(); };
-            remove.Click += delegate { RemoveSelected(); };
             clear.Click += delegate { ClearCartWithConfirmation(); };
 
             toolbar.Controls.Add(newOrder);
-            toolbar.Controls.Add(pick);
-            toolbar.Controls.Add(remove);
             toolbar.Controls.Add(clear);
-
             toolbar.Controls.Add(new Label
             {
                 AutoSize = true,
-                Text = "供应商可选；扫码 ISBN 后回车可直接加入，也可输入完整/部分 ISBN 或书名搜索。默认进价只负责预填，本次进价可直接修改。",
+                Text = "扫码或搜索添加图书；数量和本次进价在下方明细中直接修改。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(14, 11, 0, 0)
@@ -214,8 +217,8 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 4,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 14, 16, 14),
-                Margin = new Padding(0, 10, 0, 10),
+                Padding = new Padding(16, 12, 16, 12),
+                Margin = new Padding(0, 8, 0, 8),
                 BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -233,30 +236,26 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 0, 0, 8)
             }, 0, 0);
 
-            var supplierRow = new TableLayoutPanel
+            var supplierRow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 4,
-                RowCount = 1,
-                Margin = new Padding(0, 2, 0, 2)
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
             };
-            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             supplierRow.Controls.Add(new Label
             {
-                Text = "供应商",
+                Text = "供应商（可选）",
                 AutoSize = true,
-                Anchor = AnchorStyles.Left,
-                TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8.5F, FontStyle.Bold),
-                Margin = new Padding(0, 10, 14, 0)
-            }, 0, 0);
+                Margin = new Padding(0, 11, 14, 0)
+            });
 
             _supplier.DropDownStyle = ComboBoxStyle.DropDownList;
             _supplier.Font = UiTheme.Font(9.3F);
@@ -264,22 +263,18 @@ namespace Win7BookManagement.Forms
 
             var supplierInput = UiTheme.CreateInputFrame(_supplier);
             supplierInput.Dock = DockStyle.None;
-            supplierInput.Width = 390;
-            supplierInput.MinimumSize = new Size(340, 42);
-            supplierInput.Margin = new Padding(0, 4, 10, 4);
-            supplierInput.Anchor = AnchorStyles.Left;
-            supplierRow.Controls.Add(supplierInput, 1, 0);
+            supplierInput.Width = 320;
+            supplierInput.Margin = new Padding(0, 2, 12, 4);
+            supplierRow.Controls.Add(supplierInput);
 
             supplierRow.Controls.Add(new Label
             {
-                Text = "可不指定供应商",
+                Text = "默认“不区分”，不选择具体供应商也可以正常入库",
                 AutoSize = true,
-                Anchor = AnchorStyles.Left,
-                TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
-                Margin = new Padding(6, 10, 0, 0)
-            }, 2, 0);
+                Margin = new Padding(0, 11, 0, 0)
+            });
 
             section.Controls.Add(supplierRow, 0, 1);
 
@@ -290,7 +285,7 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 4,
                 RowCount = 1,
-                Margin = new Padding(0, 2, 0, 0)
+                Margin = new Padding(0, 4, 0, 0)
             };
             scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -305,7 +300,7 @@ namespace Win7BookManagement.Forms
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8.5F, FontStyle.Bold),
-                Margin = new Padding(0, 10, 14, 0)
+                Margin = new Padding(0, 11, 14, 0)
             }, 0, 0);
 
             _isbn.Margin = Padding.Empty;
@@ -320,16 +315,16 @@ namespace Win7BookManagement.Forms
             };
 
             var isbnInput = UiTheme.CreateInputFrame(_isbn);
-            isbnInput.Margin = new Padding(0, 4, 10, 4);
+            isbnInput.Margin = new Padding(0, 2, 10, 2);
             scanRow.Controls.Add(isbnInput, 1, 0);
 
             var add = new Button
             {
                 Text = "搜索加入",
                 AutoSize = true,
-                MinimumSize = new Size(96, UiTheme.ButtonHeight),
+                MinimumSize = new Size(108, UiTheme.ButtonHeight),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Margin = new Padding(0, 4, 8, 4),
+                Margin = new Padding(0, 2, 8, 2),
                 Tag = "primary"
             };
             add.Click += delegate { AddByIsbn(); };
@@ -341,7 +336,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 MinimumSize = new Size(104, UiTheme.ButtonHeight),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Margin = new Padding(0, 4, 0, 4)
+                Margin = new Padding(0, 2, 0, 2)
             };
             pick.Click += delegate { PickBook(); };
             scanRow.Controls.Add(pick, 3, 0);
@@ -350,7 +345,7 @@ namespace Win7BookManagement.Forms
 
             section.Controls.Add(new Label
             {
-                Text = "本次入库数量和进价以表格中的值为准；提交后会生成采购单、增加库存并写入库存流水。",
+                Text = "支持完整或部分 ISBN、书名模糊搜索。数量和本次进价在下方明细中修改。",
                 AutoSize = true,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
@@ -401,16 +396,36 @@ namespace Win7BookManagement.Forms
                 ForeColor = UiTheme.TextPrimary
             }, 0, 0);
 
-            header.Controls.Add(new Label
+            var gridActions = new FlowLayoutPanel
             {
-                Text = "浅绿色单元格可直接编辑数量和进价",
                 AutoSize = true,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleRight,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+
+            gridActions.Controls.Add(new Label
+            {
+                Text = "浅绿色单元格可编辑",
+                AutoSize = true,
                 Font = UiTheme.Font(8F),
                 ForeColor = UiTheme.TextSecondary,
-                Margin = new Padding(12, 2, 0, 0)
-            }, 1, 0);
+                Margin = new Padding(0, 10, 10, 0)
+            });
+
+            var remove = new Button
+            {
+                Text = "移除选中",
+                Width = 98,
+                Height = UiTheme.ButtonHeight,
+                Margin = Padding.Empty
+            };
+            remove.Click += delegate { RemoveSelected(); };
+            gridActions.Controls.Add(remove);
+
+            header.Controls.Add(gridActions, 1, 0);
 
             var content = new Panel
             {
@@ -465,8 +480,9 @@ namespace Win7BookManagement.Forms
             }, 0, 0);
 
             _note.Margin = Padding.Empty;
+            _note.Font = UiTheme.Font(9F);
             var noteInput = UiTheme.CreateInputFrame(_note);
-            noteInput.Margin = new Padding(0, 3, 0, 3);
+            noteInput.Margin = new Padding(0, 1, 0, 1);
             section.Controls.Add(noteInput, 1, 0);
 
             return section;
@@ -549,14 +565,14 @@ namespace Win7BookManagement.Forms
             _grid.BackgroundColor = UiTheme.Surface;
             _grid.DataSource = _rows;
 
-            _grid.Columns.Add(_selfCodeColumn);
             _grid.Columns.Add(_isbnColumn);
             _grid.Columns.Add(_titleColumn);
-            _grid.Columns.Add(_shelfColumn);
             _grid.Columns.Add(_stockColumn);
             _grid.Columns.Add(_quantityColumn);
             _grid.Columns.Add(_unitCostColumn);
             _grid.Columns.Add(_lineTotalColumn);
+            _grid.Columns.Add(_selfCodeColumn);
+            _grid.Columns.Add(_shelfColumn);
 
             _grid.CellBeginEdit += delegate(object sender, DataGridViewCellCancelEventArgs e)
             {
@@ -679,7 +695,7 @@ namespace Win7BookManagement.Forms
         {
             var options = new List<Supplier>
             {
-                new Supplier { Id = 0, Name = "未指定供应商（可选）", IsActive = true }
+                new Supplier { Id = 0, Name = "不区分（默认）", IsActive = true }
             };
 
             var suppliers = _services.Suppliers.GetAll(false);
@@ -689,6 +705,8 @@ namespace Win7BookManagement.Forms
             _supplier.DataSource = options;
             _supplier.DisplayMember = "Name";
             _supplier.ValueMember = "Id";
+            if (_supplier.Items.Count > 0)
+                _supplier.SelectedIndex = 0;
         }
 
         private void ApplyResponsiveColumns()
@@ -708,7 +726,7 @@ namespace Win7BookManagement.Forms
             _lineTotalColumn.Width = MeasureGridColumnWidth(
                 _lineTotalColumn, "999999.00", 120);
             _titleColumn.MinimumWidth = MeasureGridColumnWidth(
-                _titleColumn, "较长的中文图书名称", 240);
+                _titleColumn, "较长的中文图书名称", 260);
 
             _selfCodeColumn.Visible = true;
             _shelfColumn.Visible = true;
@@ -741,11 +759,11 @@ namespace Win7BookManagement.Forms
             }
             if (required > width)
             {
-                _isbnColumn.Visible = false;
-                required -= _isbnColumn.Width;
+                _stockColumn.Visible = false;
+                required -= _stockColumn.Width;
             }
             if (required > width)
-                _stockColumn.Visible = false;
+                _isbnColumn.Visible = false;
         }
 
         private void AddByIsbn()
@@ -864,7 +882,7 @@ namespace Win7BookManagement.Forms
                     return;
             }
 
-            ResetOrder(false);
+            ResetOrder(true);
         }
 
         private void ClearCartWithConfirmation()
@@ -959,7 +977,7 @@ namespace Win7BookManagement.Forms
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
 
-                ResetOrder(false);
+                ResetOrder(true);
             }
             catch (Exception ex)
             {
