@@ -95,7 +95,7 @@ namespace Win7BookManagement.Forms
             _type.Radius = 7;
             _type.BorderWidth = 1.2F;
             _type.BorderColor = UiTheme.Border;
-            _type.SelectedIndexChanged += delegate(int index) { ReloadDocuments(); };
+            _type.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e) { ReloadDocuments(); };
 
             _from.Format = DateTimePickerFormat.Short;
             _to.Format = DateTimePickerFormat.Short;
