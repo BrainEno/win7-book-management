@@ -77,25 +77,16 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
 
-            var replay = new Button
-            {
-                Text = "重新播放新手引导",
-                Width = 148,
-                Height = UiTheme.ButtonHeight,
-                Tag = "primary"
-            };
+            var replay = UiTheme.CreateAntdButton("重新播放新手引导", true);
+            replay.Width = 154;
             replay.Click += delegate
             {
                 if (startGuide != null)
                     startGuide();
             };
 
-            var sales = new Button
-            {
-                Text = "去销售开单",
-                Width = 108,
-                Height = UiTheme.ButtonHeight
-            };
+            var sales = UiTheme.CreateAntdButton("去销售开单", false);
+            sales.Width = 112;
             sales.Click += delegate
             {
                 if (navigate != null)
