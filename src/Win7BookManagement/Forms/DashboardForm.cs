@@ -19,7 +19,7 @@ namespace Win7BookManagement.Forms
         private readonly DataGridView _lowStock = new DataGridView();
         private readonly Label _updatedAt = new Label();
         private readonly Label _guideBody = new Label();
-        private readonly Button _toggleGuide = new Button();
+        private readonly AntdUI.Button _toggleGuide = UiTheme.CreateAntdButton("", false);
 
         private DashboardSummary _lastSummary;
         private int _lastThreshold;
@@ -151,25 +151,16 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Background
             };
 
-            var sales = new Button
-            {
-                Text = "销售开单",
-                Width = 94,
-                Height = UiTheme.ButtonHeight,
-                Tag = "primary"
-            };
+            var sales = UiTheme.CreateAntdButton("销售开单", true);
+            sales.Width = 98;
             sales.Click += delegate
             {
                 if (_navigate != null)
                     _navigate("sales");
             };
 
-            var refresh = new Button
-            {
-                Text = "刷新",
-                Width = 78,
-                Height = UiTheme.ButtonHeight
-            };
+            var refresh = UiTheme.CreateAntdButton("刷新", false);
+            refresh.Width = 82;
             refresh.Click += delegate { ReloadDashboard(); };
 
             actions.Controls.Add(sales);
@@ -242,25 +233,16 @@ namespace Win7BookManagement.Forms
             _toggleGuide.Height = UiTheme.ButtonHeight;
             _toggleGuide.Click += delegate { ApplyGuideExpanded(!_guideExpanded, true); };
 
-            var interactive = new Button
-            {
-                Text = "开始逐步引导",
-                Width = 118,
-                Height = UiTheme.ButtonHeight,
-                Tag = "primary"
-            };
+            var interactive = UiTheme.CreateAntdButton("开始逐步引导", true);
+            interactive.Width = 124;
             interactive.Click += delegate
             {
                 if (_startGuide != null)
                     _startGuide();
             };
 
-            var fullHelp = new Button
-            {
-                Text = "完整说明",
-                Width = 92,
-                Height = UiTheme.ButtonHeight
-            };
+            var fullHelp = UiTheme.CreateAntdButton("完整说明", false);
+            fullHelp.Width = 96;
             fullHelp.Click += delegate
             {
                 if (_navigate != null)
@@ -514,14 +496,10 @@ namespace Win7BookManagement.Forms
                 AutoEllipsis = true
             }, 0, 1);
 
-            var actionButton = new Button
-            {
-                Text = actionText,
-                AutoSize = true,
-                MinimumSize = new Size(118, UiTheme.ButtonHeight),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Margin = new Padding(8, 8, 0, 8)
-            };
+            var actionButton = UiTheme.CreateAntdButton(actionText, false);
+            actionButton.Width = 122;
+            actionButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            actionButton.Margin = new Padding(8, 8, 0, 8);
             actionButton.Click += action;
 
             header.Controls.Add(text, 0, 0);
