@@ -321,24 +321,26 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, 72),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 10, 14, 10),
+                Padding = new Padding(16, 10, 16, 10),
                 Margin = new Padding(0, 10, 0, 0),
                 BorderStyle = BorderStyle.None
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             section.Controls.Add(new Label
             {
-                Text = isSale ? "退货原因 / 备注" : "退货原因 / 备注",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
+                Text = "退货原因 / 备注",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 9, 14, 0)
             }, 0, 0);
 
             _note.Dock = DockStyle.Fill;
