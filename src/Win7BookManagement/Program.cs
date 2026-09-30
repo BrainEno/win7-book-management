@@ -16,6 +16,7 @@ namespace Win7BookManagement
             // self-test and the executable that users actually see.
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            UiTheme.InitializeAntdUi();
 
             if (args != null && args.Any(a => string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase)))
                 return SelfTest.Run();
