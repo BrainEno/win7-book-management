@@ -20,6 +20,18 @@ namespace Win7BookManagement
             if (args != null && args.Any(a => string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase)))
                 return SelfTest.Run();
 
+            if (args != null)
+            {
+                for (var i = 0; i < args.Length; i++)
+                {
+                    if (!string.Equals(args[i], "--ui-snapshots", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var outputDirectory = i + 1 < args.Length ? args[i + 1] : null;
+                    return UiSnapshotGenerator.Run(outputDirectory);
+                }
+            }
+
             try
             {
                 AppPaths.EnsureFolders();
