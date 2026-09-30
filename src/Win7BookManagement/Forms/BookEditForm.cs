@@ -287,7 +287,7 @@ namespace Win7BookManagement.Forms
         private Control CreateNoteSection()
         {
             var grid = CreateTwoColumnGrid(1);
-            var noteField = CreateField("备注", _note, "可记录签名本、轻微瑕疵、陈列提醒等不影响库存计算的信息。", 116);
+            var noteField = CreateField("备注", _note, "可记录签名本、轻微瑕疵、陈列提醒等不影响库存计算的信息。", 104);
             grid.Controls.Add(noteField, 0, 0);
             grid.SetColumnSpan(noteField, 2);
 
@@ -330,8 +330,8 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 3,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 14, 16, 14),
-                Margin = new Padding(0, 0, 0, 12),
+                Padding = new Padding(16, 12, 16, 12),
+                Margin = new Padding(0, 0, 0, 10),
                 BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -364,7 +364,7 @@ namespace Win7BookManagement.Forms
 
         private Control CreateField(string labelText, Control input, string toolTip)
         {
-            return CreateField(labelText, input, toolTip, 78);
+            return CreateField(labelText, input, toolTip, 64);
         }
 
         private Control CreateField(string labelText, Control input, string toolTip, int height)
@@ -378,7 +378,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Margin = new Padding(0, 0, 12, 10),
+                Margin = new Padding(0, 0, 12, 8),
                 Padding = Padding.Empty
             };
             field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
