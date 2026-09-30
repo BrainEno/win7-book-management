@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
-using AntdUI;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -301,7 +300,7 @@ namespace Win7BookManagement.Forms
             _grid.RowHeightHeader = 48;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = true;
-            _grid.EditMode = TEditMode.Click;
+            _grid.EditMode = AntdUI.TEditMode.Click;
             _grid.ShowTip = true;
             _grid.EmptyText = "当前销售单还没有商品";
             _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
