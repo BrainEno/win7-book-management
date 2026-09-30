@@ -132,7 +132,7 @@ namespace Win7BookManagement.Forms
             toolbar.Controls.Add(new Label
             {
                 AutoSize = true,
-                Text = "AntdUI 编辑表格：点击浅绿色单元格即可修改数量或本次进价。",
+                Text = "点击浅绿色单元格可直接修改入库数量或本次进价。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(14, 12, 0, 0)
@@ -494,10 +494,12 @@ namespace Win7BookManagement.Forms
         private void ApplyResponsiveColumns()
         {
             var width = _grid.ClientSize.Width > 0 ? _grid.ClientSize.Width : ClientSize.Width;
-            _selfCodeColumn.Visible = width >= 930;
-            _shelfColumn.Visible = width >= 820;
-            _stockColumn.Visible = width >= 720;
-            _isbnColumn.Visible = width >= 620;
+            // Prioritize title, quantity and cost on compact workstations.
+            // Reference columns progressively return on larger windows.
+            _selfCodeColumn.Visible = width >= 1180;
+            _shelfColumn.Visible = width >= 1050;
+            _stockColumn.Visible = width >= 850;
+            _isbnColumn.Visible = width >= 720;
             _grid.LoadLayout();
         }
 
