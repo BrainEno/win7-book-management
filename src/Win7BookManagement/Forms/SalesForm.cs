@@ -41,7 +41,7 @@ namespace Win7BookManagement.Forms
             _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "150", MinWidth = "116", ReadOnly = true };
             _authorColumn = new AntdUI.Column("Author", "作者") { Width = "116", MinWidth = "76", ReadOnly = true };
             _stockColumn = new AntdUI.Column("Stock", "库存") { Width = "78", MinWidth = "68", ReadOnly = true };
-            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "280", MinWidth = "220", MaxWidth = "520", Ellipsis = true, ReadOnly = true };
+            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "fill", MinWidth = "220", MaxWidth = "420", Ellipsis = true, ReadOnly = true };
             _quantityColumn = new AntdUI.Column("Quantity", "数量")
             {
                 Width = "96",
