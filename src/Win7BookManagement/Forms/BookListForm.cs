@@ -13,7 +13,6 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("输入店内编码、ISBN、书名、作者或出版社");
         private readonly AntdUI.Checkbox _includeInactive = new AntdUI.Checkbox();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
-        private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
         private readonly Label _lowStockChip = new Label();
         private readonly SplitContainer _split = new SplitContainer();
@@ -51,7 +50,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 BackColor = UiTheme.Background,
                 Padding = Padding.Empty,
                 Margin = Padding.Empty
@@ -59,19 +58,9 @@ namespace Win7BookManagement.Forms
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             root.Controls.Add(CreateSearchSection(), 0, 0);
             root.Controls.Add(CreateContentSection(), 0, 1);
-
-            _summary.AutoSize = true;
-            _summary.Dock = DockStyle.Fill;
-            _summary.MinimumSize = new Size(0, 30);
-            _summary.Padding = new Padding(10, 5, 8, 5);
-            _summary.ForeColor = UiTheme.TextSecondary;
-            _summary.BackColor = UiTheme.Surface;
-            _summary.Font = UiTheme.Font(8.2F);
-            root.Controls.Add(_summary, 0, 2);
 
             Controls.Add(root);
 
@@ -419,7 +408,6 @@ namespace Win7BookManagement.Forms
 
             _resultChip.Text = "结果  " + books.Count;
             _lowStockChip.Text = "低库存  " + lowStockCount;
-            _summary.Text = "共 " + books.Count + " 条 · 低库存阈值 " + threshold + " 册 · 双击编辑 · 拖动表头边界可调整并记住列宽";
             ShowSelectedDetails();
         }
 
