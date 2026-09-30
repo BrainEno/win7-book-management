@@ -9,6 +9,7 @@ namespace Win7BookManagement.Forms
     public sealed class BookLookupDialog : Form
     {
         private readonly ApplicationServices _services;
+        private readonly bool _isbnOrTitleOnly;
         private readonly TextBox _search = new TextBox();
         private readonly DataGridView _grid = new DataGridView();
         private readonly Label _summary = new Label();
@@ -21,9 +22,11 @@ namespace Win7BookManagement.Forms
 
         public Book SelectedBook { get; private set; }
 
-        public BookLookupDialog(ApplicationServices services)
+        public BookLookupDialog(ApplicationServices services, string initialKeyword = "", bool isbnOrTitleOnly = false)
         {
             _services = services;
+            _isbnOrTitleOnly = isbnOrTitleOnly;
+            _search.Text = initialKeyword ?? "";
             UiTheme.ConfigureForm(this);
 
             Text = "选择图书";
@@ -137,7 +140,9 @@ namespace Win7BookManagement.Forms
 
             header.Controls.Add(new Label
             {
-                Text = "支持店内编码、ISBN、书名、作者、出版社、分类、出版年、版次、装帧、货架位和备注。双击结果可直接选择。",
+                Text = _isbnOrTitleOnly
+                    ? "支持 ISBN 和书名模糊搜索；输入完整或部分内容都可以。双击结果可直接选择。"
+                    : "支持店内编码、ISBN、书名、作者、出版社、分类、出版年、版次、装帧、货架位和备注。双击结果可直接选择。",
                 AutoSize = true,
                 MaximumSize = new Size(850, 0),
                 ForeColor = UiTheme.TextSecondary,
@@ -167,7 +172,7 @@ namespace Win7BookManagement.Forms
 
             section.Controls.Add(new Label
             {
-                Text = "综合搜索",
+                Text = _isbnOrTitleOnly ? "ISBN / 书名" : "综合搜索",
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
@@ -315,7 +320,9 @@ namespace Win7BookManagement.Forms
 
         private void Reload()
         {
-            var result = _services.Books.Search(_search.Text, false);
+            var result = _isbnOrTitleOnly
+                ? _services.Books.SearchActiveByIsbnOrTitle(_search.Text)
+                : _services.Books.Search(_search.Text, false);
             _grid.DataSource = result;
             _summary.Text = "找到 " + result.Count + " 条启用图书资料 · 可双击一行直接选择";
 

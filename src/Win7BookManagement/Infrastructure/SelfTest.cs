@@ -63,6 +63,12 @@ namespace Win7BookManagement.Infrastructure
                     storedBook.PublicationYear != "2026")
                     throw new InvalidOperationException("扩展图书资料字段保存自检失败。");
 
+                var titleMatches = services.Books.SearchActiveByIsbnOrTitle("自检");
+                var isbnMatches = services.Books.SearchActiveByIsbnOrTitle("000000");
+                if (titleMatches.Count != 1 || titleMatches[0].Id != bookId ||
+                    isbnMatches.Count != 1 || isbnMatches[0].Id != bookId)
+                    throw new InvalidOperationException("采购入库 ISBN / 书名模糊搜索自检失败。");
+
                 services.Inventory.Adjust(bookId, 5, "opening");
                 services.Purchases.Receive(
                     supplierId,

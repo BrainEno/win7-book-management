@@ -138,7 +138,7 @@ namespace Win7BookManagement.Forms
             toolbar.Controls.Add(new Label
             {
                 AutoSize = true,
-                Text = "供应商可选；扫码 ISBN 后回车即可加入。默认进价只负责预填，本次进价可直接修改。",
+                Text = "供应商可选；扫码 ISBN 后回车可直接加入，也可输入完整/部分 ISBN 或书名搜索。默认进价只负责预填，本次进价可直接修改。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(14, 11, 0, 0)
@@ -233,7 +233,7 @@ namespace Win7BookManagement.Forms
 
             scanRow.Controls.Add(new Label
             {
-                Text = "ISBN",
+                Text = "ISBN / 书名",
                 AutoSize = true,
                 Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -354,7 +354,7 @@ namespace Win7BookManagement.Forms
 
             _emptyState.Dock = DockStyle.Fill;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "入库明细为空\r\n请扫描 ISBN、搜索加入，或从图书资料中选择";
+            _emptyState.Text = "入库明细为空\r\n请扫描 ISBN、输入 ISBN / 书名搜索加入，或从图书资料中选择";
             _emptyState.ForeColor = UiTheme.TextSecondary;
             _emptyState.Font = UiTheme.Font(9F);
             _emptyState.BackColor = UiTheme.Surface;
@@ -581,22 +581,52 @@ namespace Win7BookManagement.Forms
             var text = (_isbn.Text ?? "").Trim();
             if (text.Length == 0)
             {
-                MessageBox.Show(this, "请先扫描或输入 ISBN。", "还没有图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "请先扫描 ISBN，或输入 ISBN / 书名关键词。", "还没有图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 _isbn.Focus();
                 return;
             }
 
-            var book = _services.Books.FindByExactIsbn(text);
-            if (book == null)
+            // Keep the scanner path fast: an exact ISBN match is added immediately.
+            var exactBook = _services.Books.FindByExactIsbn(text);
+            if (exactBook != null)
             {
-                MessageBox.Show(this, "没有找到该 ISBN 的启用图书。请检查 ISBN，或先在“图书资料”中建立资料。", "未找到图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                AddBook(exactBook);
+                _isbn.Clear();
+                _isbn.Focus();
+                return;
+            }
+
+            var matches = _services.Books.SearchActiveByIsbnOrTitle(text);
+            if (matches.Count == 0)
+            {
+                MessageBox.Show(
+                    this,
+                    "没有找到与“" + text + "”匹配的启用图书。可以输入完整/部分 ISBN 或书名；若仍找不到，请先在“图书资料”中建立资料。",
+                    "未找到图书",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
                 _isbn.SelectAll();
                 _isbn.Focus();
                 return;
             }
 
-            AddBook(book);
-            _isbn.Clear();
+            if (matches.Count == 1)
+            {
+                AddBook(matches[0]);
+                _isbn.Clear();
+                _isbn.Focus();
+                return;
+            }
+
+            using (var dialog = new BookLookupDialog(_services, text, true))
+            {
+                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
+                {
+                    AddBook(dialog.SelectedBook);
+                    _isbn.Clear();
+                }
+            }
+
             _isbn.Focus();
         }
 

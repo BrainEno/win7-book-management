@@ -59,6 +59,43 @@ ORDER BY title, id;";
             return result;
         }
 
+        public IList<Book> SearchActiveByIsbnOrTitle(string keyword)
+        {
+            var result = new List<Book>();
+            var term = (keyword ?? "").Trim();
+            if (term.Length == 0) return result;
+
+            using (var connection = _factory.Open())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT " + SelectColumns + @"
+FROM books
+WHERE is_active = 1
+  AND (isbn LIKE @like OR title LIKE @like)
+ORDER BY
+  CASE
+    WHEN isbn = @term THEN 0
+    WHEN title = @term THEN 1
+    WHEN isbn LIKE @prefix THEN 2
+    WHEN title LIKE @prefix THEN 3
+    ELSE 4
+  END,
+  title,
+  id;";
+                command.Parameters.AddWithValue("@term", term);
+                command.Parameters.AddWithValue("@like", "%" + term + "%");
+                command.Parameters.AddWithValue("@prefix", term + "%");
+
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read()) result.Add(ReadBook(reader));
+                }
+            }
+
+            return result;
+        }
+
         public Book GetById(long id)
         {
             using (var connection = _factory.Open())
