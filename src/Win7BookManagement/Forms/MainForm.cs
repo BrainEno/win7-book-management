@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 
@@ -224,7 +225,7 @@ namespace Win7BookManagement.Forms
 
         private FlowLayoutPanel CreateNavigation()
         {
-            return new FlowLayoutPanel
+            return new VerticalNavigationPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
@@ -521,5 +522,37 @@ namespace Win7BookManagement.Forms
             _navigation.HorizontalScroll.Enabled = false;
             _navigation.HorizontalScroll.Visible = false;
         }
+        private sealed class VerticalNavigationPanel : FlowLayoutPanel
+        {
+            private const int SbHorz = 0;
+
+            [DllImport("user32.dll")]
+            private static extern bool ShowScrollBar(IntPtr hWnd, int wBar, bool bShow);
+
+            protected override void OnHandleCreated(EventArgs e)
+            {
+                base.OnHandleCreated(e);
+                HideHorizontalScrollBar();
+            }
+
+            protected override void OnLayout(LayoutEventArgs levent)
+            {
+                base.OnLayout(levent);
+                HideHorizontalScrollBar();
+            }
+
+            protected override void OnSizeChanged(EventArgs e)
+            {
+                base.OnSizeChanged(e);
+                HideHorizontalScrollBar();
+            }
+
+            private void HideHorizontalScrollBar()
+            {
+                if (IsHandleCreated)
+                    ShowScrollBar(Handle, SbHorz, false);
+            }
+        }
+
     }
 }
