@@ -560,9 +560,9 @@ namespace Win7BookManagement.Forms
                 UiTheme.ConfigureForm(this);
                 Text = supplier == null ? "新增供应商" : "编辑供应商";
                 StartPosition = FormStartPosition.CenterParent;
-                Width = 680;
-                Height = 540;
-                MinimumSize = new Size(560, 460);
+                Width = 760;
+                Height = 570;
+                MinimumSize = new Size(600, 480);
                 BackColor = UiTheme.Background;
                 ShowInTaskbar = false;
                 MinimizeBox = false;
