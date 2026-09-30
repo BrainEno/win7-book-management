@@ -554,22 +554,49 @@ namespace Win7BookManagement.Infrastructure
                 guide.PerformLayout();
                 Application.DoEvents();
 
-                using (var bitmap = new Bitmap(
-                    Math.Max(1, size.Width),
-                    Math.Max(1, size.Height)))
-                {
-                    guide.DrawToBitmap(
-                        bitmap,
-                        new Rectangle(0, 0, bitmap.Width, bitmap.Height));
-                    bitmap.Save(
-                        Path.Combine(
-                            outputDirectory,
-                            "26-onboarding-guide-1024x768.png"),
-                        ImageFormat.Png);
-                }
+                SaveFormBitmap(
+                    guide,
+                    size,
+                    Path.Combine(
+                        outputDirectory,
+                        "26-onboarding-guide-1024x768.png"));
+
+                var showStep = typeof(OnboardingGuideForm).GetMethod(
+                    "ShowStep",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                if (showStep == null)
+                    throw new InvalidOperationException("找不到新手引导步骤切换方法。");
+
+                showStep.Invoke(guide, new object[] { 1 });
+                Application.DoEvents();
+                guide.PerformLayout();
+                Application.DoEvents();
+
+                SaveFormBitmap(
+                    guide,
+                    size,
+                    Path.Combine(
+                        outputDirectory,
+                        "27-onboarding-books-step-1024x768.png"));
 
                 guide.Hide();
                 main.Hide();
+            }
+        }
+
+        private static void SaveFormBitmap(
+            Form form,
+            Size size,
+            string path)
+        {
+            using (var bitmap = new Bitmap(
+                Math.Max(1, size.Width),
+                Math.Max(1, size.Height)))
+            {
+                form.DrawToBitmap(
+                    bitmap,
+                    new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+                bitmap.Save(path, ImageFormat.Png);
             }
         }
 
