@@ -2,7 +2,6 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using AntdUI;
 
 namespace Win7BookManagement.Infrastructure
 {
@@ -325,7 +324,7 @@ namespace Win7BookManagement.Infrastructure
                 BorderWidth = 1F,
                 Font = Font(9F, primary ? FontStyle.Bold : FontStyle.Regular),
                 Cursor = Cursors.Hand,
-                Type = primary ? TTypeMini.Primary : TTypeMini.Default
+                Type = primary ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default
             };
             return button;
         }
