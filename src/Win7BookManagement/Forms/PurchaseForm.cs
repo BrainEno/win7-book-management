@@ -12,7 +12,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly ComboBox _supplier = new ComboBox();
-        private readonly TextBox _isbn = new TextBox();
+        private readonly AntdUI.Input _isbn = ModernUi.CreateInput();
         private readonly TextBox _note = new TextBox();
         private readonly DataGridView _grid = new DataGridView();
         private readonly BindingList<PurchaseCartRow> _rows = new BindingList<PurchaseCartRow>();
@@ -564,6 +564,7 @@ namespace Win7BookManagement.Forms
             _grid.RowHeadersVisible = false;
             _grid.BackgroundColor = UiTheme.Surface;
             _grid.DataSource = _rows;
+            ModernUi.PolishBusinessGrid(_grid, true);
 
             _grid.Columns.Add(_isbnColumn);
             _grid.Columns.Add(_titleColumn);
