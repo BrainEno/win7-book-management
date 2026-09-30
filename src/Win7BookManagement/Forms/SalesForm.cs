@@ -11,7 +11,7 @@ namespace Win7BookManagement.Forms
     public sealed class SalesForm : Form, INavigationGuard
     {
         private readonly ApplicationServices _services;
-        private readonly TextBox _isbn = new TextBox();
+        private readonly AntdUI.Input _isbn = ModernUi.CreateInput();
         private readonly TextBox _note = new TextBox();
         private readonly DataGridView _grid = new DataGridView();
         private readonly BindingList<SalesCartRow> _rows = new BindingList<SalesCartRow>();
@@ -446,6 +446,7 @@ namespace Win7BookManagement.Forms
             _grid.RowHeadersVisible = false;
             _grid.BackgroundColor = UiTheme.Surface;
             _grid.DataSource = _rows;
+            ModernUi.PolishBusinessGrid(_grid, true);
 
             _grid.Columns.Add(_selfCodeColumn);
             _grid.Columns.Add(_isbnColumn);
