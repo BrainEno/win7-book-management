@@ -355,7 +355,7 @@ namespace Win7BookManagement.Forms
             if (_lastSummary == null)
                 return;
 
-            var compact = ClientSize.Width < 1080;
+            var compact = ClientSize.Width < 700;
             if (!force && _metricLayoutInitialized && compact == _metricsCompact)
                 return;
 
@@ -517,8 +517,10 @@ namespace Win7BookManagement.Forms
             var actionButton = new Button
             {
                 Text = actionText,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(6, 8, 0, 8)
+                AutoSize = true,
+                MinimumSize = new Size(118, UiTheme.ButtonHeight),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Margin = new Padding(8, 8, 0, 8)
             };
             actionButton.Click += action;
 
