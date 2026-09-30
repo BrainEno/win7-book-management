@@ -275,7 +275,7 @@ namespace Win7BookManagement.Forms
                 _isbnColumn,
                 _selfCodeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "sales-lines");
+            _grid.ConfigureColumnPersistence(_services.Settings, "sales-lines-v2");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -411,10 +411,10 @@ namespace Win7BookManagement.Forms
             var width = _grid.ClientSize.Width > 0 ? _grid.ClientSize.Width : ClientSize.Width;
             // Keep the checkout table readable without horizontal scrolling.
             // Low-priority reference fields progressively return as width grows.
-            _selfCodeColumn.Visible = width >= 1180;
-            _authorColumn.Visible = width >= 980;
-            _isbnColumn.Visible = width >= 760;
-            _stockColumn.Visible = width >= 680;
+            _selfCodeColumn.Visible = width >= 1250;
+            _authorColumn.Visible = width >= 1080;
+            _isbnColumn.Visible = width >= 900;
+            _stockColumn.Visible = width >= 720;
             _grid.LoadLayout();
         }
 
