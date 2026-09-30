@@ -314,6 +314,13 @@ namespace Win7BookManagement.Infrastructure
                 throw new InvalidOperationException("响应式 UI 密度断点自检失败。");
             }
 
+            foreach (var width in new[] { 820, 1024, 1366, 1920 })
+            {
+                if (UiTheme.ResponsiveButtonHeight(width) != UiTheme.ResponsiveInputHeight(width))
+                    throw new InvalidOperationException(
+                        "搜索工具栏按钮与输入框高度不一致：" + width + "px。");
+            }
+
             try
             {
                 foreach (var form in forms)
