@@ -11,21 +11,20 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly Book _book;
 
-        private readonly TextBox _selfCode = new TextBox();
-        private readonly TextBox _isbn = new TextBox();
-        private readonly TextBox _title = new TextBox();
-        private readonly TextBox _author = new TextBox();
-        private readonly TextBox _publisher = new TextBox();
-        private readonly TextBox _category = new TextBox();
-        private readonly TextBox _publicationYear = new TextBox();
-        private readonly TextBox _edition = new TextBox();
-        private readonly TextBox _binding = new TextBox();
-        private readonly TextBox _shelfCode = new TextBox();
+        private readonly AntdUI.Input _selfCode = ModernUi.CreateInput();
+        private readonly AntdUI.Input _isbn = ModernUi.CreateInput();
+        private readonly AntdUI.Input _title = ModernUi.CreateInput();
+        private readonly AntdUI.Input _author = ModernUi.CreateInput();
+        private readonly AntdUI.Input _publisher = ModernUi.CreateInput();
+        private readonly AntdUI.Input _category = ModernUi.CreateInput();
+        private readonly AntdUI.Input _publicationYear = ModernUi.CreateInput();
+        private readonly AntdUI.Input _edition = ModernUi.CreateInput();
+        private readonly AntdUI.Input _binding = ModernUi.CreateInput();
+        private readonly AntdUI.Input _shelfCode = ModernUi.CreateInput();
         private readonly TextBox _note = new TextBox();
 
-        private readonly NumericUpDown _listPrice = new NumericUpDown();
+        private readonly NumericUpDown _retailPrice = new NumericUpDown();
         private readonly NumericUpDown _defaultPurchasePrice = new NumericUpDown();
-        private readonly NumericUpDown _salePrice = new NumericUpDown();
         private readonly CheckBox _active = new CheckBox();
 
         private readonly ErrorProvider _errors = new ErrorProvider();
@@ -46,9 +45,11 @@ namespace Win7BookManagement.Forms
             ShowInTaskbar = false;
             MinimizeBox = false;
 
-            ConfigureMoney(_listPrice);
+            ConfigureMoney(_retailPrice);
             ConfigureMoney(_defaultPurchasePrice);
-            ConfigureMoney(_salePrice);
+
+            _selfCode.Enabled = false;
+            _selfCode.Text = book == null ? "保存后自动生成" : "";
 
             _active.Text = "启用此图书，可用于新的采购和销售";
             _active.AutoSize = true;
@@ -112,7 +113,7 @@ namespace Win7BookManagement.Forms
 
             var hint = new Label
             {
-                Text = "按经营需要填写资料；带 * 的项目必须填写。库存数量不在这里直接改动，请通过采购、销售或库存调整维护。",
+                Text = "面向自出版物与独立出版场景：书名为唯一必填项，ISBN 与出版社均可留空；店内编码由系统自动生成。",
                 AutoSize = true,
                 MaximumSize = new Size(820, 0),
                 Font = UiTheme.Font(8.5F),
@@ -143,7 +144,7 @@ namespace Win7BookManagement.Forms
 
             var hint = new Label
             {
-                Text = "默认进价仅用于下次采购时预填；修改资料不会改写任何历史采购或销售单。",
+                Text = "零售价格同时作为图书定价与开单默认售价；默认进价只用于采购预填，历史单据不会被改写。",
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
@@ -221,67 +222,63 @@ namespace Win7BookManagement.Forms
 
         private Control CreateIdentitySection()
         {
-            var grid = CreateTwoColumnGrid(3);
-
-            AddPair(
-                grid,
-                0,
-                CreateField("店内编码", _selfCode, "可选。用于书店内部识别，例如 BK-001。"),
-                CreateField("ISBN", _isbn, "可扫码录入；本轻量版同一 ISBN 只能对应一条图书资料。"));
+            var grid = CreateTwoColumnGrid(4);
 
             var titleField = CreateField("书名 *", _title, "建议录入封面主书名，便于开单、退货和报表检索。");
-            grid.Controls.Add(titleField, 0, 1);
+            grid.Controls.Add(titleField, 0, 0);
             grid.SetColumnSpan(titleField, 2);
 
             AddPair(
                 grid,
-                2,
-                CreateField("作者", _author, "可填写作者或主要责任者。"),
-                CreateField("出版社", _publisher, "用于检索、盘点和采购确认。"));
+                1,
+                CreateField("作者", _author, "可填写作者、编者或主要责任者。"),
+                CreateField("零售价格（元）", _retailPrice, "同时作为资料中的定价与销售开单默认售价。"));
 
-            return WrapSection("基础信息", "最常用于搜索、识别和销售开单的字段。", grid);
+            AddPair(
+                grid,
+                2,
+                CreateField("ISBN（可选）", _isbn, "自出版物可以没有 ISBN；填写后可用于扫码和检索。"),
+                CreateField("分类", _category, "例如 文学 / 社科 / 艺术 / 自出版。"));
+
+            AddPair(
+                grid,
+                3,
+                CreateField("店内编码", _selfCode, "新建时无需填写，保存后系统自动生成。"),
+                CreateField("默认货架位", _shelfCode, "例如 A-03-2，方便找书和盘点。"));
+
+            return WrapSection("核心资料", "把最常用、最影响销售与查找的字段放在最上方。", grid);
         }
 
         private Control CreateClassificationSection()
-        {
-            var grid = CreateTwoColumnGrid(3);
-
-            AddPair(
-                grid,
-                0,
-                CreateField("分类", _category, "例如 文学 / 社科 / 艺术。"),
-                CreateField("默认货架位", _shelfCode, "例如 A-03-2，方便找书和盘点。"));
-
-            AddPair(
-                grid,
-                1,
-                CreateField("出版年 / 日期", _publicationYear, "可填写 2026、2026-09 等简洁文本。"),
-                CreateField("版次", _edition, "例如 1版1印。"));
-
-            AddPair(
-                grid,
-                2,
-                CreateField("装帧", _binding, "例如 精装 / 平装。"),
-                CreateField("状态", _active, "停用后不参与新的采购和销售，历史单据仍保留。"));
-
-            return WrapSection("分类与出版", "用于图书归类、陈列和现场查找。", grid);
-        }
-
-        private Control CreatePricingSection()
         {
             var grid = CreateTwoColumnGrid(2);
 
             AddPair(
                 grid,
                 0,
-                CreateField("定价（元）", _listPrice, "出版社标价，可为 0。"),
-                CreateField("默认进价（元）", _defaultPurchasePrice, "新增采购行时自动预填，仍可在采购单内修改。"));
+                CreateField("出版社（可选）", _publisher, "自出版物可留空；如有发行或出版主体可填写。"),
+                CreateField("出版年 / 日期（可选）", _publicationYear, "可填写 2026、2026-09 等简洁文本。"));
 
-            var saleField = CreateField("零售价（元）", _salePrice, "销售开单时默认带出，可在开单时调整。");
-            grid.Controls.Add(saleField, 0, 1);
-            grid.SetColumnSpan(saleField, 2);
+            AddPair(
+                grid,
+                1,
+                CreateField("版次（可选）", _edition, "低频字段，可留空。"),
+                CreateField("装帧（可选）", _binding, "低频字段，例如 精装 / 平装，也可留空。"));
 
-            return WrapSection("价格信息", "价格统一按人民币元显示，数据库内部仍以分保存。", grid);
+            return WrapSection("更多出版信息（可选）", "低频信息下沉，不阻碍快速建立自出版物资料。", grid);
+        }
+
+        private Control CreatePricingSection()
+        {
+            var grid = CreateTwoColumnGrid(1);
+
+            AddPair(
+                grid,
+                0,
+                CreateField("默认进价（元）", _defaultPurchasePrice, "新增采购行时自动预填，仍可在采购单内修改。"),
+                CreateField("状态", _active, "停用后不参与新的采购和销售，历史单据仍保留。"));
+
+            return WrapSection("采购与状态", "销售价格已经放到核心资料区；这里只保留经营辅助信息。", grid);
         }
 
         private Control CreateNoteSection()
@@ -442,9 +439,9 @@ namespace Win7BookManagement.Forms
             _binding.Text = book.Binding;
             _shelfCode.Text = book.ShelfCode;
             _note.Text = book.Note;
-            _listPrice.Value = Math.Min(_listPrice.Maximum, Money.ToYuan(book.ListPriceCent));
+            var retailCent = book.SalePriceCent > 0 ? book.SalePriceCent : book.ListPriceCent;
+            _retailPrice.Value = Math.Min(_retailPrice.Maximum, Money.ToYuan(retailCent));
             _defaultPurchasePrice.Value = Math.Min(_defaultPurchasePrice.Maximum, Money.ToYuan(book.DefaultPurchasePriceCent));
-            _salePrice.Value = Math.Min(_salePrice.Maximum, Money.ToYuan(book.SalePriceCent));
             _active.Checked = book.IsActive;
         }
 
@@ -474,9 +471,10 @@ namespace Win7BookManagement.Forms
                 target.Binding = _binding.Text;
                 target.ShelfCode = _shelfCode.Text;
                 target.Note = _note.Text;
-                target.ListPriceCent = Money.FromYuan(_listPrice.Value);
+                var retailPriceCent = Money.FromYuan(_retailPrice.Value);
+                target.ListPriceCent = retailPriceCent;
                 target.DefaultPurchasePriceCent = Money.FromYuan(_defaultPurchasePrice.Value);
-                target.SalePriceCent = Money.FromYuan(_salePrice.Value);
+                target.SalePriceCent = retailPriceCent;
                 target.IsActive = _active.Checked;
 
                 if (_book == null)
