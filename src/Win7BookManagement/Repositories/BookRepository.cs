@@ -72,14 +72,21 @@ ORDER BY title, id;";
 SELECT " + SelectColumns + @"
 FROM books
 WHERE is_active = 1
-  AND (isbn LIKE @like OR title LIKE @like)
+  AND (
+       self_code LIKE @like
+       OR isbn LIKE @like
+       OR title LIKE @like
+       OR author LIKE @like
+  )
 ORDER BY
   CASE
-    WHEN isbn = @term THEN 0
-    WHEN title = @term THEN 1
-    WHEN isbn LIKE @prefix THEN 2
-    WHEN title LIKE @prefix THEN 3
-    ELSE 4
+    WHEN self_code = @term THEN 0
+    WHEN isbn = @term THEN 1
+    WHEN title = @term THEN 2
+    WHEN self_code LIKE @prefix THEN 3
+    WHEN isbn LIKE @prefix THEN 4
+    WHEN title LIKE @prefix THEN 5
+    ELSE 6
   END,
   title,
   id;";
@@ -129,6 +136,7 @@ ORDER BY
             var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             using (var connection = _factory.Open())
             {
+                EnsureSelfCode(connection, book);
                 EnsureUniqueIdentifiers(connection, book, 0);
 
                 using (var command = connection.CreateCommand())
@@ -157,6 +165,7 @@ SELECT last_insert_rowid();";
             Validate(book);
             using (var connection = _factory.Open())
             {
+                EnsureSelfCode(connection, book);
                 EnsureUniqueIdentifiers(connection, book, book.Id);
 
                 using (var command = connection.CreateCommand())
@@ -196,6 +205,39 @@ WHERE id=@id;";
                 throw new InvalidOperationException("书名不能为空。");
             if (book.ListPriceCent < 0 || book.DefaultPurchasePriceCent < 0 || book.SalePriceCent < 0)
                 throw new InvalidOperationException("价格不能为负数。");
+        }
+
+        private static void EnsureSelfCode(SQLiteConnection connection, Book book)
+        {
+            if (!string.IsNullOrWhiteSpace(book.SelfCode))
+            {
+                book.SelfCode = book.SelfCode.Trim();
+                return;
+            }
+
+            long nextNumber;
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT COALESCE(MAX(id), 0) + 1 FROM books;";
+                nextNumber = Convert.ToInt64(command.ExecuteScalar());
+            }
+
+            while (true)
+            {
+                var candidate = "BK-" + nextNumber.ToString("D6");
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT COUNT(1) FROM books WHERE self_code=@code;";
+                    command.Parameters.AddWithValue("@code", candidate);
+                    if (Convert.ToInt32(command.ExecuteScalar()) == 0)
+                    {
+                        book.SelfCode = candidate;
+                        return;
+                    }
+                }
+
+                nextNumber += 1;
+            }
         }
 
         private static void EnsureUniqueIdentifiers(SQLiteConnection connection, Book book, long currentId)
