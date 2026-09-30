@@ -182,9 +182,9 @@ namespace Win7BookManagement.Forms
                 RowCount = 1,
                 Margin = Padding.Empty
             };
-            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82));
+            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
+            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             supplierRow.Controls.Add(new Label
             {
@@ -218,10 +218,10 @@ namespace Win7BookManagement.Forms
                 RowCount = 1,
                 Margin = Padding.Empty
             };
-            scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82));
+            scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-            scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
+            scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             scanRow.Controls.Add(new Label
             {
