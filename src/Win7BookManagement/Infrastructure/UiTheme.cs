@@ -363,14 +363,30 @@ namespace Win7BookManagement.Infrastructure
         private static void NormalizeControl(Control control)
         {
             var table = control as TableLayoutPanel;
-            if (table != null &&
-                !table.AutoSize &&
-                table.Dock == DockStyle.Top)
+            if (table != null)
             {
-                var preferred = table.GetPreferredSize(
-                    new Size(Math.Max(1, table.Width), 0));
-                if (preferred.Height > table.Height)
-                    table.Height = preferred.Height;
+                var parentTable = table.Parent as TableLayoutPanel;
+                if (!table.AutoSize &&
+                    table.Dock == DockStyle.Fill &&
+                    parentTable != null)
+                {
+                    var row = parentTable.GetRow(table);
+                    if (row >= 0 &&
+                        parentTable.RowStyles.Count > row &&
+                        parentTable.RowStyles[row].SizeType == SizeType.AutoSize)
+                    {
+                        table.AutoSize = true;
+                        table.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                    }
+                }
+
+                if (!table.AutoSize && table.Dock == DockStyle.Top)
+                {
+                    var preferred = table.GetPreferredSize(
+                        new Size(Math.Max(1, table.Width), 0));
+                    if (preferred.Height > table.Height)
+                        table.Height = preferred.Height;
+                }
             }
 
             var label = control as Label;
