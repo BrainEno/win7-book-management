@@ -16,8 +16,8 @@ namespace Win7BookManagement.Forms
         private readonly Label _stepLabel = new Label();
         private readonly Label _titleLabel = new Label();
         private readonly Label _bodyLabel = new Label();
-        private readonly Button _previous = new Button();
-        private readonly Button _next = new Button();
+        private readonly AntdUI.Button _previous = UiTheme.CreateAntdButton("上一步", false);
+        private readonly AntdUI.Button _next = UiTheme.CreateAntdButton("下一步", true);
 
         private Rectangle _targetBounds = Rectangle.Empty;
         private int _index;
@@ -117,12 +117,8 @@ namespace Win7BookManagement.Forms
             _previous.Height = UiTheme.ButtonHeight;
             _previous.Click += delegate { PreviousStep(); };
 
-            var skip = new Button
-            {
-                Text = "以后再看",
-                Width = 96,
-                Height = UiTheme.ButtonHeight
-            };
+            var skip = UiTheme.CreateAntdButton("跳过", false);
+            skip.Width = 96;
             skip.Click += delegate { FinishGuide(); };
 
             footer.Controls.Add(_next);
