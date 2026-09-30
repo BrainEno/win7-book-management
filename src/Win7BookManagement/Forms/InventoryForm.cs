@@ -647,7 +647,7 @@ namespace Win7BookManagement.Forms
                     Padding = new Padding(22, 18, 22, 14),
                     BackColor = UiTheme.Surface
                 };
-                body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
+                body.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
                 body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
                 body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
