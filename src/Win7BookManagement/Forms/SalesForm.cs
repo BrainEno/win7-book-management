@@ -118,10 +118,14 @@ namespace Win7BookManagement.Forms
             toolbar.BackColor = UiTheme.Surface;
             toolbar.BorderStyle = BorderStyle.None;
 
-            var newOrder = new Button { Text = "＋ 新单", Width = 88, Height = UiTheme.ButtonHeight };
-            var pick = new Button { Text = "选择图书", Width = 100, Height = UiTheme.ButtonHeight };
-            var remove = new Button { Text = "移除选中", Width = 100, Height = UiTheme.ButtonHeight };
-            var clear = new Button { Text = "清空当前单", Width = 108, Height = UiTheme.ButtonHeight };
+            var newOrder = ModernUi.CreateButton("＋ 新单", false);
+            newOrder.Width = 94;
+            var pick = ModernUi.CreateButton("选择图书", false);
+            pick.Width = 104;
+            var remove = ModernUi.CreateButton("移除选中", false);
+            remove.Width = 104;
+            var clear = ModernUi.CreateButton("清空当前单", false);
+            clear.Width = 112;
 
             newOrder.Click += delegate { StartNewOrder(); };
             pick.Click += delegate { PickBook(); };
