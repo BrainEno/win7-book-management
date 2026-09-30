@@ -35,7 +35,7 @@ namespace Win7BookManagement.Infrastructure
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
         public const int InputHeight = 38;
-        public const int ButtonHeight = 36;
+        public const int ButtonHeight = 38;
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
@@ -73,9 +73,10 @@ namespace Win7BookManagement.Infrastructure
 
         public static int ResponsiveButtonHeight(int availableWidth)
         {
-            if (availableWidth < 900) return 32;
-            if (availableWidth < 1180) return 34;
-            return ButtonHeight;
+            // Buttons that sit beside search / scan inputs should share the
+            // same control height. This keeps Ant Design toolbars visually
+            // aligned at every responsive density tier.
+            return ResponsiveInputHeight(availableWidth);
         }
 
         public static float ResponsiveControlFontSize(int availableWidth)
