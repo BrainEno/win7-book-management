@@ -92,9 +92,7 @@ namespace Win7BookManagement.Forms
             foreach (var option in _options) _type.Items.Add(option.Text);
             _type.SelectedIndex = 0;
             _type.DropDownArrow = true;
-            _type.Radius = 7;
-            _type.BorderWidth = 1.2F;
-            _type.BorderColor = UiTheme.Border;
+
             _type.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e) { ReloadDocuments(); };
 
             _from.Format = DateTimePickerFormat.Short;
@@ -294,22 +292,14 @@ namespace Win7BookManagement.Forms
         private static void ConfigureTable(AntdUI.Table table, string emptyText)
         {
             table.Dock = DockStyle.Fill;
-            table.BackColor = UiTheme.Surface;
-            table.ForeColor = UiTheme.TextPrimary;
-            table.ColumnBack = UiTheme.NavigationSurface;
-            table.ColumnFore = UiTheme.TextSecondary;
-            table.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
-            table.BorderColor = UiTheme.Border;
-            table.Radius = 8;
+
             table.RowHeight = 46;
             table.RowHeightHeader = 46;
             table.EnableHeaderResizing = true;
             table.ColumnDragSort = true;
             table.ShowTip = true;
             table.EmptyText = emptyText;
-            table.RowHoverBg = Color.FromArgb(248, 246, 241);
-            table.RowSelectedBg = UiTheme.AccentSoft;
-            table.RowSelectedFore = UiTheme.TextPrimary;
+
         }
 
         private void ReloadDocuments()
