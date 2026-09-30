@@ -357,24 +357,65 @@ namespace Win7BookManagement.Infrastructure
                 form.Location = Point.Empty;
                 form.ShowInTaskbar = false;
 
-                if (embeddedPage)
-                    form.FormBorderStyle = FormBorderStyle.None;
+                var workingArea = Screen.PrimaryScreen == null
+                    ? Size.Empty
+                    : Screen.PrimaryScreen.WorkingArea.Size;
+                var useOffscreenHost =
+                    embeddedPage ||
+                    (workingArea.Width > 0 && size.Width > workingArea.Width) ||
+                    (workingArea.Height > 0 && size.Height > workingArea.Height);
+
+                if (useOffscreenHost)
+                {
+                    using (var host = new Panel())
+                    {
+                        host.Size = size;
+                        host.BackColor = UiTheme.Background;
+                        host.Padding = Padding.Empty;
+                        host.Margin = Padding.Empty;
+                        host.CreateControl();
+
+                        form.TopLevel = false;
+                        form.FormBorderStyle = FormBorderStyle.None;
+                        form.Dock = DockStyle.Fill;
+                        form.Margin = Padding.Empty;
+
+                        host.Controls.Add(form);
+                        UiTheme.Apply(form);
+                        form.Show();
+                        Application.DoEvents();
+
+                        if (afterShown != null)
+                        {
+                            afterShown(form);
+                            Application.DoEvents();
+                        }
+
+                        form.PerformLayout();
+                        host.PerformLayout();
+                        Application.DoEvents();
+
+                        using (var bitmap = new Bitmap(
+                            Math.Max(1, size.Width),
+                            Math.Max(1, size.Height)))
+                        {
+                            host.DrawToBitmap(
+                                bitmap,
+                                new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+                            bitmap.Save(
+                                Path.Combine(outputDirectory, fileName),
+                                ImageFormat.Png);
+                        }
+
+                        form.Hide();
+                    }
+
+                    return;
+                }
 
                 form.Size = size;
                 UiTheme.Apply(form);
                 form.Show();
-                Application.DoEvents();
-
-                // Windows can clamp a top-level form to the CI runner's current
-                // desktop when it is first shown. Re-apply the requested bounds
-                // after Shown so a file named 1366x768 is really rendered at
-                // 1366x768 rather than silently becoming ~1024px wide.
-                form.SetBounds(
-                    form.Left,
-                    form.Top,
-                    size.Width,
-                    size.Height,
-                    BoundsSpecified.Size);
                 Application.DoEvents();
 
                 if (afterShown != null)
