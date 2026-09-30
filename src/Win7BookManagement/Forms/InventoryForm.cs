@@ -149,10 +149,10 @@ namespace Win7BookManagement.Forms
                 RowCount = 1,
                 Margin = new Padding(0, 2, 0, 0)
             };
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             searchRow.Controls.Add(new Label
             {
@@ -296,7 +296,7 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 102));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             header.Controls.Add(new Label
             {

@@ -479,7 +479,7 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             var text = new TableLayoutPanel
             {
