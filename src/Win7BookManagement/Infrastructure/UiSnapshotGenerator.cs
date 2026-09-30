@@ -307,13 +307,7 @@ namespace Win7BookManagement.Infrastructure
                         BookId = stored[2].Id,
                         Quantity = 1,
                         UnitPriceCent = stored[2].SalePriceCent
-                    }
-                },
-                "视觉快照销售");
-
-            services.Sales.Checkout(
-                new List<TransactionLineInput>
-                {
+                    },
                     new TransactionLineInput
                     {
                         BookId = stored[4].Id,
