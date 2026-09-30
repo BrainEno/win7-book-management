@@ -230,9 +230,9 @@ namespace Win7BookManagement.Forms
 
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
-                Width = "260",
-                MinWidth = "220",
-                MaxWidth = "520",
+                Width = "220",
+                MinWidth = "180",
+                MaxWidth = "420",
                 Ellipsis = true
             };
             var priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
@@ -258,7 +258,7 @@ namespace Win7BookManagement.Forms
                 stockColumn,
                 _activeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "book-master");
+            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-v2");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
