@@ -129,53 +129,32 @@ namespace Win7BookManagement.Forms
             _returnButton.Margin = Padding.Empty;
             section.Controls.Add(_returnButton, 1, 0);
 
-            var filters = new TableLayoutPanel
+            var filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
-                MinimumSize = new Size(0, 48),
-                ColumnCount = 9,
-                RowCount = 1,
-                Margin = new Padding(0, 2, 0, 0)
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 58),
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                Margin = new Padding(0, 4, 0, 0),
+                Padding = Padding.Empty
             };
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 138));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            filters.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
 
-            filters.Controls.Add(CreateFilterLabel("类型"), 0, 0);
-            _type.Dock = DockStyle.Fill;
-            _type.Margin = new Padding(0, 4, 10, 4);
-            filters.Controls.Add(_type, 1, 0);
-
-            filters.Controls.Add(CreateFilterLabel("从"), 2, 0);
-            _from.Dock = DockStyle.Fill;
-            _from.Margin = new Padding(0, 4, 8, 4);
-            filters.Controls.Add(_from, 3, 0);
-
-            filters.Controls.Add(CreateFilterLabel("到"), 4, 0);
-            _to.Dock = DockStyle.Fill;
-            _to.Margin = new Padding(0, 4, 10, 4);
-            filters.Controls.Add(_to, 5, 0);
-
-            filters.Controls.Add(CreateFilterLabel("关键词"), 6, 0);
-            _search.Dock = DockStyle.Fill;
-            _search.Margin = new Padding(0, 4, 10, 4);
-            filters.Controls.Add(_search, 7, 0);
+            filters.Controls.Add(CreateFilterField("类型", _type, 150));
+            filters.Controls.Add(CreateFilterField("从", _from, 126));
+            filters.Controls.Add(CreateFilterField("到", _to, 126));
+            filters.Controls.Add(CreateFilterField("关键词", _search, 250));
 
             var query = new Button
             {
                 Text = "查询",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 4, 0, 4)
+                Width = 92,
+                Height = UiTheme.ButtonHeight,
+                Margin = new Padding(0, 18, 0, 0)
             };
             query.Click += delegate { ReloadDocuments(); };
-            filters.Controls.Add(query, 8, 0);
+            filters.Controls.Add(query);
 
             section.Controls.Add(filters, 0, 1);
             section.SetColumnSpan(filters, 2);
@@ -209,16 +188,36 @@ namespace Win7BookManagement.Forms
             return section;
         }
 
-        private static Label CreateFilterLabel(string text)
+        private static Control CreateFilterField(string labelText, Control input, int width)
         {
-            return new Label
+            var field = new TableLayoutPanel
             {
-                Text = text,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.2F, FontStyle.Bold)
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 2,
+                MinimumSize = new Size(width, 0),
+                Margin = new Padding(0, 0, 12, 0),
+                Padding = Padding.Empty
             };
+            field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            field.Controls.Add(new Label
+            {
+                Text = labelText,
+                AutoSize = true,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.2F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 0, 5)
+            }, 0, 0);
+
+            input.Dock = DockStyle.Top;
+            input.Width = width;
+            input.Margin = Padding.Empty;
+            field.Controls.Add(input, 0, 1);
+            return field;
         }
 
         private static void ConfigureChip(Label label, Color backColor, Color foreColor)
