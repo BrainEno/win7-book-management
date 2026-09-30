@@ -35,8 +35,8 @@ namespace Win7BookManagement.Infrastructure
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
-        public const int InputHeight = 32;
-        public const int ButtonHeight = 38;
+        public const int InputHeight = 40;
+        public const int ButtonHeight = 40;
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
@@ -258,9 +258,12 @@ namespace Win7BookManagement.Infrastructure
 
             grid.RowTemplate.Height = bodyHeight;
             grid.ColumnHeadersHeight = headerHeight;
-            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
             grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             grid.MultiSelect = false;
+            grid.AllowUserToResizeColumns = true;
+            grid.AllowUserToResizeRows = false;
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
 
             grid.ColumnHeadersDefaultCellStyle.BackColor = NavigationSurface;
             grid.ColumnHeadersDefaultCellStyle.ForeColor = TextSecondary;
@@ -316,7 +319,7 @@ namespace Win7BookManagement.Infrastructure
             button.FlatStyle = FlatStyle.Flat;
             button.FlatAppearance.BorderSize = 1;
             button.Cursor = Cursors.Hand;
-            button.Font = Font(8.8F, primary ? FontStyle.Bold : FontStyle.Regular);
+            button.Font = Font(9F, primary ? FontStyle.Bold : FontStyle.Regular);
 
             var minimumHeight = Math.Max(ButtonHeight, button.Font.Height + 16);
             button.MinimumSize = new Size(button.MinimumSize.Width, minimumHeight);
@@ -370,7 +373,9 @@ namespace Win7BookManagement.Infrastructure
                         button.Cursor = Cursors.Hand;
                         button.MinimumSize = new Size(
                             button.MinimumSize.Width,
-                            Math.Max(ButtonHeight, button.Font.Height + 14));
+                            Math.Max(44, button.Font.Height + 18));
+                        button.Font = Font(9.4F, FontStyle.Regular);
+                        button.Padding = new Padding(14, 0, 12, 0);
                     }
                     else
                     {
