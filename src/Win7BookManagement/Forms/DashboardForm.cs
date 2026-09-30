@@ -534,6 +534,9 @@ namespace Win7BookManagement.Forms
 
         private static void ConfigureGrid(DataGridView grid)
         {
+            grid.Dock = DockStyle.Fill;
+            grid.Margin = Padding.Empty;
+            grid.BorderStyle = BorderStyle.None;
             grid.ReadOnly = true;
             grid.AllowUserToAddRows = false;
             grid.AllowUserToDeleteRows = false;
