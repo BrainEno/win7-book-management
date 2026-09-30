@@ -329,7 +329,7 @@ namespace Win7BookManagement.Infrastructure
                 Text = text ?? "",
                 AutoSize = false,
                 Height = ButtonHeight,
-                MinimumSize = new Size(92, ButtonHeight),
+                MinimumSize = new Size(76, ButtonHeight),
                 Cursor = Cursors.Hand,
                 Type = primary ? AntdUI.TTypeMini.Primary : AntdUI.TTypeMini.Default
             };
