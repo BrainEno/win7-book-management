@@ -141,6 +141,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 58,
+                MinimumSize = new Size(0, 58),
                 ColumnCount = 3,
                 RowCount = 1,
                 Margin = new Padding(0, 4, 0, 0)
