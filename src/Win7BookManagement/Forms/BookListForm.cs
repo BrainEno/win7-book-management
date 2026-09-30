@@ -11,7 +11,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("输入店内编码、ISBN、书名、作者或出版社");
-        private readonly CheckBox _includeInactive = new CheckBox();
+        private readonly AntdUI.Checkbox _includeInactive = new AntdUI.Checkbox();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
         private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
@@ -130,7 +130,7 @@ namespace Win7BookManagement.Forms
             _includeInactive.Text = "包含停用";
             _includeInactive.AutoSize = true;
             _includeInactive.Margin = new Padding(12, 11, 0, 0);
-            _includeInactive.CheckedChanged += delegate { Reload(); };
+            _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
 
             actions.Controls.Add(addButton);
             actions.Controls.Add(editButton);
