@@ -155,10 +155,6 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 8, 0, 8)
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
-            section.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
             {
@@ -173,6 +169,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 56,
+                MinimumSize = new Size(0, 56),
                 ColumnCount = 3,
                 RowCount = 1,
                 Margin = Padding.Empty
@@ -213,6 +210,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 58,
+                MinimumSize = new Size(0, 58),
                 ColumnCount = 4,
                 RowCount = 1,
                 Margin = new Padding(0, 5, 0, 0)
