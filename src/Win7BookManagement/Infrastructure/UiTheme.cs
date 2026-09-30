@@ -2,13 +2,15 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Krypton.Toolkit;
 
 namespace Win7BookManagement.Infrastructure
 {
     public static class UiTheme
     {
-        // Warm neutral palette. Keep the implementation on stock WinForms/GDI so
-        // Windows 7 SP1 remains a first-class runtime target.
+        // Warm neutral palette. Krypton provides the richer WinForms control
+        // surface, while this class remains the single source of visual tokens
+        // and layout rules so Windows 7 SP1 stays a first-class runtime target.
         public static readonly Color Background = Color.FromArgb(246, 244, 239);
         public static readonly Color Surface = Color.FromArgb(255, 255, 253);
         public static readonly Color SurfaceMuted = Color.FromArgb(246, 243, 237);
@@ -250,6 +252,8 @@ namespace Win7BookManagement.Infrastructure
             grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             grid.RowHeadersVisible = false;
+            grid.AllowUserToResizeColumns = true;
+            grid.AllowUserToResizeRows = false;
 
             var bodyHeight = Math.Max(38, grid.Font.Height + 18);
             var headerHeight = Math.Max(40, grid.ColumnHeadersDefaultCellStyle.Font == null
@@ -277,6 +281,28 @@ namespace Win7BookManagement.Infrastructure
             grid.DefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
             grid.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(252, 251, 248);
+
+            var kryptonGrid = grid as KryptonDataGridView;
+            if (kryptonGrid != null)
+            {
+                // Krypton's stock palette uses a cool blue sheet background.
+                // Override it here so migrated tables remain part of the same
+                // warm-neutral design system as the rest of the application.
+                kryptonGrid.StateCommon.Background.Color1 = Surface;
+                kryptonGrid.StateCommon.Background.Color2 = Surface;
+                kryptonGrid.StateNormal.Background.Color1 = Surface;
+                kryptonGrid.StateNormal.Background.Color2 = Surface;
+
+                kryptonGrid.StateCommon.DataCell.Back.Color1 = Surface;
+                kryptonGrid.StateCommon.DataCell.Back.Color2 = Surface;
+                kryptonGrid.StateCommon.HeaderColumn.Back.Color1 = NavigationSurface;
+                kryptonGrid.StateCommon.HeaderColumn.Back.Color2 = NavigationSurface;
+                kryptonGrid.StateCommon.HeaderColumn.Content.Font = Font(8.8F, FontStyle.Bold);
+                kryptonGrid.StateCommon.HeaderColumn.Content.TextH = PaletteRelativeAlign.Near;
+                kryptonGrid.StateSelected.DataCell.Back.Color1 = AccentSoft;
+                kryptonGrid.StateSelected.DataCell.Back.Color2 = AccentSoft;
+            }
+
             grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
             grid.RowTemplate.Resizable = DataGridViewTriState.False;
         }
@@ -385,6 +411,7 @@ namespace Win7BookManagement.Infrastructure
                 if (grid != null)
                     StyleGrid(grid);
 
+                StyleKryptonInput(control);
                 PrepareInput(control);
 
                 var label = control as Label;
@@ -418,6 +445,47 @@ namespace Win7BookManagement.Infrastructure
                 }
 
                 ApplyRecursive(control);
+            }
+        }
+
+        private static void StyleKryptonInput(Control control)
+        {
+            var textBox = control as KryptonTextBox;
+            if (textBox != null)
+            {
+                textBox.StateCommon.Border.Color1 = Border;
+                textBox.StateCommon.Border.Color2 = Border;
+                textBox.StateCommon.Border.Width = 2;
+                textBox.StateCommon.Border.Rounding = 3F;
+                textBox.MinimumSize = new Size(
+                    textBox.MinimumSize.Width,
+                    Math.Max(ButtonHeight, textBox.Font.Height + 14));
+                return;
+            }
+
+            var numeric = control as KryptonNumericUpDown;
+            if (numeric != null)
+            {
+                numeric.StateCommon.Border.Color1 = Border;
+                numeric.StateCommon.Border.Color2 = Border;
+                numeric.StateCommon.Border.Width = 2;
+                numeric.StateCommon.Border.Rounding = 3F;
+                numeric.MinimumSize = new Size(
+                    numeric.MinimumSize.Width,
+                    Math.Max(ButtonHeight, numeric.Font.Height + 14));
+                return;
+            }
+
+            var combo = control as KryptonComboBox;
+            if (combo != null)
+            {
+                combo.StateCommon.ComboBox.Border.Color1 = Border;
+                combo.StateCommon.ComboBox.Border.Color2 = Border;
+                combo.StateCommon.ComboBox.Border.Width = 2;
+                combo.StateCommon.ComboBox.Border.Rounding = 3F;
+                combo.MinimumSize = new Size(
+                    combo.MinimumSize.Width,
+                    Math.Max(ButtonHeight, combo.Font.Height + 14));
             }
         }
 

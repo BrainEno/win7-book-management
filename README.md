@@ -19,7 +19,7 @@
 - System.Data.SQLite.Core 1.0.118
 - NPOI 2.6.2
 - SQLite
-- 自定义 Win7-safe UI theme
+- Krypton Toolkit 95.25.4.111 + 自定义 Win7-safe Design System
 - Inno Setup 6.7.3 离线 installer
 
 运行时不依赖网络服务，也不要求安装 Microsoft Excel。
@@ -45,13 +45,21 @@
 - DPI-aware manifest
 - 4K / 高 DPI：WinForms 使用 DPI 自动缩放与高 DPI 自动重排；主要工具栏、表格列和弹窗采用响应式布局
 
+## 自出版物与商品编码
+
+- ISBN 现在是可选业务标识，不再承担店内商品编码职责。
+- 新建图书若没有店内编码，系统自动生成 `BK-000001` 形式的唯一编码。
+- 采购入库与销售开单都可按店内编码、ISBN、书名或作者查找，因此无 ISBN 的自出版物可以完整走入库、销售和库存流程。
+- 图书编辑页只展示一个“销售价格”，保存时同步写入旧库中的定价 / 零售价字段以保持历史兼容。
+- 出版社、出版年、版次和装帧均为可选整理字段，书名仍是唯一必填的核心资料。
+
 ## 图书资料增强
 
 轻量版只吸收完整版 Flutter 系统中对小型书店最有价值的字段：店内编码、出版年、版次、装帧、默认货架位、默认进价和备注。默认进价用于采购入库预填，但正式采购单仍保存当次实际进价。旧数据库会自动补齐这些字段并升级 schema，不需要删库重建。
 
 ## UI 重构标准与第一阶段
 
-项目现在以 [docs/UI_DESIGN_STANDARD.md](docs/UI_DESIGN_STANDARD.md) 作为 UI 单一验收标准。现阶段不引入第三方 WinForms 皮肤库：优先用 Win7 / .NET Framework 4.8 原生 WinForms 建立统一 Design System，从根源修复高 DPI 文本裁切、输入框过矮、固定尺寸失调和页面信息层级混乱问题。
+项目现在以 [docs/UI_DESIGN_STANDARD.md](docs/UI_DESIGN_STANDARD.md) 作为 UI 单一验收标准。本轮开始引入 **Krypton Toolkit 95.25.4.111**，用于替换核心流程中的输入框、下拉框、数值输入与数据表格，同时继续用内部 Design System 约束字体、间距、响应式布局和状态色。选择固定版本是为了继续保持 Win7 SP1 / .NET Framework 4.8 / x86 / 完全离线部署边界。
 
 第一阶段已优先重构：
 

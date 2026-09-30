@@ -42,7 +42,7 @@ namespace Win7BookManagement.Forms
             _sidebar = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 212,
+                Width = 226,
                 BackColor = UiTheme.NavigationSurface,
                 Padding = new Padding(14, 16, 14, 12)
             };
@@ -112,7 +112,7 @@ namespace Win7BookManagement.Forms
             {
                 AutoSize = true,
                 Dock = DockStyle.Fill,
-                Font = UiTheme.Font(15F, FontStyle.Bold),
+                Font = UiTheme.Font(16F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Text = "经营概览",
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -201,7 +201,7 @@ namespace Win7BookManagement.Forms
 
             var title = new Label
             {
-                Text = "BOOK",
+                Text = "BOOK DESK",
                 AutoSize = true,
                 Dock = DockStyle.Top,
                 ForeColor = UiTheme.TextPrimary,
@@ -210,11 +210,11 @@ namespace Win7BookManagement.Forms
             };
             var sub = new Label
             {
-                Text = "离线书店进销存",
+                Text = "独立书店 · 离线进销存",
                 AutoSize = true,
                 Dock = DockStyle.Top,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.3F),
+                Font = UiTheme.Font(8.6F),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
@@ -405,12 +405,12 @@ namespace Win7BookManagement.Forms
                 Text = text,
                 AutoSize = true,
                 Width = 180,
-                MinimumSize = new Size(0, 30),
+                MinimumSize = new Size(0, 32),
                 Margin = new Padding(0, 8, 0, 0),
                 Padding = new Padding(0, 7, 0, 0),
                 ForeColor = UiTheme.TextSecondary,
                 BackColor = UiTheme.NavigationSurface,
-                Font = UiTheme.Font(7.6F, FontStyle.Bold),
+                Font = UiTheme.Font(8F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
@@ -426,7 +426,7 @@ namespace Win7BookManagement.Forms
                 Width = 180,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(180, 42),
+                MinimumSize = new Size(180, 48),
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 1, 0, 1),
@@ -451,12 +451,12 @@ namespace Win7BookManagement.Forms
                 Tag = "nav",
                 Dock = DockStyle.Fill,
                 Margin = Padding.Empty,
-                Padding = new Padding(11, 0, 8, 0),
+                Padding = new Padding(14, 0, 10, 0),
                 FlatStyle = FlatStyle.Flat,
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.NavigationSurface,
                 ForeColor = UiTheme.NavigationText,
-                Font = UiTheme.Font(8.9F, FontStyle.Regular),
+                Font = UiTheme.Font(9.6F, FontStyle.Regular),
                 Cursor = Cursors.Hand
             };
             button.FlatAppearance.BorderSize = 0;
@@ -481,7 +481,7 @@ namespace Win7BookManagement.Forms
 
                 pair.Value.BackColor = active ? UiTheme.NavigationSelected : UiTheme.NavigationSurface;
                 pair.Value.ForeColor = active ? UiTheme.Accent : UiTheme.NavigationText;
-                pair.Value.Font = UiTheme.Font(8.9F, active ? FontStyle.Bold : FontStyle.Regular);
+                pair.Value.Font = UiTheme.Font(9.6F, active ? FontStyle.Bold : FontStyle.Regular);
 
                 Panel indicator;
                 if (_navIndicators.TryGetValue(pair.Key, out indicator))
@@ -496,7 +496,7 @@ namespace Win7BookManagement.Forms
         private void ApplyResponsiveLayout()
         {
             var compact = ClientSize.Width < UiTheme.WideBreakpoint;
-            _sidebar.Width = compact ? 190 : 216;
+            _sidebar.Width = compact ? 202 : 228;
             _sidebar.Padding = compact
                 ? new Padding(10, 14, 10, 10)
                 : new Padding(14, 16, 14, 12);

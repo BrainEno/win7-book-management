@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using Krypton.Toolkit;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -10,9 +11,9 @@ namespace Win7BookManagement.Forms
     public sealed class BookListForm : Form
     {
         private readonly ApplicationServices _services;
-        private readonly TextBox _search = new TextBox();
+        private readonly KryptonTextBox _search = new KryptonTextBox();
         private readonly CheckBox _includeInactive = new CheckBox();
-        private readonly DataGridView _grid = new DataGridView();
+        private readonly KryptonDataGridView _grid = new KryptonDataGridView();
         private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
         private readonly Label _lowStockChip = new Label();
@@ -216,7 +217,7 @@ namespace Win7BookManagement.Forms
             var hint = new Label
             {
                 AutoSize = true,
-                Text = "可按编码、ISBN、书名、作者、出版社、分类、出版信息、货架位或备注搜索。",
+                Text = "可按店内编码、ISBN、书名、作者、出版社、分类、出版信息、货架位或备注搜索。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(4, 5, 0, 0)
@@ -345,9 +346,8 @@ namespace Win7BookManagement.Forms
             AddDetailRow(details, "版次", "edition");
             AddDetailRow(details, "装帧", "binding");
             AddDetailRow(details, "货架位", "shelf");
-            AddDetailRow(details, "定价", "listPrice");
+            AddDetailRow(details, "销售价格", "price");
             AddDetailRow(details, "默认进价", "purchasePrice");
-            AddDetailRow(details, "零售价", "salePrice");
             AddDetailRow(details, "库存", "stock");
             AddDetailRow(details, "状态", "status");
             AddDetailRow(details, "备注", "note", 62);
@@ -406,6 +406,8 @@ namespace Win7BookManagement.Forms
             _grid.ReadOnly = true;
             _grid.AllowUserToAddRows = false;
             _grid.AllowUserToDeleteRows = false;
+            _grid.AllowUserToResizeColumns = true;
+            _grid.AllowUserToResizeRows = false;
             _grid.MultiSelect = false;
             _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             _grid.AutoGenerateColumns = false;
@@ -423,7 +425,7 @@ namespace Win7BookManagement.Forms
             };
             var priceColumn = new DataGridViewTextBoxColumn
             {
-                HeaderText = "售价",
+                HeaderText = "销售价格",
                 DataPropertyName = "SalePriceYuan",
                 Width = 82,
                 DefaultCellStyle = new DataGridViewCellStyle
@@ -455,6 +457,9 @@ namespace Win7BookManagement.Forms
             _grid.Columns.Add(priceColumn);
             _grid.Columns.Add(stockColumn);
             _grid.Columns.Add(_activeColumn);
+
+            foreach (DataGridViewColumn column in _grid.Columns)
+                column.Resizable = DataGridViewTriState.True;
 
             _grid.CellDoubleClick += delegate { EditSelected(); };
             _grid.CellFormatting += HighlightLowStock;
@@ -544,9 +549,8 @@ namespace Win7BookManagement.Forms
             _detailValues["edition"].Text = EmptyAsDash(book.Edition);
             _detailValues["binding"].Text = EmptyAsDash(book.Binding);
             _detailValues["shelf"].Text = EmptyAsDash(book.ShelfCode);
-            _detailValues["listPrice"].Text = "¥" + book.ListPriceYuan.ToString("0.00");
+            _detailValues["price"].Text = "¥" + book.SalePriceYuan.ToString("0.00");
             _detailValues["purchasePrice"].Text = "¥" + book.DefaultPurchasePriceYuan.ToString("0.00");
-            _detailValues["salePrice"].Text = "¥" + book.SalePriceYuan.ToString("0.00");
             _detailValues["stock"].Text = book.StockQuantity + " 册";
             _detailValues["status"].Text = book.IsActive ? "启用" : "停用";
             _detailValues["note"].Text = EmptyAsDash(book.Note);

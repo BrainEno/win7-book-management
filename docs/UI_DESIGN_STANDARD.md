@@ -9,31 +9,33 @@
 3. 所有主页面必须在 1024×768 可操作，在 Windows 10/11 的 2K / 4K + DPI 缩放下不截断主要信息。
 4. 优先通过响应式列隐藏、侧栏折叠、间距压缩和可伸缩布局解决小窗口问题；滚动条是最后手段。
 
-## 2. 是否更换第三方 UI 组件库
+## 2. 第三方 UI 组件策略
 
-本阶段不更换第三方 UI 组件库。
+从本轮开始采用 **Krypton Toolkit 95.25.4.111** 作为新的 WinForms 基础控件层，并保留现有 UiTheme 作为布局、字体、间距、状态色和 DPI 安全规则的单一来源。
 
-原因不是“继续接受原生 WinForms 的默认外观”，而是将原生 WinForms 当作兼容层，在项目内部建立统一 Design System。现有问题主要来自：
+选择这一固定版本的原则：
 
-- 单行 TextBox 被强行拉高或塞进过矮的固定行，原生 WinForms 文本基线会失衡；
-- Label / TableLayoutPanel 大量使用 18–34px 固定高度，雅黑 / 高 DPI 下容易把字形裁掉；
-- Form 内大量绝对高度与固定列宽，DPI 放大后没有足够空间；
-- 页面缺少明确的“工具栏 / 输入区 / 数据区 / 结算区 / 摘要区”层级；
-- 各页面自己决定 padding、字号、按钮大小，缺少统一 token；
-- 数据表没有按窗口宽度隐藏次要列；
-- 表单用碎片化小卡片堆叠字段，字段对齐和阅读顺序不稳定。
+- NuGet 明确提供 .NET Framework 4.8 目标；
+- net48 包本身无额外 NuGet 依赖，便于 x86 离线打包；
+- BSD-3-Clause 许可允许项目长期维护；
+- 保持纯 WinForms，不引入 WebView2、WinUI、Windows App SDK 或浏览器运行时；
+- 当前优先使用 KryptonTextBox、KryptonComboBox、KryptonNumericUpDown 和 KryptonDataGridView；业务服务、SQLite、事务与报表层不随 UI 重构改写。
 
-这些问题不需要通过大型第三方皮肤库才能解决。引入第三方库反而会增加 Win7、x86、离线 installer、授权和原生 DLL 风险。
+迁移采用“核心流程先行、逐页替换”：
 
-未来只有候选库同时满足以下条件才允许重新评估：
+1. 图书资料、图书编辑、共享图书选择器；
+2. 采购入库；
+3. 销售开单；
+4. 其余库存、单据、报表、供应商和设置页面按同一规则逐步迁移。
 
-- 明确支持 .NET Framework 4.8；
-- 明确支持 Windows 7 SP1；
-- x86 构建和离线部署无附加在线依赖；
-- 不依赖 WebView2 / Windows App SDK / WinUI 3；
-- 商用许可清晰；
-- 1024×768、100%/125%/150% DPI 和 Win10/11 4K 实机 smoke test 通过；
-- 能显著减少维护成本，而不是只提供皮肤。
+第三方控件不能替代布局设计。无论控件来源，仍必须满足：
+
+- 1024×768 下主流程完整可操作；
+- 4K / 高 DPI 下不裁字；
+- 表格列允许用户拖动调整宽度；
+- 核心列使用 Fill / MinimumWidth，次要列在窄窗口优先隐藏；
+- 输入控件与相邻按钮视觉高度一致，不得出现 20–30px 的拥挤输入框；
+- 所有 Win7 发布仍以 Release x86、.NET Framework 4.8、离线 installer 和 Win7 真机 smoke test 为最终门槛。
 
 ## 3. Design Tokens
 

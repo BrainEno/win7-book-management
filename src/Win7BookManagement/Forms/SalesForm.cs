@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Krypton.Toolkit;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -11,9 +12,9 @@ namespace Win7BookManagement.Forms
     public sealed class SalesForm : Form, INavigationGuard
     {
         private readonly ApplicationServices _services;
-        private readonly TextBox _isbn = new TextBox();
-        private readonly TextBox _note = new TextBox();
-        private readonly DataGridView _grid = new DataGridView();
+        private readonly KryptonTextBox _isbn = new KryptonTextBox();
+        private readonly KryptonTextBox _note = new KryptonTextBox();
+        private readonly KryptonDataGridView _grid = new KryptonDataGridView();
         private readonly BindingList<SalesCartRow> _rows = new BindingList<SalesCartRow>();
         private readonly Label _itemCount = new Label();
         private readonly Label _quantityTotal = new Label();
@@ -90,6 +91,7 @@ namespace Win7BookManagement.Forms
 
             _rows.ListChanged += delegate { UpdateTotals(); };
             Resize += delegate { ApplyResponsiveColumns(); };
+            _grid.SizeChanged += delegate { ApplyResponsiveColumns(); };
             Shown += delegate
             {
                 _isbn.Focus();
@@ -98,6 +100,7 @@ namespace Win7BookManagement.Forms
             };
 
             UiTheme.Apply(this);
+            UiTheme.StyleEditableGrid(_grid);
         }
 
         public bool CanNavigateAway(IWin32Window owner)
@@ -136,7 +139,7 @@ namespace Win7BookManagement.Forms
             var hint = new Label
             {
                 AutoSize = true,
-                Text = "扫码枪直接扫 ISBN 后回车即可加入；数量和零售价可在表格中修改。",
+                Text = "扫码 ISBN，或输入店内编码 / ISBN / 书名搜索；数量和销售价格可在表格中修改。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(14, 11, 0, 0)
@@ -180,7 +183,7 @@ namespace Win7BookManagement.Forms
 
             var isbnLabel = new Label
             {
-                Text = "ISBN / 条码",
+                Text = "编码 / ISBN / 书名",
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
@@ -223,7 +226,7 @@ namespace Win7BookManagement.Forms
 
             var inputHint = new Label
             {
-                Text = "扫码枪可直接扫描后回车；也可以输入 ISBN 后搜索，或打开图书选择器。",
+                Text = "扫码枪可直接扫描后回车；自出版物也可用系统生成的店内编码、书名或作者搜索。",
                 AutoSize = true,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
@@ -278,7 +281,7 @@ namespace Win7BookManagement.Forms
 
             header.Controls.Add(new Label
             {
-                Text = "数量和零售价可直接在表格中修改",
+                Text = "数量和销售价格可直接在表格中修改",
                 AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleRight,
@@ -297,7 +300,7 @@ namespace Win7BookManagement.Forms
 
             _emptyState.Dock = DockStyle.Fill;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "购物车为空\r\n请扫描 ISBN、搜索加入，或从图书资料中选择";
+            _emptyState.Text = "购物车为空\r\n请扫描 ISBN，或按店内编码 / ISBN / 书名搜索加入";
             _emptyState.ForeColor = UiTheme.TextSecondary;
             _emptyState.Font = UiTheme.Font(9F);
             _emptyState.BackColor = UiTheme.Surface;
@@ -443,6 +446,8 @@ namespace Win7BookManagement.Forms
             _grid.AutoGenerateColumns = false;
             _grid.AllowUserToAddRows = false;
             _grid.AllowUserToDeleteRows = false;
+            _grid.AllowUserToResizeColumns = true;
+            _grid.AllowUserToResizeRows = false;
             _grid.RowHeadersVisible = false;
             _grid.BackgroundColor = UiTheme.Surface;
             _grid.DataSource = _rows;
@@ -454,7 +459,7 @@ namespace Win7BookManagement.Forms
                 HeaderText = "书名",
                 DataPropertyName = "Title",
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                MinimumWidth = 190,
+                MinimumWidth = 240,
                 FillWeight = 220,
                 ReadOnly = true
             });
@@ -464,7 +469,7 @@ namespace Win7BookManagement.Forms
             {
                 HeaderText = "数量",
                 DataPropertyName = "Quantity",
-                Width = 72,
+                Width = 90,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
                     Alignment = DataGridViewContentAlignment.MiddleRight,
@@ -473,9 +478,9 @@ namespace Win7BookManagement.Forms
             });
             _grid.Columns.Add(new DataGridViewTextBoxColumn
             {
-                HeaderText = "零售价",
+                HeaderText = "销售价格",
                 DataPropertyName = "UnitPriceYuan",
-                Width = 92,
+                Width = 108,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
                     Format = "0.00",
@@ -487,7 +492,7 @@ namespace Win7BookManagement.Forms
             {
                 HeaderText = "小计",
                 DataPropertyName = "LineTotalYuan",
-                Width = 100,
+                Width = 112,
                 ReadOnly = true,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
@@ -495,6 +500,9 @@ namespace Win7BookManagement.Forms
                     Alignment = DataGridViewContentAlignment.MiddleRight
                 }
             });
+
+            foreach (DataGridViewColumn column in _grid.Columns)
+                column.Resizable = DataGridViewTriState.True;
 
             _grid.CellEndEdit += delegate
             {
@@ -509,13 +517,14 @@ namespace Win7BookManagement.Forms
             _grid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e)
             {
                 e.ThrowException = false;
-                MessageBox.Show(this, "数量请输入整数，价格请输入有效金额。", "输入格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+                    _grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ErrorText = "请输入有效的数量或金额。";
             };
         }
 
         private void ApplyResponsiveColumns()
         {
-            var width = ClientSize.Width;
+            var width = _grid.ClientSize.Width > 0 ? _grid.ClientSize.Width : ClientSize.Width;
             _selfCodeColumn.Visible = width >= 980;
             _authorColumn.Visible = width >= 900;
             _isbnColumn.Visible = width >= 760;
@@ -527,22 +536,51 @@ namespace Win7BookManagement.Forms
             var text = (_isbn.Text ?? "").Trim();
             if (text.Length == 0)
             {
-                MessageBox.Show(this, "请先扫描或输入 ISBN。", "还没有商品", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "请先扫描 ISBN，或输入店内编码 / ISBN / 书名关键词。", "还没有商品", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 _isbn.Focus();
                 return;
             }
 
-            var book = _services.Books.FindByExactIsbn(text);
-            if (book == null)
+            var exactBook = _services.Books.FindByExactIsbn(text);
+            if (exactBook != null)
             {
-                MessageBox.Show(this, "没有找到该 ISBN 的启用图书。请检查 ISBN，或先在“图书资料”中建立资料。", "未找到图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                AddBook(exactBook);
+                _isbn.Text = "";
+                _isbn.Focus();
+                return;
+            }
+
+            var matches = _services.Books.SearchActiveByIsbnOrTitle(text);
+            if (matches.Count == 0)
+            {
+                MessageBox.Show(
+                    this,
+                    "没有找到与“" + text + "”匹配的启用图书。可以输入店内编码、完整/部分 ISBN、书名或作者。",
+                    "未找到图书",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
                 _isbn.SelectAll();
                 _isbn.Focus();
                 return;
             }
 
-            AddBook(book);
-            _isbn.Clear();
+            if (matches.Count == 1)
+            {
+                AddBook(matches[0]);
+                _isbn.Text = "";
+                _isbn.Focus();
+                return;
+            }
+
+            using (var dialog = new BookLookupDialog(_services, text, true))
+            {
+                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
+                {
+                    AddBook(dialog.SelectedBook);
+                    _isbn.Text = "";
+                }
+            }
+
             _isbn.Focus();
         }
 
@@ -629,8 +667,8 @@ namespace Win7BookManagement.Forms
         private void ResetOrder()
         {
             _rows.Clear();
-            _note.Clear();
-            _isbn.Clear();
+            _note.Text = "";
+            _isbn.Text = "";
             _isbn.Focus();
             UpdateTotals();
         }

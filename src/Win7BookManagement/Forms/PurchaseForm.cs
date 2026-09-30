@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Krypton.Toolkit;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -11,10 +12,10 @@ namespace Win7BookManagement.Forms
     public sealed class PurchaseForm : Form, INavigationGuard
     {
         private readonly ApplicationServices _services;
-        private readonly ComboBox _supplier = new ComboBox();
-        private readonly TextBox _isbn = new TextBox();
-        private readonly TextBox _note = new TextBox();
-        private readonly DataGridView _grid = new DataGridView();
+        private readonly KryptonComboBox _supplier = new KryptonComboBox();
+        private readonly KryptonTextBox _isbn = new KryptonTextBox();
+        private readonly KryptonTextBox _note = new KryptonTextBox();
+        private readonly KryptonDataGridView _grid = new KryptonDataGridView();
         private readonly BindingList<PurchaseCartRow> _rows = new BindingList<PurchaseCartRow>();
         private readonly Label _lineCount = new Label();
         private readonly Label _quantityTotal = new Label();
@@ -261,11 +262,10 @@ namespace Win7BookManagement.Forms
             _supplier.Font = UiTheme.Font(9.3F);
             _supplier.Margin = Padding.Empty;
 
-            var supplierInput = UiTheme.CreateInputFrame(_supplier);
-            supplierInput.Dock = DockStyle.None;
-            supplierInput.Width = 320;
-            supplierInput.Margin = new Padding(0, 2, 12, 4);
-            supplierRow.Controls.Add(supplierInput);
+            _supplier.Width = 320;
+            _supplier.MinimumSize = new Size(320, 38);
+            _supplier.Margin = new Padding(0, 2, 12, 4);
+            supplierRow.Controls.Add(_supplier);
 
             supplierRow.Controls.Add(new Label
             {
@@ -294,7 +294,7 @@ namespace Win7BookManagement.Forms
 
             scanRow.Controls.Add(new Label
             {
-                Text = "ISBN / 书名",
+                Text = "编码 / ISBN / 书名",
                 AutoSize = true,
                 Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -314,9 +314,10 @@ namespace Win7BookManagement.Forms
                 }
             };
 
-            var isbnInput = UiTheme.CreateInputFrame(_isbn);
-            isbnInput.Margin = new Padding(0, 2, 10, 2);
-            scanRow.Controls.Add(isbnInput, 1, 0);
+            _isbn.Dock = DockStyle.Fill;
+            _isbn.MinimumSize = new Size(0, 38);
+            _isbn.Margin = new Padding(0, 2, 10, 2);
+            scanRow.Controls.Add(_isbn, 1, 0);
 
             var add = new Button
             {
@@ -345,7 +346,7 @@ namespace Win7BookManagement.Forms
 
             section.Controls.Add(new Label
             {
-                Text = "支持完整或部分 ISBN、书名模糊搜索。数量和本次进价在下方明细中修改。",
+                Text = "支持店内编码、完整/部分 ISBN、书名或作者搜索。数量和本次进价在下方明细中修改。",
                 AutoSize = true,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
@@ -479,11 +480,11 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 9, 14, 0)
             }, 0, 0);
 
-            _note.Margin = Padding.Empty;
+            _note.Dock = DockStyle.Fill;
+            _note.MinimumSize = new Size(0, 38);
+            _note.Margin = new Padding(0, 1, 0, 1);
             _note.Font = UiTheme.Font(9F);
-            var noteInput = UiTheme.CreateInputFrame(_note);
-            noteInput.Margin = new Padding(0, 1, 0, 1);
-            section.Controls.Add(noteInput, 1, 0);
+            section.Controls.Add(_note, 1, 0);
 
             return section;
         }
@@ -561,6 +562,8 @@ namespace Win7BookManagement.Forms
             _grid.AutoGenerateColumns = false;
             _grid.AllowUserToAddRows = false;
             _grid.AllowUserToDeleteRows = false;
+            _grid.AllowUserToResizeColumns = true;
+            _grid.AllowUserToResizeRows = false;
             _grid.RowHeadersVisible = false;
             _grid.BackgroundColor = UiTheme.Surface;
             _grid.DataSource = _rows;
@@ -573,6 +576,9 @@ namespace Win7BookManagement.Forms
             _grid.Columns.Add(_lineTotalColumn);
             _grid.Columns.Add(_selfCodeColumn);
             _grid.Columns.Add(_shelfColumn);
+
+            foreach (DataGridViewColumn column in _grid.Columns)
+                column.Resizable = DataGridViewTriState.True;
 
             _grid.CellBeginEdit += delegate(object sender, DataGridViewCellCancelEventArgs e)
             {
@@ -771,7 +777,7 @@ namespace Win7BookManagement.Forms
             var text = (_isbn.Text ?? "").Trim();
             if (text.Length == 0)
             {
-                MessageBox.Show(this, "请先扫描 ISBN，或输入 ISBN / 书名关键词。", "还没有图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "请先扫描 ISBN，或输入店内编码 / ISBN / 书名关键词。", "还没有图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 _isbn.Focus();
                 return;
             }
@@ -781,7 +787,7 @@ namespace Win7BookManagement.Forms
             if (exactBook != null)
             {
                 AddBook(exactBook);
-                _isbn.Clear();
+                _isbn.Text = "";
                 _isbn.Focus();
                 return;
             }
@@ -791,7 +797,7 @@ namespace Win7BookManagement.Forms
             {
                 MessageBox.Show(
                     this,
-                    "没有找到与“" + text + "”匹配的启用图书。可以输入完整/部分 ISBN 或书名；若仍找不到，请先在“图书资料”中建立资料。",
+                    "没有找到与“" + text + "”匹配的启用图书。可以输入店内编码、完整/部分 ISBN、书名或作者；若仍找不到，请先在“图书资料”中建立资料。",
                     "未找到图书",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
@@ -803,7 +809,7 @@ namespace Win7BookManagement.Forms
             if (matches.Count == 1)
             {
                 AddBook(matches[0]);
-                _isbn.Clear();
+                _isbn.Text = "";
                 _isbn.Focus();
                 return;
             }
@@ -813,7 +819,7 @@ namespace Win7BookManagement.Forms
                 if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
                 {
                     AddBook(dialog.SelectedBook);
-                    _isbn.Clear();
+                    _isbn.Text = "";
                 }
             }
 
@@ -903,8 +909,8 @@ namespace Win7BookManagement.Forms
         private void ResetOrder(bool resetSupplier)
         {
             _rows.Clear();
-            _note.Clear();
-            _isbn.Clear();
+            _note.Text = "";
+            _isbn.Text = "";
 
             if (resetSupplier && _supplier.Items.Count > 0)
                 _supplier.SelectedIndex = 0;
