@@ -140,7 +140,7 @@ namespace Win7BookManagement.Forms
             var searchRow = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 50,
+                Height = 58,
                 ColumnCount = 3,
                 RowCount = 1,
                 Margin = new Padding(0, 4, 0, 0)
