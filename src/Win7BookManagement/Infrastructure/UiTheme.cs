@@ -250,6 +250,8 @@ namespace Win7BookManagement.Infrastructure
             grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             grid.RowHeadersVisible = false;
+            grid.AllowUserToResizeColumns = true;
+            grid.AllowUserToResizeRows = false;
 
             var bodyHeight = Math.Max(38, grid.Font.Height + 18);
             var headerHeight = Math.Max(40, grid.ColumnHeadersDefaultCellStyle.Font == null
