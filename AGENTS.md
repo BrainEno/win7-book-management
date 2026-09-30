@@ -81,6 +81,10 @@ Do not add architectural layers without a concrete need.
 - Responsive behavior should reduce spacing/navigation width before scrolling.
 - All primary Forms and dialogs must remain usable at Windows 7-era 1024×768 as well as Windows 10/11 4K with display scaling. Prefer `AutoScaleMode.Dpi`, wrapping/adaptive toolbars, non-wrapping grid headers, and hiding secondary table columns at narrow widths before forcing horizontal scrolling.
 - Third-party WinForms UI libraries are allowed only when they explicitly support net48, add clear UX value, have acceptable licensing, and pass Win7 smoke-test expectations.
+- **AntdUI 2.4.12 is the single preferred interactive UI component library.** When AntdUI provides a stable net48 control (Menu, Button, Input, InputNumber, Select, Checkbox, DatePicker, Table, etc.), prefer it over native WinForms interactive controls.
+- Prefer AntdUI's **built-in Ant Design light theme and default state styling**. Do not hand-paint AntdUI controls with page-specific BorderColor / Radius / Hover / Selected colors unless a concrete business-state distinction requires it.
+- UiTheme exists primarily for Win7/DPI/layout safety and for native WinForms layout surfaces that AntdUI does not replace. It must not become a parallel skin system over AntdUI.
+- The main sidebar must use AntdUI.Menu rather than a custom stack of buttons, indicators, or hand-written hover/selected states.
 
 ## Offline packaging rules
 - The target customer PC must never need to search the web for DLLs.
