@@ -228,6 +228,7 @@ namespace Win7BookManagement.Infrastructure
                     throw new InvalidOperationException("数据库备份自检失败。");
 
                 VerifyLegacyBookSchemaUpgrade(root);
+                VerifyPersistentTableWidths(services);
                 VerifyUiLayoutContracts(services, storedBook);
 
                 return 0;
@@ -250,6 +251,32 @@ namespace Win7BookManagement.Infrastructure
             {
                 SQLiteConnection.ClearAllPools();
                 try { Directory.Delete(root, true); } catch { }
+            }
+        }
+
+        private static void VerifyPersistentTableWidths(ApplicationServices services)
+        {
+            const string layoutKey = "self-test";
+            const string columnKey = "Title";
+            const int expectedWidth = 237;
+
+            services.Settings.SetInt(
+                "ui.table.column_width." + layoutKey + "." + columnKey,
+                expectedWidth);
+
+            using (var table = new PersistentAntdTable())
+            {
+                var title = new AntdUI.Column(columnKey, "书名")
+                {
+                    Width = "120",
+                    MinWidth = "96"
+                };
+
+                table.Columns = new AntdUI.ColumnCollection { title };
+                table.ConfigureColumnPersistence(services.Settings, layoutKey);
+
+                if (!string.Equals(title.Width, expectedWidth.ToString(), StringComparison.Ordinal))
+                    throw new InvalidOperationException("AntdUI 表格列宽持久化恢复自检失败。");
             }
         }
 
