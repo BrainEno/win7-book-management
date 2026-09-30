@@ -325,7 +325,7 @@ namespace Win7BookManagement.Forms
                 _selfCodeColumn,
                 _shelfColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines");
+            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-v2");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -468,10 +468,10 @@ namespace Win7BookManagement.Forms
             var width = _grid.ClientSize.Width > 0 ? _grid.ClientSize.Width : ClientSize.Width;
             // Prioritize title, quantity and cost on compact workstations.
             // Reference columns progressively return on larger windows.
-            _selfCodeColumn.Visible = width >= 1180;
-            _shelfColumn.Visible = width >= 1050;
-            _stockColumn.Visible = width >= 850;
-            _isbnColumn.Visible = width >= 720;
+            _selfCodeColumn.Visible = width >= 1250;
+            _shelfColumn.Visible = width >= 1100;
+            _stockColumn.Visible = width >= 720;
+            _isbnColumn.Visible = width >= 900;
             _grid.LoadLayout();
         }
 
