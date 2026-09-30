@@ -145,6 +145,18 @@
 
 开发电脑不再要求单独安装 .NET Framework 4.8 Targeting Pack。项目通过 NuGet 固定引用 `Microsoft.NETFramework.ReferenceAssemblies.net48 1.0.3`，因此只要本机具有可用的 Visual Studio/MSBuild 和 NuGet 访问能力，就可以还原 .NET Framework 4.8 编译参考程序集。目标 Win7 运行时仍由最终离线 installer 内置的 .NET Framework 4.8 runtime 负责。
 
+## Visual Studio 本地生成与 NuGet 还原
+
+仓库根目录现在提供 `NuGet.Config`，显式允许 Visual Studio 在生成前自动还原缺失的 NuGet 包，并保证 `nuget.org` 可作为包源。这样在拉取包含新依赖的提交（例如 AntdUI）后，不会因为本机尚未缓存新包而直接出现 `CS0246` “找不到 AntdUI” 一类编译错误。
+
+如果 Visual Studio 在执行 `git pull` 时一直处于打开状态，建议在拉取后重新加载解决方案；也可以右键解决方案选择“还原 NuGet 程序包”。命令行可使用：
+
+```bat
+msbuild Win7BookManagement.sln -restore /m /p:Configuration=Release /p:Platform=x86
+```
+
+如果生成失败后 Visual Studio 询问“是否运行上次成功的生成”，选择“是”只会启动上一次成功生成的旧 EXE，不包含本次尚未成功编译的代码改动。
+
 ## 一条命令生成 installer
 
 在仓库根目录打开 CMD 或 PowerShell，执行：
