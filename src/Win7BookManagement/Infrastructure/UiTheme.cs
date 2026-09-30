@@ -2,13 +2,13 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using Krypton.Toolkit;
+using AntdUI;
 
 namespace Win7BookManagement.Infrastructure
 {
     public static class UiTheme
     {
-        // Warm neutral palette. Krypton provides the richer WinForms control
+        // Warm neutral palette. AntdUI provides the modern WinForms control
         // surface, while this class remains the single source of visual tokens
         // and layout rules so Windows 7 SP1 stays a first-class runtime target.
         public static readonly Color Background = Color.FromArgb(246, 244, 239);
@@ -282,27 +282,6 @@ namespace Win7BookManagement.Infrastructure
             grid.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(252, 251, 248);
 
-            var kryptonGrid = grid as KryptonDataGridView;
-            if (kryptonGrid != null)
-            {
-                // Krypton's stock palette uses a cool blue sheet background.
-                // Override it here so migrated tables remain part of the same
-                // warm-neutral design system as the rest of the application.
-                kryptonGrid.StateCommon.Background.Color1 = Surface;
-                kryptonGrid.StateCommon.Background.Color2 = Surface;
-                kryptonGrid.StateNormal.Background.Color1 = Surface;
-                kryptonGrid.StateNormal.Background.Color2 = Surface;
-
-                kryptonGrid.StateCommon.DataCell.Back.Color1 = Surface;
-                kryptonGrid.StateCommon.DataCell.Back.Color2 = Surface;
-                kryptonGrid.StateCommon.HeaderColumn.Back.Color1 = NavigationSurface;
-                kryptonGrid.StateCommon.HeaderColumn.Back.Color2 = NavigationSurface;
-                kryptonGrid.StateCommon.HeaderColumn.Content.Font = Font(8.8F, FontStyle.Bold);
-                kryptonGrid.StateCommon.HeaderColumn.Content.TextH = PaletteRelativeAlign.Near;
-                kryptonGrid.StateSelected.DataCell.Back.Color1 = AccentSoft;
-                kryptonGrid.StateSelected.DataCell.Back.Color2 = AccentSoft;
-            }
-
             grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
             grid.RowTemplate.Resizable = DataGridViewTriState.False;
         }
@@ -334,47 +313,38 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
-        public static KryptonButton CreateKryptonButton(string text, bool primary)
+        public static AntdUI.Button CreateAntdButton(string text, bool primary)
         {
-            var button = new KryptonButton
+            var button = new AntdUI.Button
             {
                 Text = text ?? "",
                 AutoSize = false,
                 Height = ButtonHeight,
                 MinimumSize = new Size(92, ButtonHeight),
-                Cursor = Cursors.Hand
+                Radius = 7,
+                BorderWidth = 1F,
+                Font = Font(9F, primary ? FontStyle.Bold : FontStyle.Regular),
+                Cursor = Cursors.Hand,
+                Type = primary ? TTypeMini.Primary : TTypeMini.Default
             };
-
-            button.StateCommon.Border.Rounding = 4F;
-            button.StateCommon.Border.Width = 1;
-            button.StateCommon.Content.ShortText.Font = Font(9F, primary ? FontStyle.Bold : FontStyle.Regular);
-
-            if (primary)
-            {
-                button.StateCommon.Back.Color1 = Accent;
-                button.StateCommon.Back.Color2 = Accent;
-                button.StateCommon.Border.Color1 = Accent;
-                button.StateCommon.Border.Color2 = Accent;
-                button.StateCommon.Content.ShortText.Color1 = Color.White;
-                button.StateCommon.Content.ShortText.Color2 = Color.White;
-                button.StateTracking.Back.Color1 = AccentHover;
-                button.StateTracking.Back.Color2 = AccentHover;
-                button.StatePressed.Back.Color1 = AccentHover;
-                button.StatePressed.Back.Color2 = AccentHover;
-            }
-            else
-            {
-                button.StateCommon.Back.Color1 = Surface;
-                button.StateCommon.Back.Color2 = Surface;
-                button.StateCommon.Border.Color1 = Border;
-                button.StateCommon.Border.Color2 = Border;
-                button.StateCommon.Content.ShortText.Color1 = TextPrimary;
-                button.StateCommon.Content.ShortText.Color2 = TextPrimary;
-                button.StateTracking.Back.Color1 = SurfaceMuted;
-                button.StateTracking.Back.Color2 = SurfaceMuted;
-            }
-
             return button;
+        }
+
+        public static AntdUI.Input CreateAntdInput(string placeholder)
+        {
+            return new AntdUI.Input
+            {
+                PlaceholderText = placeholder ?? "",
+                Height = InputHeight,
+                MinimumSize = new Size(0, InputHeight),
+                Radius = 7,
+                BorderWidth = 1.2F,
+                BorderColor = Border,
+                Font = Font(9.5F),
+                BackColor = Surface,
+                ForeColor = TextPrimary,
+                Margin = Padding.Empty
+            };
         }
 
         public static void StyleButton(Button button, bool primary)
@@ -454,7 +424,7 @@ namespace Win7BookManagement.Infrastructure
                 if (grid != null)
                     StyleGrid(grid);
 
-                StyleKryptonInput(control);
+                StyleAntdControl(control);
                 PrepareInput(control);
 
                 var label = control as Label;
@@ -491,44 +461,27 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
-        private static void StyleKryptonInput(Control control)
+        private static void StyleAntdControl(Control control)
         {
-            var textBox = control as KryptonTextBox;
-            if (textBox != null)
+            var input = control as AntdUI.Input;
+            if (input != null)
             {
-                textBox.StateCommon.Border.Color1 = Border;
-                textBox.StateCommon.Border.Color2 = Border;
-                textBox.StateCommon.Border.Width = 2;
-                textBox.StateCommon.Border.Rounding = 3F;
-                textBox.MinimumSize = new Size(
-                    textBox.MinimumSize.Width,
-                    Math.Max(ButtonHeight, textBox.Font.Height + 14));
+                input.BorderColor = Border;
+                input.BorderWidth = 1.2F;
+                input.Radius = 7;
+                input.BackColor = Surface;
+                input.ForeColor = TextPrimary;
+                input.Font = Font(9.5F);
+                input.MinimumSize = new Size(input.MinimumSize.Width, InputHeight);
                 return;
             }
 
-            var numeric = control as KryptonNumericUpDown;
-            if (numeric != null)
+            var button = control as AntdUI.Button;
+            if (button != null)
             {
-                numeric.StateCommon.Border.Color1 = Border;
-                numeric.StateCommon.Border.Color2 = Border;
-                numeric.StateCommon.Border.Width = 2;
-                numeric.StateCommon.Border.Rounding = 3F;
-                numeric.MinimumSize = new Size(
-                    numeric.MinimumSize.Width,
-                    Math.Max(ButtonHeight, numeric.Font.Height + 14));
-                return;
-            }
-
-            var combo = control as KryptonComboBox;
-            if (combo != null)
-            {
-                combo.StateCommon.ComboBox.Border.Color1 = Border;
-                combo.StateCommon.ComboBox.Border.Color2 = Border;
-                combo.StateCommon.ComboBox.Border.Width = 2;
-                combo.StateCommon.ComboBox.Border.Rounding = 3F;
-                combo.MinimumSize = new Size(
-                    combo.MinimumSize.Width,
-                    Math.Max(ButtonHeight, combo.Font.Height + 14));
+                button.Radius = 7;
+                button.BorderWidth = 1F;
+                button.MinimumSize = new Size(button.MinimumSize.Width, ButtonHeight);
             }
         }
 
