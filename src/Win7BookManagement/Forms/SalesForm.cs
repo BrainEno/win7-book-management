@@ -41,7 +41,7 @@ namespace Win7BookManagement.Forms
             _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "146", ReadOnly = true };
             _authorColumn = new AntdUI.Column("Author", "作者") { Width = "116", ReadOnly = true };
             _stockColumn = new AntdUI.Column("Stock", "库存") { Width = "72", ReadOnly = true };
-            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "auto", MinWidth = "260", Ellipsis = true, ReadOnly = true };
+            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "fill", MinWidth = "260", Ellipsis = true, ReadOnly = true };
             _quantityColumn = new AntdUI.Column("Quantity", "数量")
             {
                 Width = "96",
@@ -135,7 +135,7 @@ namespace Win7BookManagement.Forms
             toolbar.Controls.Add(new Label
             {
                 AutoSize = true,
-                Text = "AntdUI 开单工作台：扫描后回车，或按编码 / 书名 / 作者搜索。",
+                Text = "扫描后回车，或按店内编码 / ISBN / 书名 / 作者搜索。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(14, 12, 0, 0)
@@ -455,10 +455,12 @@ namespace Win7BookManagement.Forms
         private void ApplyResponsiveColumns()
         {
             var width = _grid.ClientSize.Width > 0 ? _grid.ClientSize.Width : ClientSize.Width;
-            _selfCodeColumn.Visible = width >= 980;
-            _authorColumn.Visible = width >= 900;
+            // Keep the checkout table readable without horizontal scrolling.
+            // Low-priority reference fields progressively return as width grows.
+            _selfCodeColumn.Visible = width >= 1180;
+            _authorColumn.Visible = width >= 980;
             _isbnColumn.Visible = width >= 760;
-            _stockColumn.Visible = width >= 700;
+            _stockColumn.Visible = width >= 680;
             _grid.LoadLayout();
         }
 

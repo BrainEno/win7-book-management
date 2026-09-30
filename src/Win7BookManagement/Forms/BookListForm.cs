@@ -208,7 +208,7 @@ namespace Win7BookManagement.Forms
             stats.Controls.Add(new Label
             {
                 AutoSize = true,
-                Text = "AntdUI 表格支持拖动列宽；窄窗口会优先隐藏低频字段。",
+                Text = "可拖动表头调整列宽；窄窗口会自动收起低频字段。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(4, 5, 0, 0)
@@ -267,7 +267,7 @@ namespace Win7BookManagement.Forms
 
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
-                Width = "auto",
+                Width = "fill",
                 MinWidth = "220",
                 Ellipsis = true
             };
@@ -465,15 +465,17 @@ namespace Win7BookManagement.Forms
             }
 
             var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
-            _selfCodeColumn.Visible = gridWidth >= 900;
-            _publisherColumn.Visible = gridWidth >= 1040;
-            _categoryColumn.Visible = gridWidth >= 820;
-            _publicationColumn.Visible = gridWidth >= 960;
-            _bindingColumn.Visible = gridWidth >= 1110;
-            _shelfColumn.Visible = gridWidth >= 760;
-            _activeColumn.Visible = gridWidth >= 700;
-            _authorColumn.Visible = gridWidth >= 660;
-            _isbnColumn.Visible = gridWidth >= 580;
+            // The compact view keeps the fields most useful for finding and selling a book.
+            // Administrative metadata is progressively restored on larger windows.
+            _selfCodeColumn.Visible = gridWidth >= 1180;
+            _publisherColumn.Visible = gridWidth >= 1450;
+            _categoryColumn.Visible = gridWidth >= 1050;
+            _publicationColumn.Visible = gridWidth >= 1250;
+            _bindingColumn.Visible = gridWidth >= 1500;
+            _shelfColumn.Visible = gridWidth >= 900;
+            _activeColumn.Visible = gridWidth >= 1100;
+            _authorColumn.Visible = gridWidth >= 760;
+            _isbnColumn.Visible = gridWidth >= 650;
             _grid.LoadLayout();
         }
 
