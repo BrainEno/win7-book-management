@@ -30,7 +30,7 @@ namespace Win7BookManagement.Infrastructure
 
                 var services = new ApplicationServices(Path.Combine(root, "snapshot.db"));
                 services.Settings.SetOnboardingCompleted(true);
-                services.Settings.SetHomeGuideExpanded(true);
+                services.Settings.SetHomeGuideExpanded(false);
                 services.Settings.SetLowStockThreshold(3);
 
                 var books = SeedData(services);
@@ -363,6 +363,18 @@ namespace Win7BookManagement.Infrastructure
                 form.Size = size;
                 UiTheme.Apply(form);
                 form.Show();
+                Application.DoEvents();
+
+                // Windows can clamp a top-level form to the CI runner's current
+                // desktop when it is first shown. Re-apply the requested bounds
+                // after Shown so a file named 1366x768 is really rendered at
+                // 1366x768 rather than silently becoming ~1024px wide.
+                form.SetBounds(
+                    form.Left,
+                    form.Top,
+                    size.Width,
+                    size.Height,
+                    BoundsSpecified.Size);
                 Application.DoEvents();
 
                 if (afterShown != null)
