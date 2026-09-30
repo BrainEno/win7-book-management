@@ -133,14 +133,15 @@ namespace Win7BookManagement.Forms
             var filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                AutoSize = false,
+                Height = 58,
                 MinimumSize = new Size(0, 58),
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 Margin = new Padding(0, 4, 0, 0),
                 Padding = Padding.Empty
             };
+            filters.SizeChanged += delegate { ResizeFilterFlow(filters); };
 
             filters.Controls.Add(CreateFilterField("报表类型", _type, 180));
             filters.Controls.Add(CreateFilterField("开始日期", _from, 132));
@@ -199,6 +200,19 @@ namespace Win7BookManagement.Forms
 
             return section;
         }
+
+        private static void ResizeFilterFlow(FlowLayoutPanel filters)
+        {
+            if (filters == null || filters.ClientSize.Width <= 0)
+                return;
+
+            var preferred = filters.GetPreferredSize(
+                new Size(filters.ClientSize.Width, 0));
+            var nextHeight = Math.Max(58, preferred.Height);
+            if (filters.Height != nextHeight)
+                filters.Height = nextHeight;
+        }
+
 
         private static Control CreateFilterField(string labelText, Control input, int width)
         {
