@@ -37,6 +37,22 @@ jobs:
             throw "Self test failed with exit code $($process.ExitCode)"
           }
 
+      - name: Generate UI snapshots
+        shell: powershell
+        run: |
+          $exe = Resolve-Path "src\Win7BookManagement\bin\x86\Release\Win7BookManagement.exe"
+          $output = Join-Path $PWD "ui-snapshots"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          $process = Start-Process -FilePath $exe -ArgumentList "--ui-snapshots", $output -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            $errorFile = Join-Path (Split-Path $exe) "ui-snapshot-error.txt"
+            if (Test-Path $errorFile) {
+              Write-Host "UI snapshot diagnostics:"
+              Get-Content $errorFile | Write-Host
+            }
+            throw "UI snapshot generation failed with exit code $($process.ExitCode)"
+          }
+
       - name: Build offline installer
         shell: powershell
         run: |
@@ -47,6 +63,13 @@ jobs:
         with:
           name: win7-book-management-x86
           path: src/Win7BookManagement/bin/x86/Release/
+          if-no-files-found: error
+
+      - name: Upload UI snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-snapshots
+          path: ui-snapshots/*.png
           if-no-files-found: error
 
       - name: Upload offline installer
