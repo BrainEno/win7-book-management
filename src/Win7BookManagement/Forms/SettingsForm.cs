@@ -9,7 +9,7 @@ namespace Win7BookManagement.Forms
     public sealed class SettingsForm : Form
     {
         private readonly ApplicationServices _services;
-        private readonly NumericUpDown _lowStock = new NumericUpDown();
+        private readonly AntdUI.InputNumber _lowStock = new AntdUI.InputNumber();
         private readonly Label _dataPath = new Label();
 
         public SettingsForm(ApplicationServices services)
@@ -106,6 +106,10 @@ namespace Win7BookManagement.Forms
             _lowStock.Minimum = 0;
             _lowStock.Maximum = 9999;
             _lowStock.Width = 120;
+            _lowStock.Height = UiTheme.InputHeight;
+            _lowStock.Radius = 7;
+            _lowStock.BorderWidth = 1.2F;
+            _lowStock.BorderColor = UiTheme.Border;
             _lowStock.Margin = new Padding(0, 3, 6, 3);
             row.Controls.Add(_lowStock);
 
