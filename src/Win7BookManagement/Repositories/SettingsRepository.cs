@@ -89,7 +89,10 @@ VALUES(@key, @value, @updatedAt);";
 
         public bool IsHomeGuideExpanded()
         {
-            return GetBool(HomeGuideExpandedKey, true);
+            // The full onboarding opens automatically on first launch. Keep the
+            // dashboard helper compact by default so operational data remains
+            // visible on 1024x768-era Windows 7 screens.
+            return GetBool(HomeGuideExpandedKey, false);
         }
 
         public void SetHomeGuideExpanded(bool expanded)
