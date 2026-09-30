@@ -122,8 +122,10 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
-            var addButton = new Button { Text = "＋ 新增图书", Width = 108, Height = UiTheme.ButtonHeight, Tag = "primary" };
-            var editButton = new Button { Text = "编辑资料", Width = 94, Height = UiTheme.ButtonHeight };
+            var addButton = ModernUi.CreateButton("＋ 新增图书", true);
+            addButton.Width = 118;
+            var editButton = ModernUi.CreateButton("编辑资料", false);
+            editButton.Width = 98;
             addButton.Click += delegate { EditBook(null); };
             editButton.Click += delegate { EditSelected(); };
 
@@ -175,15 +177,11 @@ namespace Win7BookManagement.Forms
             };
             searchRow.Controls.Add(_search, 1, 0);
 
-            var searchButton = new Button
-            {
-                Text = "查询",
-                AutoSize = true,
-                MinimumSize = new Size(92, UiTheme.ButtonHeight),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Margin = new Padding(0, 4, 0, 4),
-                Tag = "primary"
-            };
+            var searchButton = ModernUi.CreateButton("查询", true);
+            searchButton.AutoSize = true;
+            searchButton.MinimumSize = new Size(96, 40);
+            searchButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            searchButton.Margin = new Padding(0, 4, 0, 4);
             searchButton.Click += delegate { Reload(); };
             searchRow.Controls.Add(searchButton, 2, 0);
 
