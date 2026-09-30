@@ -11,7 +11,7 @@
 
 ## 2. 第三方 UI 组件策略
 
-从本轮开始采用 **Krypton Toolkit 95.25.4.111** 作为新的 WinForms 基础控件层，并保留现有 UiTheme 作为布局、字体、间距、状态色和 DPI 安全规则的单一来源。
+从本轮开始采用 **AntdUI 2.4.12** 作为新的 WinForms 基础控件层，并保留现有 UiTheme 作为布局、字体、间距、状态色和 DPI 安全规则的单一来源。
 
 选择这一固定版本的原则：
 
@@ -19,7 +19,7 @@
 - net48 包本身无额外 NuGet 依赖，便于 x86 离线打包；
 - BSD-3-Clause 许可允许项目长期维护；
 - 保持纯 WinForms，不引入 WebView2、WinUI、Windows App SDK 或浏览器运行时；
-- 当前优先使用 KryptonTextBox、KryptonComboBox、KryptonNumericUpDown 和 KryptonDataGridView；业务服务、SQLite、事务与报表层不随 UI 重构改写。
+- 当前优先使用 AntdUI.Input、Select、InputNumber、Button 和 Table；业务服务、SQLite、事务与报表层不随 UI 重构改写。
 
 迁移采用“核心流程先行、逐页替换”：
 
@@ -79,7 +79,7 @@
 - 按钮使用 38 logical px 作为 96 DPI 最小高度，并同时保证至少容纳“实际字体高度 + 16px”。
 - 单行 TextBox 不再强制 AutoSize=false 或硬拉到 38px。原生 WinForms 单行 TextBox 必须保留系统文本基线，外层布局负责提供足够的上下空间。
 - ComboBox / NumericUpDown / DateTimePicker 使用内容驱动的最小高度，不能依靠过小的固定 TableLayout 行。
-- DataGridView 行与表头的最小高度根据实际字体度量计算；38 / 40px 只作为 96 DPI 下的最低基线。
+- AntdUI Table 行与表头的最小高度根据实际字体度量计算；38 / 40px 只作为 96 DPI 下的最低基线。
 - 普通单行 Label 禁止使用 18 / 20 / 22px 一类“刚好塞字”的固定高度；优先 AutoSize，确需固定行时必须由全局 DPI 安全层校验实际字体高度。
 - 文本行与字段标题行优先使用 SizeType.AutoSize。
 
@@ -108,7 +108,7 @@
 - Footer 固定保存 / 取消，Body 可滚动；
 - Dialog 必须能缩小到 Win7 常见屏幕可用范围。
 
-## 6. DataGridView 标准
+## 6. AntdUI Table 与兼容表格标准
 
 - 表头不换行。
 - 主要字段：书名、数量、金额始终优先保留。
@@ -167,7 +167,7 @@
 - 主按钮是否完整可见；
 - 缩小窗口时是否先隐藏次要信息；
 - Tab 键顺序是否基本合理；
-- DataGridView 是否仍能看到核心字段；
+- AntdUI Table 是否仍能看到核心字段；
 - Dialog 是否可保存 / 取消且 Footer 不被 Body 挤掉。
 
 Win7 真机 smoke test 仍是发布前最终门槛。
@@ -182,11 +182,11 @@ Win7 真机 smoke test 仍是发布前最终门槛。
 - 明细表格包含店内编码、ISBN、书名、货架位、当前库存、入库数量、本次进价和小计。
 - 本次进价允许覆盖图书资料中的默认进价，但不会回写历史采购单。
 - 窄窗口依次隐藏店内编码、货架位、当前库存、ISBN 等次要列；书名、入库数量、本次进价和小计始终优先保留。
-- 列宽不能使用“固定像素 + 按 Form 宽度判断”的方式；必须按实际表头/示例内容字体测量，并以 DataGridView 自身可用宽度决定次要列隐藏，避免高 DPI 下表头被截成省略号。
+- 列宽不能使用“固定像素 + 按 Form 宽度判断”的方式；必须按实际表头/示例内容字体测量，并以 AntdUI Table 自身可用宽度决定次要列隐藏，避免高 DPI 下表头被截成省略号。
 - ISBN / 书名、供应商、备注等单行输入使用带边框的 40 logical px 视觉输入容器承载原生控件；容器高度必须固定受控，不能被 AutoSize 布局撑成大块空白，内部 TextBox 保留原生文字高度并垂直居中。
 - 入库数量和本次进价属于明确可编辑单元格：至少 44 logical px 行高、单击进入编辑、进入编辑时全选原值；Enter 按“数量 → 进价 → 下一行数量”移动，最后一行回到 ISBN / 书名输入框。
 - 表格格式错误不得用每次弹 MessageBox 的方式打断连续录入，应保留在单元格错误提示中，最终提交仍执行严格业务校验。
-- 当前阶段继续使用原生 WinForms / DataGridView，不引入第三方皮肤或 Grid 套件；只有在上述原生交互标准仍无法满足 Win7 / net48 真机体验时才重新评估第三方组件。
+- 核心业务表格统一使用 AntdUI Table；仅对尚未迁移或第三方控件不适合的低频场景保留原生 WinForms 兼容控件。
 - 空白状态、清空当前单、离开未提交单据确认都必须可见且明确。
 
 ### 库存管理
@@ -213,7 +213,7 @@ Win7 真机 smoke test 仍是发布前最终门槛。
 - 顶部改为正式查询区：单据类型、起止日期、关键词和查询按钮必须在同一信息层级内。
 - 查询区显示当前结果的单据数量与金额汇总；销售、采购、销售退货、采购退货分别使用对应金额语义。
 - 单据列表与书目明细保持上下分区，窗口高度变化时按比例调整，不使用固定死高度。
-- 自动生成的 DataGridView 列必须重新应用统一宽度、数字右对齐、书名 / 备注 Fill 规则。
+- 自动生成的 AntdUI Table 列必须重新应用统一宽度、数字右对齐、书名 / 备注 Fill 规则。
 - 窄窗口优先隐藏备注、供应商等次要信息；ISBN 等字段在明细区按宽度隐藏。
 - 没有查询结果或没有选中单据时必须显示明确 Empty State。
 - “发起退货”只对原销售单 / 原采购单可用；退货单本身不能再次作为退货来源。
@@ -236,7 +236,7 @@ Win7 真机 smoke test 仍是发布前最终门槛。
 - 顶部必须是完整的“报表查询与导出”工作区：报表类型、日期范围、查询、导出属于同一层级。
 - “指定日期库存快照”只使用快照日期；其他报表使用开始 / 结束日期，并在 UI 层先验证日期顺序。
 - 查询后至少显示明细行数；按报表类型补充册数 / 库存数量 / 净库存变动和金额摘要。
-- 报表表格必须重新应用统一列宽、数字右对齐和书名 / 备注 Fill 规则，不能直接使用 DataGridView 默认自动宽度。
+- 报表表格必须重新应用统一列宽、数字右对齐和书名 / 备注 Fill 规则，不能直接使用 AntdUI Table 默认自动宽度。
 - 小窗口优先隐藏 ISBN、供应商、原单号、出版社、分类等次要列，核心日期、单号、书名、数量和金额优先保留。
 - 空结果必须显示明确 Empty State；空结果不允许导出一个看似成功但没有业务数据的 Excel。
 - 导出仍使用本地 NPOI .xlsx，不依赖 Microsoft Excel，不增加联网能力。
@@ -258,7 +258,7 @@ Win7 真机 smoke test 仍是发布前最终门槛。
 ### DPI / 字体安全
 
 - 所有主 Form 和 Dialog 统一使用 AutoScaleMode.Dpi，96 DPI 作为设计基线。
-- UiTheme 会根据实际 Font.Height / TextRenderer 测量结果，为 Label、Button、TextBox、ComboBox、NumericUpDown、DateTimePicker 和 DataGridView 设置安全最小尺寸。
+- UiTheme 会根据实际 Font.Height / TextRenderer 测量结果，为 Label、Button、TextBox、ComboBox、NumericUpDown、DateTimePicker 和 AntdUI Table 设置安全最小尺寸。
 - TableLayoutPanel 中过小的绝对文本行会自动转换为 AutoSize；其他固定行如果小于其子控件的实际需要会自动增高。
 - 禁止通过强制放大单行 TextBox 本体来模拟现代输入框高度；使用布局留白保持原生文字基线正常。
 - 详情字段与表格标题统一垂直居中，不再依赖 top padding 把文字“推到看起来差不多的位置”。
@@ -309,7 +309,7 @@ Release 自检除数据库 / 进销存事务外，还必须实例化主要 WinFo
 在裁字和 DPI 基础问题稳定后，视觉优化必须从“去掉 WinForms 默认控件感”入手，而不是增加更多装饰。
 
 - 页面分区依靠暖灰工作区、白色 Surface、留白和层级建立边界；普通业务卡片不再使用系统 FixedSingle 黑灰边框把每块内容框死。
-- SurfaceMuted 与表头使用更明确但克制的暖灰层次，DataGridView 表头和内容区需要能一眼区分。
+- SurfaceMuted 与表头使用更明确但克制的暖灰层次，AntdUI Table 表头和内容区需要能一眼区分。
 - 主按钮保持强调色 + Bold；普通次级按钮改用 Regular 字重，避免全页面每个按钮都同等抢眼。
 - 零售开单和采购入库的明细区必须有独立标题栏，明确说明表格中哪些字段可直接编辑。
 - 零售开单的扫码 / ISBN 输入使用明确字段标签，不允许出现“一个孤立输入框 + 两个按钮”而缺少字段语义。
@@ -327,7 +327,7 @@ Release 自检除数据库 / 进销存事务外，还必须实例化主要 WinFo
 - “项目数 / 册数 / 金额”使用可换行的 FlowLayoutPanel，并以弱 Surface 与 AccentSoft 区分普通统计和主金额。
 - 主确认按钮放在独立 AutoSize 列，不能因为统计文字变长而被压窄。
 - 备注标签与操作按钮使用 AutoSize 列；输入框占据剩余空间。
-- 可直接编辑的 DataGridView 数量 / 价格单元格使用弱 AccentSoft 背景提示编辑性，但不改变业务校验规则。
+- 可直接编辑的 AntdUI Table 数量 / 价格单元格使用弱 AccentSoft 背景提示编辑性，但不改变业务校验规则。
 - 设置页中的短表单操作采用可换行 FlowLayout，不再为了一个输入框和按钮建立固定列宽网格。
 
 
