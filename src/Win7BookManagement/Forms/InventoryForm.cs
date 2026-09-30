@@ -12,7 +12,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("按编码、ISBN、书名、作者、分类或货架位搜索");
-        private readonly CheckBox _lowOnly = new CheckBox();
+        private readonly AntdUI.Checkbox _lowOnly = new AntdUI.Checkbox();
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
@@ -151,7 +151,7 @@ namespace Win7BookManagement.Forms
             _lowOnly.AutoSize = true;
             _lowOnly.Anchor = AnchorStyles.Left;
             _lowOnly.Margin = new Padding(8, 11, 0, 0);
-            _lowOnly.CheckedChanged += delegate { Reload(); };
+            _lowOnly.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
             searchRow.Controls.Add(_lowOnly, 3, 0);
 
             section.Controls.Add(searchRow, 0, 1);
