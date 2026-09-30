@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Krypton.Toolkit;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -11,21 +12,23 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly Book _book;
 
-        private readonly TextBox _selfCode = new TextBox();
-        private readonly TextBox _isbn = new TextBox();
-        private readonly TextBox _title = new TextBox();
-        private readonly TextBox _author = new TextBox();
-        private readonly TextBox _publisher = new TextBox();
-        private readonly TextBox _category = new TextBox();
-        private readonly TextBox _publicationYear = new TextBox();
-        private readonly TextBox _edition = new TextBox();
-        private readonly TextBox _binding = new TextBox();
-        private readonly TextBox _shelfCode = new TextBox();
+        private readonly KryptonTextBox _selfCode = new KryptonTextBox();
+        private readonly KryptonTextBox _isbn = new KryptonTextBox();
+        private readonly KryptonTextBox _title = new KryptonTextBox();
+        private readonly KryptonTextBox _author = new KryptonTextBox();
+        private readonly KryptonTextBox _publisher = new KryptonTextBox();
+        private readonly KryptonTextBox _category = new KryptonTextBox();
+        private readonly KryptonTextBox _publicationYear = new KryptonTextBox();
+        private readonly KryptonTextBox _edition = new KryptonTextBox();
+        private readonly KryptonTextBox _binding = new KryptonTextBox();
+        private readonly KryptonTextBox _shelfCode = new KryptonTextBox();
         private readonly TextBox _note = new TextBox();
 
-        private readonly NumericUpDown _listPrice = new NumericUpDown();
-        private readonly NumericUpDown _defaultPurchasePrice = new NumericUpDown();
-        private readonly NumericUpDown _salePrice = new NumericUpDown();
+        // The user sees one selling price. The legacy database still keeps
+        // list_price_cent and sale_price_cent for backward compatibility; both
+        // are written with the same value from this field.
+        private readonly KryptonNumericUpDown _price = new KryptonNumericUpDown();
+        private readonly KryptonNumericUpDown _defaultPurchasePrice = new KryptonNumericUpDown();
         private readonly CheckBox _active = new CheckBox();
 
         private readonly ErrorProvider _errors = new ErrorProvider();
@@ -39,16 +42,19 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             Text = book == null ? "新增图书资料" : "编辑图书资料";
             StartPosition = FormStartPosition.CenterParent;
-            Width = 1040;
-            Height = 760;
-            MinimumSize = new Size(760, 560);
+            Width = 980;
+            Height = 730;
+            MinimumSize = new Size(740, 540);
             BackColor = UiTheme.Background;
             ShowInTaskbar = false;
             MinimizeBox = false;
 
-            ConfigureMoney(_listPrice);
+            ConfigureMoney(_price);
             ConfigureMoney(_defaultPurchasePrice);
-            ConfigureMoney(_salePrice);
+
+            _selfCode.ReadOnly = true;
+            _selfCode.TabStop = false;
+            _selfCode.Text = book == null ? "保存后自动生成" : "";
 
             _active.Text = "启用此图书，可用于新的采购和销售";
             _active.AutoSize = true;
@@ -58,8 +64,10 @@ namespace Win7BookManagement.Forms
             _note.Multiline = true;
             _note.ScrollBars = ScrollBars.Vertical;
 
+            Button saveButton;
+            Button cancelButton;
             var header = CreateHeader();
-            var footer = CreateFooter(out Button saveButton, out Button cancelButton);
+            var footer = CreateFooter(out saveButton, out cancelButton);
             var body = CreateBody();
 
             Controls.Add(body);
@@ -94,34 +102,32 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(24, 16, 24, 14),
+                Padding = new Padding(24, 17, 24, 15),
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            var title = new Label
+            header.Controls.Add(new Label
             {
                 Text = _book == null ? "建立图书资料" : "修改图书资料",
                 AutoSize = true,
                 Font = UiTheme.Font(14F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Margin = new Padding(0, 0, 0, 6)
-            };
+            }, 0, 0);
 
-            var hint = new Label
+            header.Controls.Add(new Label
             {
-                Text = "按经营需要填写资料；带 * 的项目必须填写。库存数量不在这里直接改动，请通过采购、销售或库存调整维护。",
+                Text = "书名是唯一必填业务信息。ISBN、出版社、版次和装帧均可留空；店内编码由系统自动生成。",
                 AutoSize = true,
-                MaximumSize = new Size(820, 0),
-                Font = UiTheme.Font(8.5F),
+                MaximumSize = new Size(850, 0),
+                Font = UiTheme.Font(8.7F),
                 ForeColor = UiTheme.TextSecondary,
                 Margin = Padding.Empty
-            };
+            }, 0, 1);
 
-            header.Controls.Add(title, 0, 0);
-            header.Controls.Add(hint, 0, 1);
             return header;
         }
 
@@ -131,7 +137,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Bottom,
                 AutoSize = true,
-                MinimumSize = new Size(0, 70),
+                MinimumSize = new Size(0, 72),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
@@ -143,7 +149,7 @@ namespace Win7BookManagement.Forms
 
             var hint = new Label
             {
-                Text = "默认进价仅用于下次采购时预填；修改资料不会改写任何历史采购或销售单。",
+                Text = "销售价格同时作为图书定价；默认进价只用于新建采购行预填，不改写历史单据。",
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
@@ -164,14 +170,14 @@ namespace Win7BookManagement.Forms
             cancel = new Button
             {
                 Text = "取消",
-                Width = 94,
+                Width = 96,
                 Height = UiTheme.ButtonHeight,
                 DialogResult = DialogResult.Cancel
             };
             save = new Button
             {
                 Text = "保存资料",
-                Width = 108,
+                Width = 112,
                 Height = UiTheme.ButtonHeight,
                 Tag = "primary"
             };
@@ -181,7 +187,6 @@ namespace Win7BookManagement.Forms
             buttons.Controls.Add(save);
             footer.Controls.Add(hint, 0, 0);
             footer.Controls.Add(buttons, 1, 0);
-
             return footer;
         }
 
@@ -210,36 +215,41 @@ namespace Win7BookManagement.Forms
             for (var i = 0; i < 4; i++)
                 stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            stack.Controls.Add(CreateIdentitySection(), 0, 0);
+            stack.Controls.Add(CreatePrimarySection(), 0, 0);
             stack.Controls.Add(CreateClassificationSection(), 0, 1);
-            stack.Controls.Add(CreatePricingSection(), 0, 2);
+            stack.Controls.Add(CreateOperationsSection(), 0, 2);
             stack.Controls.Add(CreateNoteSection(), 0, 3);
-
             host.Controls.Add(stack);
             return host;
         }
 
-        private Control CreateIdentitySection()
+        private Control CreatePrimarySection()
         {
             var grid = CreateTwoColumnGrid(3);
 
-            AddPair(
-                grid,
-                0,
-                CreateField("店内编码", _selfCode, "可选。用于书店内部识别，例如 BK-001。"),
-                CreateField("ISBN", _isbn, "可扫码录入；本轻量版同一 ISBN 只能对应一条图书资料。"));
-
-            var titleField = CreateField("书名 *", _title, "建议录入封面主书名，便于开单、退货和报表检索。");
-            grid.Controls.Add(titleField, 0, 1);
+            var titleField = CreateField(
+                "书名 *",
+                _title,
+                "图书最重要的识别信息，也是唯一必填的业务字段。");
+            grid.Controls.Add(titleField, 0, 0);
             grid.SetColumnSpan(titleField, 2);
 
             AddPair(
                 grid,
-                2,
-                CreateField("作者", _author, "可填写作者或主要责任者。"),
-                CreateField("出版社", _publisher, "用于检索、盘点和采购确认。"));
+                1,
+                CreateField("作者 / 责任者", _author, "作者、编者、艺术家或其他主要责任者。"),
+                CreateField("销售价格（元）", _price, "同时作为图书定价和默认零售价。"));
 
-            return WrapSection("基础信息", "最常用于搜索、识别和销售开单的字段。", grid);
+            AddPair(
+                grid,
+                2,
+                CreateField("店内商品编码", _selfCode, "系统自动生成 BK-000001 形式的唯一编码，与 ISBN 完全解耦。"),
+                CreateField("ISBN（可选）", _isbn, "自出版物或无 ISBN 商品可以直接留空。"));
+
+            return WrapSection(
+                "核心信息",
+                "日常检索和开单最常用的信息放在最前面。",
+                grid);
         }
 
         private Control CreateClassificationSection()
@@ -249,49 +259,54 @@ namespace Win7BookManagement.Forms
             AddPair(
                 grid,
                 0,
-                CreateField("分类", _category, "例如 文学 / 社科 / 艺术。"),
-                CreateField("默认货架位", _shelfCode, "例如 A-03-2，方便找书和盘点。"));
+                CreateField("分类", _category, "例如 文学 / 社科 / 艺术 / 自出版。"),
+                CreateField("默认货架位", _shelfCode, "例如 A-03-2，便于找书和盘点。"));
 
             AddPair(
                 grid,
                 1,
-                CreateField("出版年 / 日期", _publicationYear, "可填写 2026、2026-09 等简洁文本。"),
-                CreateField("版次", _edition, "例如 1版1印。"));
+                CreateField("出版社（可选）", _publisher, "自出版物可以留空。"),
+                CreateField("出版年 / 日期（可选）", _publicationYear, "可填写 2026、2026-09 等简洁文本。"));
 
             AddPair(
                 grid,
                 2,
-                CreateField("装帧", _binding, "例如 精装 / 平装。"),
-                CreateField("状态", _active, "停用后不参与新的采购和销售，历史单据仍保留。"));
+                CreateField("版次（可选）", _edition, "低频信息，不影响销售、库存和检索主流程。"),
+                CreateField("装帧（可选）", _binding, "例如 精装 / 平装；没有需要可留空。"));
 
-            return WrapSection("分类与出版", "用于图书归类、陈列和现场查找。", grid);
+            return WrapSection(
+                "归类与出版信息",
+                "这些字段用于整理和陈列，不阻止无 ISBN、自出版或小批量出版物建档。",
+                grid);
         }
 
-        private Control CreatePricingSection()
+        private Control CreateOperationsSection()
         {
-            var grid = CreateTwoColumnGrid(2);
-
+            var grid = CreateTwoColumnGrid(1);
             AddPair(
                 grid,
                 0,
-                CreateField("定价（元）", _listPrice, "出版社标价，可为 0。"),
-                CreateField("默认进价（元）", _defaultPurchasePrice, "新增采购行时自动预填，仍可在采购单内修改。"));
+                CreateField("默认进价（元）", _defaultPurchasePrice, "采购入库时自动预填，本次采购仍可单独修改。"),
+                CreateField("资料状态", _active, "停用后不参与新的采购和销售，历史单据仍保留。"));
 
-            var saleField = CreateField("零售价（元）", _salePrice, "销售开单时默认带出，可在开单时调整。");
-            grid.Controls.Add(saleField, 0, 1);
-            grid.SetColumnSpan(saleField, 2);
-
-            return WrapSection("价格信息", "价格统一按人民币元显示，数据库内部仍以分保存。", grid);
+            return WrapSection(
+                "经营设置",
+                "只保留会直接影响门店日常操作的设置。",
+                grid);
         }
 
         private Control CreateNoteSection()
         {
             var grid = CreateTwoColumnGrid(1);
-            var noteField = CreateField("备注", _note, "可记录签名本、轻微瑕疵、陈列提醒等不影响库存计算的信息。", 104);
+            var noteField = CreateField(
+                "备注",
+                _note,
+                "可记录签名本、编号版、轻微瑕疵、陈列提醒等信息。",
+                112);
             grid.Controls.Add(noteField, 0, 0);
             grid.SetColumnSpan(noteField, 2);
 
-            return WrapSection("经营备注", "只记录对日常经营真正有帮助的补充信息。", grid);
+            return WrapSection("经营备注", "记录自出版物或特殊版本的补充信息。", grid);
         }
 
         private static TableLayoutPanel CreateTwoColumnGrid(int rows)
@@ -330,8 +345,8 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 3,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 12, 16, 12),
-                Margin = new Padding(0, 0, 0, 10),
+                Padding = new Padding(18, 14, 18, 14),
+                Margin = new Padding(0, 0, 0, 11),
                 BorderStyle = BorderStyle.None
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -339,32 +354,31 @@ namespace Win7BookManagement.Forms
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            var title = new Label
+            section.Controls.Add(new Label
             {
                 Text = titleText,
                 AutoSize = true,
-                Font = UiTheme.Font(10F, FontStyle.Bold),
+                Font = UiTheme.Font(10.5F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Margin = new Padding(0, 0, 0, 3)
-            };
-            var subtitle = new Label
+            }, 0, 0);
+
+            section.Controls.Add(new Label
             {
                 Text = subtitleText,
                 AutoSize = true,
-                Font = UiTheme.Font(8F),
+                Font = UiTheme.Font(8.2F),
                 ForeColor = UiTheme.TextSecondary,
-                Margin = new Padding(0, 0, 0, 10)
-            };
+                Margin = new Padding(0, 0, 0, 11)
+            }, 0, 1);
 
-            section.Controls.Add(title, 0, 0);
-            section.Controls.Add(subtitle, 0, 1);
             section.Controls.Add(content, 0, 2);
             return section;
         }
 
         private Control CreateField(string labelText, Control input, string toolTip)
         {
-            return CreateField(labelText, input, toolTip, 64);
+            return CreateField(labelText, input, toolTip, 70);
         }
 
         private Control CreateField(string labelText, Control input, string toolTip, int height)
@@ -378,7 +392,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Margin = new Padding(0, 0, 12, 8),
+                Margin = new Padding(0, 0, 14, 10),
                 Padding = Padding.Empty
             };
             field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -390,24 +404,24 @@ namespace Win7BookManagement.Forms
                 Text = labelText,
                 AutoSize = true,
                 Dock = DockStyle.Top,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Font = UiTheme.Font(8.7F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
-                Margin = new Padding(0, 0, 0, 4)
+                Margin = new Padding(0, 0, 0, 5)
             };
 
             var multiline = input as TextBox;
             if (multiline != null && multiline.Multiline)
             {
                 input.Dock = DockStyle.Fill;
-                input.MinimumSize = new Size(0, Math.Max(76, height - 34));
+                input.MinimumSize = new Size(0, Math.Max(80, height - 34));
             }
             else
             {
                 input.Dock = DockStyle.Top;
+                input.MinimumSize = new Size(0, 38);
             }
-            input.Margin = new Padding(0, 0, 0, 2);
 
+            input.Margin = new Padding(0, 0, 0, 2);
             field.Controls.Add(label, 0, 0);
             field.Controls.Add(input, 0, 1);
 
@@ -421,12 +435,13 @@ namespace Win7BookManagement.Forms
             return field;
         }
 
-        private static void ConfigureMoney(NumericUpDown control)
+        private static void ConfigureMoney(KryptonNumericUpDown control)
         {
             control.DecimalPlaces = 2;
             control.Maximum = 1000000m;
             control.ThousandsSeparator = true;
             control.TextAlign = HorizontalAlignment.Right;
+            control.MinimumSize = new Size(0, 38);
         }
 
         private void LoadBook(Book book)
@@ -442,9 +457,14 @@ namespace Win7BookManagement.Forms
             _binding.Text = book.Binding;
             _shelfCode.Text = book.ShelfCode;
             _note.Text = book.Note;
-            _listPrice.Value = Math.Min(_listPrice.Maximum, Money.ToYuan(book.ListPriceCent));
-            _defaultPurchasePrice.Value = Math.Min(_defaultPurchasePrice.Maximum, Money.ToYuan(book.DefaultPurchasePriceCent));
-            _salePrice.Value = Math.Min(_salePrice.Maximum, Money.ToYuan(book.SalePriceCent));
+
+            var displayPrice = book.SalePriceCent > 0
+                ? Money.ToYuan(book.SalePriceCent)
+                : Money.ToYuan(book.ListPriceCent);
+            _price.Value = Math.Min(_price.Maximum, displayPrice);
+            _defaultPurchasePrice.Value = Math.Min(
+                _defaultPurchasePrice.Maximum,
+                Money.ToYuan(book.DefaultPurchasePriceCent));
             _active.Checked = book.IsActive;
         }
 
@@ -456,14 +476,19 @@ namespace Win7BookManagement.Forms
             {
                 _errors.SetError(_title, "请输入书名。");
                 _title.Focus();
-                MessageBox.Show(this, "请先填写书名，再保存图书资料。", "还差一项", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    this,
+                    "请先填写书名，再保存图书资料。",
+                    "还差一项",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
                 return;
             }
 
             try
             {
                 var target = _book ?? new Book();
-                target.SelfCode = _selfCode.Text;
+                target.SelfCode = _book == null ? "" : (_selfCode.Text ?? "").Trim();
                 target.Isbn = _isbn.Text;
                 target.Title = _title.Text;
                 target.Author = _author.Text;
@@ -474,9 +499,11 @@ namespace Win7BookManagement.Forms
                 target.Binding = _binding.Text;
                 target.ShelfCode = _shelfCode.Text;
                 target.Note = _note.Text;
-                target.ListPriceCent = Money.FromYuan(_listPrice.Value);
+
+                var priceCent = Money.FromYuan(_price.Value);
+                target.ListPriceCent = priceCent;
+                target.SalePriceCent = priceCent;
                 target.DefaultPurchasePriceCent = Money.FromYuan(_defaultPurchasePrice.Value);
-                target.SalePriceCent = Money.FromYuan(_salePrice.Value);
                 target.IsActive = _active.Checked;
 
                 if (_book == null)
@@ -489,7 +516,12 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "无法保存图书资料：\r\n" + ex.Message, "请检查输入", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    this,
+                    "无法保存图书资料：\r\n" + ex.Message,
+                    "请检查输入",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
             }
         }
     }
