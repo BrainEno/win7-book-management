@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
-using AntdUI;
 using Win7BookManagement.Infrastructure;
 
 namespace Win7BookManagement.Forms
