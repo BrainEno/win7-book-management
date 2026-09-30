@@ -321,24 +321,26 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, 72),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 10, 14, 10),
+                Padding = new Padding(16, 10, 16, 10),
                 Margin = new Padding(0, 10, 0, 0),
                 BorderStyle = BorderStyle.None
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             section.Controls.Add(new Label
             {
-                Text = isSale ? "退货原因 / 备注" : "退货原因 / 备注",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
+                Text = "退货原因 / 备注",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 9, 14, 0)
             }, 0, 0);
 
             _note.Dock = DockStyle.Fill;
@@ -354,33 +356,37 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                MinimumSize = new Size(0, 76),
-                ColumnCount = 4,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 78),
+                ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.SurfaceMuted,
                 Padding = new Padding(16, 12, 16, 12),
                 Margin = new Padding(0, 8, 0, 0),
                 BorderStyle = BorderStyle.None
             };
-            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 142));
-            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            _lineCount.Dock = DockStyle.Fill;
-            _lineCount.TextAlign = ContentAlignment.MiddleLeft;
-            _lineCount.ForeColor = UiTheme.TextSecondary;
-            _lineCount.Font = UiTheme.Font(8.5F, FontStyle.Bold);
+            var metrics = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = UiTheme.SurfaceMuted,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
 
-            _quantityTotal.Dock = DockStyle.Fill;
-            _quantityTotal.TextAlign = ContentAlignment.MiddleLeft;
-            _quantityTotal.ForeColor = UiTheme.TextSecondary;
-            _quantityTotal.Font = UiTheme.Font(8.5F, FontStyle.Bold);
+            ConfigureSummaryLabel(_lineCount, false);
+            ConfigureSummaryLabel(_quantityTotal, false);
+            ConfigureSummaryLabel(_total, true);
 
-            _total.Dock = DockStyle.Fill;
-            _total.TextAlign = ContentAlignment.MiddleLeft;
-            _total.ForeColor = UiTheme.Accent;
-            _total.Font = UiTheme.Font(13F, FontStyle.Bold);
+            metrics.Controls.Add(_lineCount);
+            metrics.Controls.Add(_quantityTotal);
+            metrics.Controls.Add(_total);
 
             var buttons = new FlowLayoutPanel
             {
@@ -388,21 +394,22 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                Margin = Padding.Empty
+                Margin = new Padding(14, 0, 0, 0),
+                Padding = Padding.Empty
             };
 
             cancel = new Button
             {
                 Text = "取消",
-                Width = 88,
-                Height = UiTheme.ButtonHeight,
+                AutoSize = true,
+                MinimumSize = new Size(88, UiTheme.ButtonHeight),
                 DialogResult = DialogResult.Cancel
             };
             confirm = new Button
             {
                 Text = "确认退货",
-                Width = 108,
-                Height = UiTheme.ButtonHeight,
+                AutoSize = true,
+                MinimumSize = new Size(108, UiTheme.ButtonHeight),
                 Tag = "primary"
             };
             confirm.Click += delegate { Submit(); };
@@ -410,12 +417,23 @@ namespace Win7BookManagement.Forms
             buttons.Controls.Add(cancel);
             buttons.Controls.Add(confirm);
 
-            footer.Controls.Add(_lineCount, 0, 0);
-            footer.Controls.Add(_quantityTotal, 1, 0);
-            footer.Controls.Add(_total, 2, 0);
-            footer.Controls.Add(buttons, 3, 0);
+            footer.Controls.Add(metrics, 0, 0);
+            footer.Controls.Add(buttons, 1, 0);
 
             return footer;
+        }
+
+        private static void ConfigureSummaryLabel(Label label, bool primary)
+        {
+            label.AutoSize = true;
+            label.TextAlign = ContentAlignment.MiddleLeft;
+            label.ForeColor = primary ? UiTheme.Accent : UiTheme.TextSecondary;
+            label.Font = UiTheme.Font(primary ? 12.8F : 8.5F, FontStyle.Bold);
+            label.BackColor = primary ? UiTheme.AccentSoft : UiTheme.Surface;
+            label.Padding = primary
+                ? new Padding(12, 8, 12, 8)
+                : new Padding(10, 8, 10, 8);
+            label.Margin = new Padding(0, 0, 10, 0);
         }
 
         private void ApplyResponsiveColumns()

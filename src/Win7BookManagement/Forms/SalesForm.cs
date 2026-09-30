@@ -317,16 +317,17 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 3,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 11, 14, 11),
+                Padding = new Padding(16, 12, 16, 12),
                 Margin = new Padding(0, 10, 0, 0),
                 BorderStyle = BorderStyle.None
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 68));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -336,7 +337,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 Font = UiTheme.Font(10F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
-                Margin = new Padding(0, 0, 0, 7)
+                Margin = new Padding(0, 0, 0, 9)
             };
             section.Controls.Add(title, 0, 0);
             section.SetColumnSpan(title, 3);
@@ -344,21 +345,24 @@ namespace Win7BookManagement.Forms
             var noteLabel = new Label
             {
                 Text = "备注",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = UiTheme.TextSecondary
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 9, 14, 0)
             };
             section.Controls.Add(noteLabel, 0, 1);
 
             _note.Dock = DockStyle.Fill;
-            _note.Margin = new Padding(0, 3, 10, 3);
+            _note.Margin = new Padding(0, 3, 12, 3);
             section.Controls.Add(_note, 1, 1);
 
             var remove = new Button
             {
                 Text = "移除选中",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3)
+                AutoSize = true,
+                MinimumSize = new Size(104, UiTheme.ButtonHeight),
+                Margin = new Padding(0, 0, 0, 0)
             };
             remove.Click += delegate { RemoveSelected(); };
             section.Controls.Add(remove, 2, 1);
@@ -372,49 +376,65 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                MinimumSize = new Size(0, 74),
-                ColumnCount = 4,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, 76),
+                ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.SurfaceMuted,
-                Padding = new Padding(16, 11, 16, 11),
+                Padding = new Padding(16, 12, 16, 12),
                 Margin = new Padding(0, 8, 0, 0),
                 BorderStyle = BorderStyle.None
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 146));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            _itemCount.Dock = DockStyle.Fill;
-            _itemCount.TextAlign = ContentAlignment.MiddleLeft;
-            _itemCount.ForeColor = UiTheme.TextSecondary;
-            _itemCount.Font = UiTheme.Font(8.5F, FontStyle.Bold);
+            var metrics = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = UiTheme.SurfaceMuted,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
 
-            _quantityTotal.Dock = DockStyle.Fill;
-            _quantityTotal.TextAlign = ContentAlignment.MiddleLeft;
-            _quantityTotal.ForeColor = UiTheme.TextSecondary;
-            _quantityTotal.Font = UiTheme.Font(8.5F, FontStyle.Bold);
+            ConfigureSummaryLabel(_itemCount, false);
+            ConfigureSummaryLabel(_quantityTotal, false);
+            ConfigureSummaryLabel(_total, true);
 
-            _total.Dock = DockStyle.Fill;
-            _total.TextAlign = ContentAlignment.MiddleLeft;
-            _total.ForeColor = UiTheme.Accent;
-            _total.Font = UiTheme.Font(14F, FontStyle.Bold);
+            metrics.Controls.Add(_itemCount);
+            metrics.Controls.Add(_quantityTotal);
+            metrics.Controls.Add(_total);
 
             var submit = new Button
             {
                 Text = "确认结账",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 4, 0, 4),
+                AutoSize = true,
+                MinimumSize = new Size(124, UiTheme.ButtonHeight),
+                Margin = new Padding(14, 0, 0, 0),
                 Tag = "primary"
             };
             submit.Click += delegate { Submit(); };
 
-            section.Controls.Add(_itemCount, 0, 0);
-            section.Controls.Add(_quantityTotal, 1, 0);
-            section.Controls.Add(_total, 2, 0);
-            section.Controls.Add(submit, 3, 0);
+            section.Controls.Add(metrics, 0, 0);
+            section.Controls.Add(submit, 1, 0);
 
             return section;
+        }
+
+        private static void ConfigureSummaryLabel(Label label, bool primary)
+        {
+            label.AutoSize = true;
+            label.TextAlign = ContentAlignment.MiddleLeft;
+            label.ForeColor = primary ? UiTheme.Accent : UiTheme.TextSecondary;
+            label.Font = UiTheme.Font(primary ? 13.5F : 8.5F, FontStyle.Bold);
+            label.BackColor = primary ? UiTheme.AccentSoft : UiTheme.Surface;
+            label.Padding = primary
+                ? new Padding(12, 8, 12, 8)
+                : new Padding(10, 8, 10, 8);
+            label.Margin = new Padding(0, 0, 10, 0);
         }
 
         private void ConfigureGrid()
@@ -447,7 +467,8 @@ namespace Win7BookManagement.Forms
                 Width = 72,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
-                    Alignment = DataGridViewContentAlignment.MiddleRight
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    BackColor = UiTheme.AccentSoft
                 }
             });
             _grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -458,7 +479,8 @@ namespace Win7BookManagement.Forms
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
                     Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    BackColor = UiTheme.AccentSoft
                 }
             });
             _grid.Columns.Add(new DataGridViewTextBoxColumn
