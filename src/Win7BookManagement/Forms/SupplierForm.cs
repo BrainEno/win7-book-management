@@ -12,7 +12,7 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("按供应商、联系人、电话或备注搜索");
-        private readonly CheckBox _includeInactive = new CheckBox();
+        private readonly AntdUI.Checkbox _includeInactive = new AntdUI.Checkbox();
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _resultChip = new Label();
         private readonly Label _activeChip = new Label();
@@ -164,7 +164,7 @@ namespace Win7BookManagement.Forms
             _includeInactive.AutoSize = true;
             _includeInactive.Anchor = AnchorStyles.Left;
             _includeInactive.Margin = new Padding(8, 11, 0, 0);
-            _includeInactive.CheckedChanged += delegate { Reload(); };
+            _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
             searchRow.Controls.Add(_includeInactive, 3, 0);
 
             section.Controls.Add(searchRow, 0, 1);
@@ -446,7 +446,7 @@ namespace Win7BookManagement.Forms
             private readonly AntdUI.Input _contact = UiTheme.CreateAntdInput("联系人（可选）");
             private readonly AntdUI.Input _phone = UiTheme.CreateAntdInput("电话（可选）");
             private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("备注（可选）");
-            private readonly CheckBox _active = new CheckBox();
+            private readonly AntdUI.Checkbox _active = new AntdUI.Checkbox();
             private readonly ErrorProvider _errors = new ErrorProvider();
 
             public SupplierEditDialog(ApplicationServices services, Supplier supplier)
