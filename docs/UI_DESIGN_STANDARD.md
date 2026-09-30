@@ -332,3 +332,14 @@ Release 自检除数据库 / 进销存事务外，还必须实例化主要 WinFo
 - 详情面板的字段名列使用 AutoSize，不再用 78 / 86px 固定列承载中文字段名；字段值占据剩余空间。
 - 长路径、长说明等内容不能通过 AutoSize 把整个页面撑宽，应使用 Fill + AutoEllipsis 或可换行文本。
 - Dialog 仍通过 FitDialogToWorkingArea 限制在当前工作区内，保证 1024×768 和高 DPI 下保存 / 取消按钮可达。
+
+
+## 18. 自动布局验收
+
+UI 自检必须尽量接近真实运行环境，而不是只验证“能编译”。
+
+- Self-test 在 Application.EnableVisualStyles() 与 SetCompatibleTextRenderingDefault(false) 之后运行，确保字体度量与正式程序一致。
+- 核心页面至少在 1024×768、1366×768、1920×1080 三种逻辑窗口尺寸执行布局检查。
+- 固定高度文本行继续禁止小于安全字体高度；单行 TextBox 继续禁止强制固定高度。
+- 对 TableLayoutPanel 的 Absolute 列增加内容宽度检查：若 Label / Button / CheckBox / ComboBox 的实际首选宽度大于列宽，CI 直接失败。
+- 自动检查不能替代 Win7 真机和 125%–200% DPI 的最终视觉复核，但任何可机械检测的裁字风险都应优先在 CI 阶段拦截。
