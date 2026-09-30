@@ -28,7 +28,7 @@ namespace Win7BookManagement.Forms
         // are written with the same value from this field.
         private readonly AntdUI.InputNumber _price = new AntdUI.InputNumber();
         private readonly AntdUI.InputNumber _defaultPurchasePrice = new AntdUI.InputNumber();
-        private readonly CheckBox _active = new CheckBox();
+        private readonly AntdUI.Checkbox _active = new AntdUI.Checkbox();
 
         private readonly ErrorProvider _errors = new ErrorProvider();
         private readonly ToolTip _tips = new ToolTip();
