@@ -590,8 +590,8 @@ namespace Win7BookManagement.Forms
                 Controls.Add(footer);
                 Controls.Add(header);
 
-                _direction.SelectedIndexChanged += delegate(int index) { UpdatePreview(); };
-                _quantity.ValueChanged += delegate(decimal value) { UpdatePreview(); };
+                _direction.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e) { UpdatePreview(); };
+                _quantity.ValueChanged += delegate(object sender, AntdUI.DecimalEventArgs e) { UpdatePreview(); };
                 KeyDown += delegate(object sender, KeyEventArgs e)
                 {
                     if (e.KeyCode == Keys.Escape) { DialogResult = DialogResult.Cancel; Close(); }
