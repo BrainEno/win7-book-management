@@ -13,7 +13,7 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _isbn = UiTheme.CreateAntdInput("扫码或输入店内编码 / ISBN / 书名 / 作者");
         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写销售备注");
-        private readonly AntdUI.Table _grid = new AntdUI.Table();
+        private readonly PersistentAntdTable _grid = new PersistentAntdTable();
         private readonly BindingList<SalesCartRow> _rows = new BindingList<SalesCartRow>();
         private readonly Label _itemCount = new Label();
         private readonly Label _quantityTotal = new Label();
@@ -37,25 +37,27 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
 
-            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", ReadOnly = true };
-            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "146", ReadOnly = true };
-            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "116", ReadOnly = true };
-            _stockColumn = new AntdUI.Column("Stock", "库存") { Width = "72", ReadOnly = true };
-            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "fill", MinWidth = "260", Ellipsis = true, ReadOnly = true };
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "120", MinWidth = "96", ReadOnly = true };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "150", MinWidth = "116", ReadOnly = true };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "116", MinWidth = "76", ReadOnly = true };
+            _stockColumn = new AntdUI.Column("Stock", "库存") { Width = "78", MinWidth = "68", ReadOnly = true };
+            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "280", MinWidth = "220", MaxWidth = "520", Ellipsis = true, ReadOnly = true };
             _quantityColumn = new AntdUI.Column("Quantity", "数量")
             {
                 Width = "96",
+                MinWidth = "82",
                 ReadOnly = false,
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
             _priceColumn = new AntdUI.Column("UnitPriceYuan", "销售价格")
             {
-                Width = "116",
+                Width = "112",
+                MinWidth = "100",
                 ReadOnly = false,
                 DisplayFormat = "0.00",
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
-            _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计") { Width = "118", ReadOnly = true, DisplayFormat = "0.00" };
+            _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计") { Width = "112", MinWidth = "92", ReadOnly = true, DisplayFormat = "0.00" };
 
             var root = new TableLayoutPanel
             {
@@ -299,7 +301,7 @@ namespace Win7BookManagement.Forms
             _grid.RowHeight = 48;
             _grid.RowHeightHeader = 48;
             _grid.EnableHeaderResizing = true;
-            _grid.ColumnDragSort = true;
+            _grid.ColumnDragSort = false;
             _grid.EditMode = AntdUI.TEditMode.Click;
             _grid.ShowTip = true;
             _grid.EmptyText = "当前销售单还没有商品";
@@ -318,6 +320,7 @@ namespace Win7BookManagement.Forms
                 _isbnColumn,
                 _selfCodeColumn
             };
+            _grid.ConfigureColumnPersistence(_services.Settings, "sales-lines");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
