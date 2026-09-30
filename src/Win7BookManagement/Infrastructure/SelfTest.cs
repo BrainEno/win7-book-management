@@ -307,6 +307,13 @@ namespace Win7BookManagement.Infrastructure
                 new Size(1920, 1080)
             };
 
+            if (!(UiTheme.ResponsiveButtonHeight(820) < UiTheme.ResponsiveButtonHeight(1500)) ||
+                !(UiTheme.ResponsiveInputHeight(820) < UiTheme.ResponsiveInputHeight(1500)) ||
+                !(UiTheme.ResponsiveControlFontSize(820) < UiTheme.ResponsiveControlFontSize(1500)))
+            {
+                throw new InvalidOperationException("响应式 UI 密度断点自检失败。");
+            }
+
             try
             {
                 foreach (var form in forms)
@@ -317,10 +324,12 @@ namespace Win7BookManagement.Infrastructure
                     {
                         form.Size = viewport;
                         UiTheme.Apply(form);
+                        UiTheme.ApplyResponsiveDensity(form, viewport.Width);
                         form.PerformLayout();
                         VerifyControlTree(
                             form,
-                            form.GetType().Name + "@" + viewport.Width + "x" + viewport.Height);
+                            form.GetType().Name + "@" + viewport.Width + "x" + viewport.Height,
+                            viewport.Width);
                     }
                 }
             }
@@ -331,7 +340,7 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
-        private static void VerifyControlTree(Control control, string formName)
+        private static void VerifyControlTree(Control control, string formName, int viewportWidth)
         {
             var label = control as Label;
             if (label != null &&
@@ -364,18 +373,20 @@ namespace Win7BookManagement.Infrastructure
                     formName + " 存在强制固定高度的单行 TextBox。");
             }
 
+            var expectedInputHeight = UiTheme.ResponsiveInputHeight(viewportWidth);
             var antdInput = control as AntdUI.Input;
             if (antdInput != null && antdInput.Visible &&
-                antdInput.Height > 0 && antdInput.Height < UiTheme.InputHeight)
+                antdInput.Height > 0 && antdInput.Height < expectedInputHeight)
             {
                 throw new InvalidOperationException(
                     formName + " 存在高度不足的 AntdUI 输入框：" +
-                    antdInput.Height + "px < " + UiTheme.InputHeight + "px。");
+                    antdInput.Height + "px < " + expectedInputHeight + "px。");
             }
 
+            var expectedButtonHeight = UiTheme.ResponsiveButtonHeight(viewportWidth);
             var antdButton = control as AntdUI.Button;
             if (antdButton != null && antdButton.Visible &&
-                antdButton.Height > 0 && antdButton.Height < UiTheme.ButtonHeight)
+                antdButton.Height > 0 && antdButton.Height < expectedButtonHeight)
             {
                 throw new InvalidOperationException(
                     formName + " 存在高度不足的 AntdUI 按钮：" +
@@ -452,7 +463,7 @@ namespace Win7BookManagement.Infrastructure
             }
 
             foreach (Control child in control.Controls)
-                VerifyControlTree(child, formName);
+                VerifyControlTree(child, formName, viewportWidth);
         }
 
         private static void VerifyLegacyBookSchemaUpgrade(string root)

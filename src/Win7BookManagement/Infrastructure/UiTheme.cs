@@ -34,8 +34,8 @@ namespace Win7BookManagement.Infrastructure
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
-        public const int InputHeight = 40;
-        public const int ButtonHeight = 38;
+        public const int InputHeight = 38;
+        public const int ButtonHeight = 36;
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
@@ -62,6 +62,112 @@ namespace Win7BookManagement.Infrastructure
         public static Font Font(float size, FontStyle style)
         {
             return new Font(FontFamilyName, size, style, GraphicsUnit.Point);
+        }
+
+        public static int ResponsiveInputHeight(int availableWidth)
+        {
+            if (availableWidth < 900) return 34;
+            if (availableWidth < 1180) return 36;
+            return InputHeight;
+        }
+
+        public static int ResponsiveButtonHeight(int availableWidth)
+        {
+            if (availableWidth < 900) return 32;
+            if (availableWidth < 1180) return 34;
+            return ButtonHeight;
+        }
+
+        public static float ResponsiveControlFontSize(int availableWidth)
+        {
+            if (availableWidth < 900) return 8.25F;
+            if (availableWidth < 1180) return 8.6F;
+            return 9F;
+        }
+
+        public static void ApplyResponsiveDensity(Control root, int availableWidth)
+        {
+            if (root == null || availableWidth <= 0)
+                return;
+
+            var inputHeight = ResponsiveInputHeight(availableWidth);
+            var buttonHeight = ResponsiveButtonHeight(availableWidth);
+            var fontSize = ResponsiveControlFontSize(availableWidth);
+            ApplyResponsiveDensityRecursive(root, availableWidth, inputHeight, buttonHeight, fontSize);
+        }
+
+        private static void ApplyResponsiveDensityRecursive(
+            Control root,
+            int availableWidth,
+            int inputHeight,
+            int buttonHeight,
+            float fontSize)
+        {
+            foreach (Control control in root.Controls)
+            {
+                var antdButton = control as AntdUI.Button;
+                if (antdButton != null)
+                {
+                    var font = Font(fontSize);
+                    antdButton.Font = font;
+                    antdButton.Height = buttonHeight;
+                    antdButton.MinimumSize = new Size(0, buttonHeight);
+
+                    var measured = TextRenderer.MeasureText(
+                        string.IsNullOrWhiteSpace(antdButton.Text) ? "按钮" : antdButton.Text,
+                        font,
+                        Size.Empty,
+                        TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+                    var horizontalPadding = availableWidth < 900 ? 22 : availableWidth < 1180 ? 26 : 30;
+                    var minimumWidth = availableWidth < 900 ? 58 : availableWidth < 1180 ? 64 : 72;
+                    antdButton.Width = Math.Max(minimumWidth, measured.Width + horizontalPadding);
+                }
+                else
+                {
+                    var input = control as AntdUI.Input;
+                    if (input != null)
+                    {
+                        input.Font = Font(fontSize);
+                        input.Height = inputHeight;
+                        input.MinimumSize = new Size(input.MinimumSize.Width, inputHeight);
+                    }
+
+                    var select = control as AntdUI.Select;
+                    if (select != null)
+                    {
+                        select.Font = Font(fontSize);
+                        select.Height = inputHeight;
+                        select.MinimumSize = new Size(select.MinimumSize.Width, inputHeight);
+                    }
+
+                    var number = control as AntdUI.InputNumber;
+                    if (number != null)
+                    {
+                        number.Font = Font(fontSize);
+                        number.Height = inputHeight;
+                        number.MinimumSize = new Size(number.MinimumSize.Width, inputHeight);
+                    }
+
+                    var date = control as AntdUI.DatePicker;
+                    if (date != null)
+                    {
+                        date.Font = Font(fontSize);
+                        date.Height = inputHeight;
+                        date.MinimumSize = new Size(date.MinimumSize.Width, inputHeight);
+                    }
+
+                    var checkbox = control as AntdUI.Checkbox;
+                    if (checkbox != null)
+                        checkbox.Font = Font(fontSize);
+                }
+
+                ApplyResponsiveDensityRecursive(
+                    control,
+                    availableWidth,
+                    inputHeight,
+                    buttonHeight,
+                    fontSize);
+            }
         }
 
         public static void Apply(Control root)
