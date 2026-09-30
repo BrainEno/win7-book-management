@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using AntdUI;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -15,15 +16,15 @@ namespace Win7BookManagement.Forms
         private readonly long _sourceDocumentId;
         private readonly string _sourceDocumentNo;
         private readonly BindingList<ReturnableDocumentLine> _lines;
-        private readonly DataGridView _grid = new DataGridView();
-        private readonly TextBox _note = new TextBox();
+        private readonly AntdUI.Table _grid = new AntdUI.Table();
+        private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("填写退货原因或备注（可选）");
         private readonly Label _lineCount = new Label();
         private readonly Label _quantityTotal = new Label();
         private readonly Label _total = new Label();
 
-        private readonly DataGridViewColumn _isbnColumn;
-        private readonly DataGridViewColumn _returnedColumn;
-        private readonly DataGridViewColumn _stockColumn;
+        private readonly AntdUI.Column _isbnColumn;
+        private readonly AntdUI.Column _returnedColumn;
+        private readonly AntdUI.Column _stockColumn;
 
         public ReturnDialog(ApplicationServices services, string kind, long sourceDocumentId, string sourceDocumentNo)
         {
@@ -38,8 +39,7 @@ namespace Win7BookManagement.Forms
 
             var sourceLines = _services.Documents.GetReturnableLines(kind, sourceDocumentId);
             _lines = new BindingList<ReturnableDocumentLine>();
-            foreach (var line in sourceLines)
-                _lines.Add(line);
+            foreach (var line in sourceLines) _lines.Add(line);
 
             UiTheme.ConfigureForm(this);
             Text = (isSale ? "销售退货" : "采购退货") + " - " + sourceDocumentNo;
@@ -50,37 +50,11 @@ namespace Win7BookManagement.Forms
             BackColor = UiTheme.Background;
             ShowInTaskbar = false;
             MinimizeBox = false;
+            KeyPreview = true;
 
-            _isbnColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "ISBN",
-                DataPropertyName = "Isbn",
-                Width = 132,
-                ReadOnly = true
-            };
-            _returnedColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "已退",
-                DataPropertyName = "ReturnedQuantity",
-                Width = 66,
-                ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
-            };
-            _stockColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "当前库存",
-                DataPropertyName = "CurrentStock",
-                Width = 82,
-                ReadOnly = true,
-                Visible = !isSale,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
-            };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "142", ReadOnly = true };
+            _returnedColumn = new AntdUI.Column("ReturnedQuantity", "已退") { Width = "72", ReadOnly = true };
+            _stockColumn = new AntdUI.Column("CurrentStock", "当前库存") { Width = "92", ReadOnly = true, Visible = !isSale };
 
             var root = new TableLayoutPanel
             {
@@ -101,18 +75,27 @@ namespace Win7BookManagement.Forms
             root.Controls.Add(CreateHeader(isSale), 0, 0);
             root.Controls.Add(CreateQuickActions(isSale), 0, 1);
             root.Controls.Add(CreateGrid(isSale), 0, 2);
-            root.Controls.Add(CreateNoteSection(isSale), 0, 3);
-            root.Controls.Add(CreateFooter(isSale, out Button confirm, out Button cancel), 0, 4);
-
+            root.Controls.Add(CreateNoteSection(), 0, 3);
+            root.Controls.Add(CreateFooter(), 0, 4);
             Controls.Add(root);
 
-            AcceptButton = confirm;
-            CancelButton = cancel;
-
-            _lines.ListChanged += delegate { UpdateTotal(); };
+            _lines.ListChanged += delegate
+            {
+                _grid.DataSource = _lines;
+                UpdateTotal();
+            };
             Resize += delegate { ApplyResponsiveColumns(); };
+            KeyDown += delegate(object sender, KeyEventArgs e)
+            {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    DialogResult = DialogResult.Cancel;
+                    Close();
+                }
+            };
 
             UiTheme.Apply(this);
+            _grid.DataSource = _lines;
             UpdateTotal();
 
             Shown += delegate
@@ -131,7 +114,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 3,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(22, 14, 22, 12),
+                Padding = new Padding(22, 15, 22, 13),
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -144,7 +127,6 @@ namespace Win7BookManagement.Forms
                 ForeColor = UiTheme.TextPrimary,
                 Margin = new Padding(0, 0, 0, 4)
             }, 0, 0);
-
             header.Controls.Add(new Label
             {
                 Text = "原单号  " + _sourceDocumentNo,
@@ -153,18 +135,16 @@ namespace Win7BookManagement.Forms
                 ForeColor = UiTheme.Accent,
                 Margin = new Padding(0, 0, 0, 6)
             }, 0, 1);
-
             header.Controls.Add(new Label
             {
                 Text = isSale
-                    ? "只填写本次实际退回的数量。退款金额按原销售价格计算，完成后库存自动加回；历史销售单不会被修改。"
-                    : "只填写本次实际退给供应商的数量。金额按原采购进价计算，完成后库存自动扣减；库存不足的图书不能退。",
+                    ? "填写本次实际退回数量。退款按原销售价格计算，完成后库存自动加回；历史销售单保持不变。"
+                    : "填写本次实际退给供应商的数量。金额按原采购进价计算，完成后库存自动扣减。",
                 AutoSize = true,
                 MaximumSize = new Size(900, 0),
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8.5F)
             }, 0, 2);
-
             return header;
         }
 
@@ -172,22 +152,12 @@ namespace Win7BookManagement.Forms
         {
             var bar = UiTheme.CreateResponsiveToolbar();
             bar.BackColor = UiTheme.Surface;
-            bar.BorderStyle = BorderStyle.None;
             bar.Margin = new Padding(0, 10, 0, 10);
 
-            var fill = new Button
-            {
-                Text = "全部填为最大可退",
-                Width = 132,
-                Height = UiTheme.ButtonHeight
-            };
-            var clear = new Button
-            {
-                Text = "清零本次退货",
-                Width = 118,
-                Height = UiTheme.ButtonHeight
-            };
-
+            var fill = UiTheme.CreateAntdButton("全部填为最大可退", false);
+            fill.Width = 140;
+            var clear = UiTheme.CreateAntdButton("清零本次退货", false);
+            clear.Width = 126;
             fill.Click += delegate { FillMaximum(isSale); };
             clear.Click += delegate { ClearReturnQuantities(); };
 
@@ -197,142 +167,101 @@ namespace Win7BookManagement.Forms
             {
                 AutoSize = true,
                 Text = isSale
-                    ? "“最大可退”会自动填入每行尚未退过的数量。"
-                    : "采购退货会同时受“尚可退数量”和“当前库存”限制。",
+                    ? "“最大可退”会填入每行尚未退过的数量。"
+                    : "采购退货同时受尚可退数量和当前库存限制。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
-                Margin = new Padding(14, 11, 0, 0)
+                Margin = new Padding(14, 12, 0, 0)
             });
-
             return bar;
         }
 
         private Control CreateGrid(bool isSale)
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.AutoGenerateColumns = false;
-            _grid.AllowUserToAddRows = false;
-            _grid.AllowUserToDeleteRows = false;
-            _grid.RowHeadersVisible = false;
-            _grid.BackgroundColor = UiTheme.Surface;
-            _grid.DataSource = _lines;
+            _grid.BackColor = UiTheme.Surface;
+            _grid.ForeColor = UiTheme.TextPrimary;
+            _grid.ColumnBack = UiTheme.NavigationSurface;
+            _grid.ColumnFore = UiTheme.TextSecondary;
+            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
+            _grid.BorderColor = UiTheme.Border;
+            _grid.Radius = 8;
+            _grid.RowHeight = 48;
+            _grid.RowHeightHeader = 48;
+            _grid.EnableHeaderResizing = true;
+            _grid.ColumnDragSort = true;
+            _grid.EditMode = TEditMode.Click;
+            _grid.ShowTip = true;
+            _grid.EmptyText = "原单据没有可退图书";
+            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
+            _grid.RowSelectedBg = UiTheme.AccentSoft;
+            _grid.RowSelectedFore = UiTheme.TextPrimary;
 
-            _grid.Columns.Add(_isbnColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            var columns = new AntdUI.ColumnCollection
             {
-                HeaderText = "书名",
-                DataPropertyName = "Title",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                MinimumWidth = 190,
-                FillWeight = 220,
-                ReadOnly = true
-            });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
+                new AntdUI.Column("Title", "书名") { Width = "auto", MinWidth = "240", Ellipsis = true, ReadOnly = true },
+                new AntdUI.Column("OriginalQuantity", "原数量") { Width = "82", ReadOnly = true },
+                _returnedColumn,
+                new AntdUI.Column("ReturnableQuantity", "可退") { Width = "72", ReadOnly = true }
+            };
+            if (!isSale) columns.Add(_stockColumn);
+            columns.Add(new AntdUI.Column("UnitPriceYuan", isSale ? "原售价" : "原进价") { Width = "96", ReadOnly = true, DisplayFormat = "0.00" });
+            columns.Add(new AntdUI.Column("ReturnQuantity", "本次退货")
             {
-                HeaderText = "原数量",
-                DataPropertyName = "OriginalQuantity",
-                Width = 76,
-                ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
+                Width = "108",
+                ReadOnly = false,
+                Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             });
-            _grid.Columns.Add(_returnedColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "可退",
-                DataPropertyName = "ReturnableQuantity",
-                Width = 66,
-                ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight,
-                    Font = UiTheme.Font(8.8F, FontStyle.Bold)
-                }
-            });
+            columns.Add(_isbnColumn);
+            _grid.Columns = columns;
 
-            if (!isSale)
-                _grid.Columns.Add(_stockColumn);
+            _grid.CellEndEdit += delegate(object sender, AntdUI.TableEndEditEventArgs e)
+            {
+                var line = e.Record as ReturnableDocumentLine;
+                if (line == null || e.Column == null || e.Column.Key != "ReturnQuantity") return true;
 
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = isSale ? "原售价" : "原进价",
-                DataPropertyName = "UnitPriceYuan",
-                Width = 86,
-                ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle
+                int quantity;
+                if (!int.TryParse(e.Value, out quantity) || quantity < 0)
                 {
-                    Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight
+                    MessageBox.Show(this, "本次退货数量请输入 0 或正整数。", "输入格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
                 }
-            });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "本次退货",
-                DataPropertyName = "ReturnQuantity",
-                Width = 92,
-                DefaultCellStyle = new DataGridViewCellStyle
+                if (quantity > line.ReturnableQuantity)
                 {
-                    Alignment = DataGridViewContentAlignment.MiddleRight,
-                    BackColor = UiTheme.AccentSoft
+                    MessageBox.Show(this, "《" + line.Title + "》最多还可退 " + line.ReturnableQuantity + " 册。", "超过可退数量", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
                 }
-            });
+                if (_kind == "purchase" && quantity > line.CurrentStock)
+                {
+                    MessageBox.Show(this, "《" + line.Title + "》当前库存只有 " + line.CurrentStock + " 册。", "库存不足", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
 
-            _grid.CellEndEdit += delegate
-            {
+                line.ReturnQuantity = quantity;
                 _grid.Refresh();
                 UpdateTotal();
-            };
-            _grid.CellValueChanged += delegate { UpdateTotal(); };
-            _grid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e)
-            {
-                e.ThrowException = false;
-                MessageBox.Show(this, "本次退货数量请输入 0 或正整数。", "输入格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return true;
             };
 
-            var host = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = UiTheme.Surface,
-                BorderStyle = BorderStyle.None,
-                Margin = Padding.Empty
-            };
+            var host = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Surface, Margin = Padding.Empty };
             host.Controls.Add(_grid);
-            host.Controls.Add(new Label
-            {
-                Text = "退货明细",
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                MinimumSize = new Size(0, 42),
-                Padding = new Padding(12, 10, 0, 10),
-                TextAlign = ContentAlignment.MiddleLeft,
-                BackColor = UiTheme.Surface,
-                ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(9.2F, FontStyle.Bold)
-            });
-
             return host;
         }
 
-        private Control CreateNoteSection(bool isSale)
+        private Control CreateNoteSection()
         {
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, 72),
+                Height = 68,
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 10, 16, 10),
-                Margin = new Padding(0, 10, 0, 0),
-                BorderStyle = BorderStyle.None
+                Padding = new Padding(16, 11, 16, 11),
+                Margin = new Padding(0, 10, 0, 0)
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-
             section.Controls.Add(new Label
             {
                 Text = "退货原因 / 备注",
@@ -340,30 +269,26 @@ namespace Win7BookManagement.Forms
                 Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8.5F, FontStyle.Bold),
-                Margin = new Padding(0, 9, 14, 0)
+                Margin = new Padding(0, 0, 14, 0)
             }, 0, 0);
-
             _note.Dock = DockStyle.Fill;
-            _note.Margin = new Padding(0, 5, 0, 5);
+            _note.Margin = new Padding(0, 2, 0, 2);
             section.Controls.Add(_note, 1, 0);
-
             return section;
         }
 
-        private Control CreateFooter(bool isSale, out Button confirm, out Button cancel)
+        private Control CreateFooter()
         {
             var footer = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, 78),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.SurfaceMuted,
-                Padding = new Padding(16, 12, 16, 12),
-                Margin = new Padding(0, 8, 0, 0),
-                BorderStyle = BorderStyle.None
+                Padding = new Padding(16, 13, 16, 13),
+                Margin = new Padding(0, 8, 0, 0)
             };
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -372,18 +297,14 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 BackColor = UiTheme.SurfaceMuted,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
+                Margin = Padding.Empty
             };
-
             ConfigureSummaryLabel(_lineCount, false);
             ConfigureSummaryLabel(_quantityTotal, false);
             ConfigureSummaryLabel(_total, true);
-
             metrics.Controls.Add(_lineCount);
             metrics.Controls.Add(_quantityTotal);
             metrics.Controls.Add(_total);
@@ -391,48 +312,31 @@ namespace Win7BookManagement.Forms
             var buttons = new FlowLayoutPanel
             {
                 AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                Margin = new Padding(14, 0, 0, 0),
-                Padding = Padding.Empty
+                Margin = new Padding(14, 0, 0, 0)
             };
-
-            cancel = new Button
-            {
-                Text = "取消",
-                AutoSize = true,
-                MinimumSize = new Size(88, UiTheme.ButtonHeight),
-                DialogResult = DialogResult.Cancel
-            };
-            confirm = new Button
-            {
-                Text = "确认退货",
-                AutoSize = true,
-                MinimumSize = new Size(108, UiTheme.ButtonHeight),
-                Tag = "primary"
-            };
+            var cancel = UiTheme.CreateAntdButton("取消", false);
+            cancel.Width = 90;
+            cancel.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
+            var confirm = UiTheme.CreateAntdButton("确认退货", true);
+            confirm.Width = 112;
             confirm.Click += delegate { Submit(); };
-
             buttons.Controls.Add(cancel);
             buttons.Controls.Add(confirm);
 
             footer.Controls.Add(metrics, 0, 0);
             footer.Controls.Add(buttons, 1, 0);
-
             return footer;
         }
 
         private static void ConfigureSummaryLabel(Label label, bool primary)
         {
             label.AutoSize = true;
-            label.TextAlign = ContentAlignment.MiddleLeft;
             label.ForeColor = primary ? UiTheme.Accent : UiTheme.TextSecondary;
             label.Font = UiTheme.Font(primary ? 12.8F : 8.5F, FontStyle.Bold);
             label.BackColor = primary ? UiTheme.AccentSoft : UiTheme.Surface;
-            label.Padding = primary
-                ? new Padding(12, 8, 12, 8)
-                : new Padding(10, 8, 10, 8);
+            label.Padding = primary ? new Padding(12, 8, 12, 8) : new Padding(10, 8, 10, 8);
             label.Margin = new Padding(0, 0, 10, 0);
         }
 
@@ -441,8 +345,8 @@ namespace Win7BookManagement.Forms
             var width = ClientSize.Width;
             _isbnColumn.Visible = width >= 780;
             _returnedColumn.Visible = width >= 720;
-            if (_kind == "purchase")
-                _stockColumn.Visible = width >= 680;
+            if (_kind == "purchase") _stockColumn.Visible = width >= 680;
+            _grid.LoadLayout();
         }
 
         private void FillMaximum(bool isSale)
@@ -450,20 +354,16 @@ namespace Win7BookManagement.Forms
             foreach (var line in _lines)
             {
                 var max = line.ReturnableQuantity;
-                if (!isSale)
-                    max = Math.Min(max, line.CurrentStock);
+                if (!isSale) max = Math.Min(max, line.CurrentStock);
                 line.ReturnQuantity = Math.Max(0, max);
             }
-
             _grid.Refresh();
             UpdateTotal();
         }
 
         private void ClearReturnQuantities()
         {
-            foreach (var line in _lines)
-                line.ReturnQuantity = 0;
-
+            foreach (var line in _lines) line.ReturnQuantity = 0;
             _grid.Refresh();
             UpdateTotal();
         }
@@ -473,13 +373,10 @@ namespace Win7BookManagement.Forms
             decimal amount = 0m;
             var quantity = 0;
             var lineCount = 0;
-
             foreach (var line in _lines)
             {
-                if (line.ReturnQuantity <= 0)
-                    continue;
-
-                lineCount += 1;
+                if (line.ReturnQuantity <= 0) continue;
+                lineCount++;
                 quantity += line.ReturnQuantity;
                 amount += line.ReturnQuantity * line.UnitPriceYuan;
             }
@@ -493,32 +390,18 @@ namespace Win7BookManagement.Forms
         {
             try
             {
-                _grid.EndEdit();
-
                 var inputs = new List<ReturnLineInput>();
                 foreach (var line in _lines)
                 {
-                    if (line.ReturnQuantity < 0)
-                        throw new InvalidOperationException("《" + line.Title + "》的退货数量不能为负数。");
-
-                    if (line.ReturnQuantity == 0)
-                        continue;
-
-                    if (line.ReturnQuantity > line.ReturnableQuantity)
-                        throw new InvalidOperationException("《" + line.Title + "》最多还可退 " + line.ReturnableQuantity + " 册。");
-
+                    if (line.ReturnQuantity < 0) throw new InvalidOperationException("《" + line.Title + "》的退货数量不能为负数。");
+                    if (line.ReturnQuantity == 0) continue;
+                    if (line.ReturnQuantity > line.ReturnableQuantity) throw new InvalidOperationException("《" + line.Title + "》最多还可退 " + line.ReturnableQuantity + " 册。");
                     if (_kind == "purchase" && line.ReturnQuantity > line.CurrentStock)
                         throw new InvalidOperationException("《" + line.Title + "》当前库存只有 " + line.CurrentStock + " 册，不能退 " + line.ReturnQuantity + " 册。");
-
-                    inputs.Add(new ReturnLineInput
-                    {
-                        SourceItemId = line.SourceItemId,
-                        Quantity = line.ReturnQuantity
-                    });
+                    inputs.Add(new ReturnLineInput { SourceItemId = line.SourceItemId, Quantity = line.ReturnQuantity });
                 }
 
-                if (inputs.Count == 0)
-                    throw new InvalidOperationException("请至少填写一项本次退货数量。");
+                if (inputs.Count == 0) throw new InvalidOperationException("请至少填写一项本次退货数量。");
 
                 var confirmation = MessageBox.Show(
                     this,
@@ -528,20 +411,13 @@ namespace Win7BookManagement.Forms
                     "确认退货",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
-                if (confirmation != DialogResult.Yes)
-                    return;
+                if (confirmation != DialogResult.Yes) return;
 
                 var returnNo = _kind == "sale"
                     ? _services.Returns.CreateSalesReturn(_sourceDocumentId, inputs, _note.Text)
                     : _services.Returns.CreatePurchaseReturn(_sourceDocumentId, inputs, _note.Text);
 
-                MessageBox.Show(
-                    this,
-                    "退货完成。\r\n退货单号：" + returnNo,
-                    "退货成功",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
+                MessageBox.Show(this, "退货完成。\r\n退货单号：" + returnNo, "退货成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
                 Close();
             }
