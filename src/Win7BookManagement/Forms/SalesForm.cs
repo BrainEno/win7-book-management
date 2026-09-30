@@ -317,16 +317,17 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 3,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 11, 14, 11),
+                Padding = new Padding(16, 12, 16, 12),
                 Margin = new Padding(0, 10, 0, 0),
                 BorderStyle = BorderStyle.None
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 68));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -336,7 +337,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 Font = UiTheme.Font(10F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
-                Margin = new Padding(0, 0, 0, 7)
+                Margin = new Padding(0, 0, 0, 9)
             };
             section.Controls.Add(title, 0, 0);
             section.SetColumnSpan(title, 3);
@@ -344,21 +345,24 @@ namespace Win7BookManagement.Forms
             var noteLabel = new Label
             {
                 Text = "备注",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = UiTheme.TextSecondary
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 9, 14, 0)
             };
             section.Controls.Add(noteLabel, 0, 1);
 
             _note.Dock = DockStyle.Fill;
-            _note.Margin = new Padding(0, 3, 10, 3);
+            _note.Margin = new Padding(0, 3, 12, 3);
             section.Controls.Add(_note, 1, 1);
 
             var remove = new Button
             {
                 Text = "移除选中",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3)
+                AutoSize = true,
+                MinimumSize = new Size(104, UiTheme.ButtonHeight),
+                Margin = new Padding(0, 0, 0, 0)
             };
             remove.Click += delegate { RemoveSelected(); };
             section.Controls.Add(remove, 2, 1);
