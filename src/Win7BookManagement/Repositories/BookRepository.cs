@@ -129,6 +129,9 @@ ORDER BY
             var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             using (var connection = _factory.Open())
             {
+                if (string.IsNullOrWhiteSpace(book.SelfCode))
+                    book.SelfCode = GenerateSelfCode(connection);
+
                 EnsureUniqueIdentifiers(connection, book, 0);
 
                 using (var command = connection.CreateCommand())
@@ -187,6 +190,33 @@ WHERE id=@id;";
                         throw new InvalidOperationException("未找到要修改的图书。");
                 }
             }
+        }
+
+        private static string GenerateSelfCode(SQLiteConnection connection)
+        {
+            var prefix = "BK-" + DateTime.Now.ToString("yyyyMMdd") + "-";
+            var last = "";
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"SELECT self_code
+FROM books
+WHERE self_code LIKE @prefix
+ORDER BY self_code DESC
+LIMIT 1;";
+                command.Parameters.AddWithValue("@prefix", prefix + "%");
+                last = Convert.ToString(command.ExecuteScalar()) ?? "";
+            }
+
+            var next = 1;
+            if (last.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                int parsed;
+                if (int.TryParse(last.Substring(prefix.Length), out parsed))
+                    next = parsed + 1;
+            }
+
+            return prefix + next.ToString("D4");
         }
 
         private static void Validate(Book book)
