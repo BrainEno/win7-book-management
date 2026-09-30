@@ -426,7 +426,7 @@ namespace Win7BookManagement.Forms
                 Width = 180,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(180, 42),
+                MinimumSize = new Size(180, 48),
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 1, 0, 1),
@@ -451,12 +451,12 @@ namespace Win7BookManagement.Forms
                 Tag = "nav",
                 Dock = DockStyle.Fill,
                 Margin = Padding.Empty,
-                Padding = new Padding(11, 0, 8, 0),
+                Padding = new Padding(15, 0, 10, 0),
                 FlatStyle = FlatStyle.Flat,
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = UiTheme.NavigationSurface,
                 ForeColor = UiTheme.NavigationText,
-                Font = UiTheme.Font(8.9F, FontStyle.Regular),
+                Font = UiTheme.Font(9.6F, FontStyle.Regular),
                 Cursor = Cursors.Hand
             };
             button.FlatAppearance.BorderSize = 0;
@@ -481,7 +481,7 @@ namespace Win7BookManagement.Forms
 
                 pair.Value.BackColor = active ? UiTheme.NavigationSelected : UiTheme.NavigationSurface;
                 pair.Value.ForeColor = active ? UiTheme.Accent : UiTheme.NavigationText;
-                pair.Value.Font = UiTheme.Font(8.9F, active ? FontStyle.Bold : FontStyle.Regular);
+                pair.Value.Font = UiTheme.Font(9.6F, active ? FontStyle.Bold : FontStyle.Regular);
 
                 Panel indicator;
                 if (_navIndicators.TryGetValue(pair.Key, out indicator))
@@ -496,7 +496,7 @@ namespace Win7BookManagement.Forms
         private void ApplyResponsiveLayout()
         {
             var compact = ClientSize.Width < UiTheme.WideBreakpoint;
-            _sidebar.Width = compact ? 190 : 216;
+            _sidebar.Width = compact ? 202 : 226;
             _sidebar.Padding = compact
                 ? new Padding(10, 14, 10, 10)
                 : new Padding(14, 16, 14, 12);
