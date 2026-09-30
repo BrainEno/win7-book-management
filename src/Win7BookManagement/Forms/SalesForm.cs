@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
-using Krypton.Toolkit;
+using AntdUI;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
@@ -12,19 +12,25 @@ namespace Win7BookManagement.Forms
     public sealed class SalesForm : Form, INavigationGuard
     {
         private readonly ApplicationServices _services;
-        private readonly KryptonTextBox _isbn = new KryptonTextBox();
-        private readonly KryptonTextBox _note = new KryptonTextBox();
-        private readonly KryptonDataGridView _grid = new KryptonDataGridView();
+        private readonly AntdUI.Input _isbn = UiTheme.CreateAntdInput("扫码或输入店内编码 / ISBN / 书名 / 作者");
+        private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写销售备注");
+        private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly BindingList<SalesCartRow> _rows = new BindingList<SalesCartRow>();
         private readonly Label _itemCount = new Label();
         private readonly Label _quantityTotal = new Label();
         private readonly Label _total = new Label();
         private readonly Label _emptyState = new Label();
 
-        private readonly DataGridViewColumn _selfCodeColumn;
-        private readonly DataGridViewColumn _isbnColumn;
-        private readonly DataGridViewColumn _authorColumn;
-        private readonly DataGridViewColumn _stockColumn;
+        private readonly AntdUI.Column _selfCodeColumn;
+        private readonly AntdUI.Column _isbnColumn;
+        private readonly AntdUI.Column _authorColumn;
+        private readonly AntdUI.Column _stockColumn;
+        private readonly AntdUI.Column _titleColumn;
+        private readonly AntdUI.Column _quantityColumn;
+        private readonly AntdUI.Column _priceColumn;
+        private readonly AntdUI.Column _lineTotalColumn;
+
+        private SalesCartRow _selectedRow;
 
         public SalesForm(ApplicationServices services)
         {
@@ -32,38 +38,25 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
 
-            _selfCodeColumn = new DataGridViewTextBoxColumn
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", ReadOnly = true };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "146", ReadOnly = true };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "116", ReadOnly = true };
+            _stockColumn = new AntdUI.Column("Stock", "库存") { Width = "72", ReadOnly = true };
+            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "auto", MinWidth = "260", Ellipsis = true, ReadOnly = true };
+            _quantityColumn = new AntdUI.Column("Quantity", "数量")
             {
-                HeaderText = "店内编码",
-                DataPropertyName = "SelfCode",
-                Width = 102,
-                ReadOnly = true
+                Width = "96",
+                ReadOnly = false,
+                Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
-            _isbnColumn = new DataGridViewTextBoxColumn
+            _priceColumn = new AntdUI.Column("UnitPriceYuan", "销售价格")
             {
-                HeaderText = "ISBN",
-                DataPropertyName = "Isbn",
-                Width = 132,
-                ReadOnly = true
+                Width = "116",
+                ReadOnly = false,
+                DisplayFormat = "0.00",
+                Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
-            _authorColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "作者",
-                DataPropertyName = "Author",
-                Width = 110,
-                ReadOnly = true
-            };
-            _stockColumn = new DataGridViewTextBoxColumn
-            {
-                HeaderText = "库存",
-                DataPropertyName = "Stock",
-                Width = 66,
-                ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
-            };
+            _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计") { Width = "118", ReadOnly = true, DisplayFormat = "0.00" };
 
             var root = new TableLayoutPanel
             {
@@ -86,27 +79,29 @@ namespace Win7BookManagement.Forms
             root.Controls.Add(CreateCartSection(), 0, 2);
             root.Controls.Add(CreateSettlementSection(), 0, 3);
             root.Controls.Add(CreateTotalsSection(), 0, 4);
-
             Controls.Add(root);
 
-            _rows.ListChanged += delegate { UpdateTotals(); };
+            _rows.ListChanged += delegate
+            {
+                _grid.DataSource = _rows;
+                UpdateTotals();
+            };
             Resize += delegate { ApplyResponsiveColumns(); };
             _grid.SizeChanged += delegate { ApplyResponsiveColumns(); };
             Shown += delegate
             {
+                _grid.DataSource = _rows;
                 _isbn.Focus();
                 UpdateTotals();
                 ApplyResponsiveColumns();
             };
 
             UiTheme.Apply(this);
-            UiTheme.StyleEditableGrid(_grid);
         }
 
         public bool CanNavigateAway(IWin32Window owner)
         {
             if (_rows.Count == 0) return true;
-
             return MessageBox.Show(
                 owner,
                 "当前销售单还有 " + _rows.Count + " 项未结账。离开页面会丢弃这些内容，确定离开吗？",
@@ -119,16 +114,15 @@ namespace Win7BookManagement.Forms
         {
             var toolbar = UiTheme.CreateResponsiveToolbar();
             toolbar.BackColor = UiTheme.Surface;
-            toolbar.BorderStyle = BorderStyle.None;
 
-            var newOrder = UiTheme.CreateKryptonButton("＋ 新单", false);
-            newOrder.Width = 94;
-            var pick = UiTheme.CreateKryptonButton("选择图书", false);
-            pick.Width = 104;
-            var remove = UiTheme.CreateKryptonButton("移除选中", false);
-            remove.Width = 104;
-            var clear = UiTheme.CreateKryptonButton("清空当前单", false);
-            clear.Width = 114;
+            var newOrder = UiTheme.CreateAntdButton("＋ 新单", false);
+            newOrder.Width = 96;
+            var pick = UiTheme.CreateAntdButton("选择图书", false);
+            pick.Width = 106;
+            var remove = UiTheme.CreateAntdButton("移除选中", false);
+            remove.Width = 106;
+            var clear = UiTheme.CreateAntdButton("清空当前单", false);
+            clear.Width = 116;
 
             newOrder.Click += delegate { StartNewOrder(); };
             pick.Click += delegate { PickBook(); };
@@ -139,17 +133,14 @@ namespace Win7BookManagement.Forms
             toolbar.Controls.Add(pick);
             toolbar.Controls.Add(remove);
             toolbar.Controls.Add(clear);
-
-            var hint = new Label
+            toolbar.Controls.Add(new Label
             {
                 AutoSize = true,
-                Text = "扫码 ISBN，或输入店内编码 / ISBN / 书名搜索；数量和销售价格可在表格中修改。",
+                Text = "AntdUI 开单工作台：扫描后回车，或按编码 / 书名 / 作者搜索。",
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
-                Margin = new Padding(14, 11, 0, 0)
-            };
-            toolbar.Controls.Add(hint);
-
+                Margin = new Padding(14, 12, 0, 0)
+            });
             return toolbar;
         }
 
@@ -162,39 +153,34 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 4,
                 RowCount = 3,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 14, 16, 14),
-                Margin = new Padding(0, 10, 0, 10),
-                BorderStyle = BorderStyle.None
+                Padding = new Padding(18, 15, 18, 15),
+                Margin = new Padding(0, 10, 0, 10)
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var title = new Label
             {
                 Text = "商品输入区",
                 AutoSize = true,
-                Font = UiTheme.Font(10F, FontStyle.Bold),
+                Font = UiTheme.Font(11F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Margin = new Padding(0, 0, 0, 10)
             };
             section.Controls.Add(title, 0, 0);
             section.SetColumnSpan(title, 4);
 
-            var isbnLabel = new Label
+            section.Controls.Add(new Label
             {
-                Text = "编码 / ISBN / 书名",
+                Text = "添加图书",
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold),
-                Margin = new Padding(0, 3, 8, 3)
-            };
-            section.Controls.Add(isbnLabel, 0, 1);
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 3, 12, 3)
+            }, 0, 1);
 
             _isbn.Dock = DockStyle.Fill;
             _isbn.Margin = new Padding(0, 3, 10, 3);
@@ -209,29 +195,27 @@ namespace Win7BookManagement.Forms
             };
             section.Controls.Add(_isbn, 1, 1);
 
-            var add = UiTheme.CreateKryptonButton("搜索加入", true);
-            add.Dock = DockStyle.Fill;
+            var add = UiTheme.CreateAntdButton("搜索加入", true);
+            add.Width = 114;
             add.Margin = new Padding(0, 3, 8, 3);
             add.Click += delegate { AddByIsbn(); };
             section.Controls.Add(add, 2, 1);
 
-            var pick = UiTheme.CreateKryptonButton("选择图书", false);
-            pick.Dock = DockStyle.Fill;
+            var pick = UiTheme.CreateAntdButton("选择图书", false);
+            pick.Width = 110;
             pick.Margin = new Padding(0, 3, 0, 3);
             pick.Click += delegate { PickBook(); };
             section.Controls.Add(pick, 3, 1);
 
-            var inputHint = new Label
+            section.Controls.Add(new Label
             {
-                Text = "扫码枪可直接扫描后回车；自出版物也可用系统生成的店内编码、书名或作者搜索。",
+                Text = "扫码枪可直接扫描后回车；没有 ISBN 的自出版物可使用系统店内编码、书名或作者。",
                 AutoSize = true,
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F),
                 Margin = new Padding(0, 5, 0, 0)
-            };
-            section.Controls.Add(inputHint, 1, 2);
-            section.SetColumnSpan(inputHint, 3);
-
+            }, 1, 2);
+            section.SetColumnSpan(section.GetControlFromPosition(1, 2), 3);
             return section;
         }
 
@@ -245,8 +229,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
+                Margin = Padding.Empty
             };
             host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             host.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -256,12 +239,11 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                MinimumSize = new Size(0, 44),
+                MinimumSize = new Size(0, 50),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 8, 14, 8),
-                Margin = Padding.Empty
+                Padding = new Padding(14, 8, 14, 8)
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -272,13 +254,13 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = UiTheme.Font(9.5F, FontStyle.Bold),
+                Font = UiTheme.Font(10F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary
             }, 0, 0);
 
             header.Controls.Add(new Label
             {
-                Text = "数量和销售价格可直接在表格中修改",
+                Text = "点击浅绿色单元格修改数量或销售价格",
                 AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleRight,
@@ -287,17 +269,11 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(12, 2, 0, 0)
             }, 1, 0);
 
-            var content = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = UiTheme.Surface,
-                Padding = Padding.Empty,
-                Margin = Padding.Empty
-            };
+            var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Surface };
 
             _emptyState.Dock = DockStyle.Fill;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "购物车为空\r\n请扫描 ISBN，或按店内编码 / ISBN / 书名搜索加入";
+            _emptyState.Text = "购物车为空\r\n请扫描、搜索加入，或点击“选择图书”";
             _emptyState.ForeColor = UiTheme.TextSecondary;
             _emptyState.Font = UiTheme.Font(9F);
             _emptyState.BackColor = UiTheme.Surface;
@@ -311,58 +287,116 @@ namespace Win7BookManagement.Forms
             return host;
         }
 
+        private void ConfigureGrid()
+        {
+            _grid.Dock = DockStyle.Fill;
+            _grid.BackColor = UiTheme.Surface;
+            _grid.ForeColor = UiTheme.TextPrimary;
+            _grid.ColumnBack = UiTheme.NavigationSurface;
+            _grid.ColumnFore = UiTheme.TextSecondary;
+            _grid.ColumnFont = UiTheme.Font(8.8F, FontStyle.Bold);
+            _grid.BorderColor = UiTheme.Border;
+            _grid.Radius = 8;
+            _grid.RowHeight = 48;
+            _grid.RowHeightHeader = 48;
+            _grid.EnableHeaderResizing = true;
+            _grid.ColumnDragSort = true;
+            _grid.EditMode = TEditMode.Click;
+            _grid.ShowTip = true;
+            _grid.EmptyText = "当前销售单还没有商品";
+            _grid.RowHoverBg = Color.FromArgb(248, 246, 241);
+            _grid.RowSelectedBg = UiTheme.AccentSoft;
+            _grid.RowSelectedFore = UiTheme.TextPrimary;
+
+            _grid.Columns = new AntdUI.ColumnCollection
+            {
+                _titleColumn,
+                _quantityColumn,
+                _priceColumn,
+                _lineTotalColumn,
+                _stockColumn,
+                _authorColumn,
+                _isbnColumn,
+                _selfCodeColumn
+            };
+
+            _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
+            {
+                _selectedRow = e.Record as SalesCartRow;
+            };
+            _grid.CellEndEdit += HandleCellEndEdit;
+        }
+
+        private bool HandleCellEndEdit(object sender, AntdUI.TableEndEditEventArgs e)
+        {
+            var row = e.Record as SalesCartRow;
+            if (row == null || e.Column == null) return false;
+
+            if (string.Equals(e.Column.Key, "Quantity", StringComparison.Ordinal))
+            {
+                int quantity;
+                if (!int.TryParse(e.Value, out quantity) || quantity <= 0)
+                {
+                    MessageBox.Show(this, "数量必须是大于 0 的整数。", "数量格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+                if (quantity > row.Stock)
+                {
+                    MessageBox.Show(this, "库存只有 " + row.Stock + " 册，请降低销售数量。", "库存不足", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+                row.Quantity = quantity;
+            }
+            else if (string.Equals(e.Column.Key, "UnitPriceYuan", StringComparison.Ordinal))
+            {
+                decimal price;
+                if (!decimal.TryParse(e.Value, out price) || price < 0)
+                {
+                    MessageBox.Show(this, "销售价格必须是有效的非负金额。", "金额格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+                row.UnitPriceYuan = price;
+            }
+
+            _grid.Refresh();
+            UpdateTotals();
+            return true;
+        }
+
         private Control CreateSettlementSection()
         {
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Height = 68,
                 ColumnCount = 3,
-                RowCount = 2,
+                RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(16, 12, 16, 12),
-                Margin = new Padding(0, 10, 0, 0),
-                BorderStyle = BorderStyle.None
+                Padding = new Padding(16, 11, 16, 11),
+                Margin = new Padding(0, 10, 0, 0)
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            var title = new Label
-            {
-                Text = "结算信息",
-                AutoSize = true,
-                Font = UiTheme.Font(10F, FontStyle.Bold),
-                ForeColor = UiTheme.TextPrimary,
-                Margin = new Padding(0, 0, 0, 9)
-            };
-            section.Controls.Add(title, 0, 0);
-            section.SetColumnSpan(title, 3);
-
-            var noteLabel = new Label
+            section.Controls.Add(new Label
             {
                 Text = "备注",
                 AutoSize = true,
                 Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold),
-                Margin = new Padding(0, 9, 14, 0)
-            };
-            section.Controls.Add(noteLabel, 0, 1);
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 14, 0)
+            }, 0, 0);
 
             _note.Dock = DockStyle.Fill;
-            _note.Margin = new Padding(0, 3, 12, 3);
-            section.Controls.Add(_note, 1, 1);
+            _note.Margin = new Padding(0, 2, 12, 2);
+            section.Controls.Add(_note, 1, 0);
 
-            var remove = UiTheme.CreateKryptonButton("移除选中", false);
+            var remove = UiTheme.CreateAntdButton("移除选中", false);
             remove.Width = 108;
-            remove.Margin = Padding.Empty;
             remove.Click += delegate { RemoveSelected(); };
-            section.Controls.Add(remove, 2, 1);
-
+            section.Controls.Add(remove, 2, 0);
             return section;
         }
 
@@ -372,14 +406,12 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, 76),
+                MinimumSize = new Size(0, 78),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.SurfaceMuted,
-                Padding = new Padding(16, 12, 16, 12),
-                Margin = new Padding(0, 8, 0, 0),
-                BorderStyle = BorderStyle.None
+                Padding = new Padding(16, 13, 16, 13),
+                Margin = new Padding(0, 8, 0, 0)
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -388,126 +420,37 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 BackColor = UiTheme.SurfaceMuted,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
+                Margin = Padding.Empty
             };
 
             ConfigureSummaryLabel(_itemCount, false);
             ConfigureSummaryLabel(_quantityTotal, false);
             ConfigureSummaryLabel(_total, true);
-
             metrics.Controls.Add(_itemCount);
             metrics.Controls.Add(_quantityTotal);
             metrics.Controls.Add(_total);
 
-            var submit = UiTheme.CreateKryptonButton("确认结账", true);
-            submit.Width = 128;
+            var submit = UiTheme.CreateAntdButton("确认结账", true);
+            submit.Width = 132;
             submit.Margin = new Padding(14, 0, 0, 0);
             submit.Click += delegate { Submit(); };
 
             section.Controls.Add(metrics, 0, 0);
             section.Controls.Add(submit, 1, 0);
-
             return section;
         }
 
         private static void ConfigureSummaryLabel(Label label, bool primary)
         {
             label.AutoSize = true;
-            label.TextAlign = ContentAlignment.MiddleLeft;
             label.ForeColor = primary ? UiTheme.Accent : UiTheme.TextSecondary;
             label.Font = UiTheme.Font(primary ? 13.5F : 8.5F, FontStyle.Bold);
             label.BackColor = primary ? UiTheme.AccentSoft : UiTheme.Surface;
-            label.Padding = primary
-                ? new Padding(12, 8, 12, 8)
-                : new Padding(10, 8, 10, 8);
+            label.Padding = primary ? new Padding(12, 8, 12, 8) : new Padding(10, 8, 10, 8);
             label.Margin = new Padding(0, 0, 10, 0);
-        }
-
-        private void ConfigureGrid()
-        {
-            _grid.Dock = DockStyle.Fill;
-            _grid.AutoGenerateColumns = false;
-            _grid.AllowUserToAddRows = false;
-            _grid.AllowUserToDeleteRows = false;
-            _grid.AllowUserToResizeColumns = true;
-            _grid.AllowUserToResizeRows = false;
-            _grid.RowHeadersVisible = false;
-            _grid.BackgroundColor = UiTheme.Surface;
-            _grid.DataSource = _rows;
-
-            _grid.Columns.Add(_selfCodeColumn);
-            _grid.Columns.Add(_isbnColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "书名",
-                DataPropertyName = "Title",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                MinimumWidth = 240,
-                FillWeight = 220,
-                ReadOnly = true
-            });
-            _grid.Columns.Add(_authorColumn);
-            _grid.Columns.Add(_stockColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "数量",
-                DataPropertyName = "Quantity",
-                Width = 90,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight,
-                    BackColor = UiTheme.AccentSoft
-                }
-            });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "销售价格",
-                DataPropertyName = "UnitPriceYuan",
-                Width = 108,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight,
-                    BackColor = UiTheme.AccentSoft
-                }
-            });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "小计",
-                DataPropertyName = "LineTotalYuan",
-                Width = 112,
-                ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
-            });
-
-            foreach (DataGridViewColumn column in _grid.Columns)
-                column.Resizable = DataGridViewTriState.True;
-
-            _grid.CellEndEdit += delegate
-            {
-                _grid.Refresh();
-                UpdateTotals();
-            };
-            _grid.CellValueChanged += delegate
-            {
-                _grid.Refresh();
-                UpdateTotals();
-            };
-            _grid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e)
-            {
-                e.ThrowException = false;
-                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
-                    _grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ErrorText = "请输入有效的数量或金额。";
-            };
         }
 
         private void ApplyResponsiveColumns()
@@ -517,6 +460,7 @@ namespace Win7BookManagement.Forms
             _authorColumn.Visible = width >= 900;
             _isbnColumn.Visible = width >= 760;
             _stockColumn.Visible = width >= 700;
+            _grid.LoadLayout();
         }
 
         private void AddByIsbn()
@@ -541,12 +485,7 @@ namespace Win7BookManagement.Forms
             var matches = _services.Books.SearchActiveByIsbnOrTitle(text);
             if (matches.Count == 0)
             {
-                MessageBox.Show(
-                    this,
-                    "没有找到与“" + text + "”匹配的启用图书。可以输入店内编码、完整/部分 ISBN、书名或作者。",
-                    "未找到图书",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                MessageBox.Show(this, "没有找到匹配的启用图书。可以输入店内编码、ISBN、书名或作者。", "未找到图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 _isbn.SelectAll();
                 _isbn.Focus();
                 return;
@@ -568,7 +507,6 @@ namespace Win7BookManagement.Forms
                     _isbn.Text = "";
                 }
             }
-
             _isbn.Focus();
         }
 
@@ -587,14 +525,15 @@ namespace Win7BookManagement.Forms
             {
                 if (row.BookId == book.Id)
                 {
-                    row.Quantity += 1;
+                    if (row.Quantity < row.Stock) row.Quantity += 1;
+                    _selectedRow = row;
                     _grid.Refresh();
                     UpdateTotals();
                     return;
                 }
             }
 
-            _rows.Add(new SalesCartRow
+            var added = new SalesCartRow
             {
                 BookId = book.Id,
                 SelfCode = book.SelfCode,
@@ -604,57 +543,44 @@ namespace Win7BookManagement.Forms
                 Stock = book.StockQuantity,
                 Quantity = 1,
                 UnitPriceYuan = Money.ToYuan(book.SalePriceCent)
-            });
+            };
+            _rows.Add(added);
+            _selectedRow = added;
+            _grid.SetSelected(added, false);
         }
 
         private void RemoveSelected()
         {
-            if (_grid.CurrentRow == null)
+            if (_selectedRow == null)
             {
                 MessageBox.Show(this, "请先在购物车中选择一行。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-
-            var row = _grid.CurrentRow.DataBoundItem as SalesCartRow;
-            if (row != null)
-                _rows.Remove(row);
+            _rows.Remove(_selectedRow);
+            _selectedRow = null;
         }
 
         private void StartNewOrder()
         {
             if (_rows.Count > 0)
             {
-                var result = MessageBox.Show(
-                    this,
-                    "当前单据还有商品。新建空白销售单会清空这些内容，是否继续？",
-                    "新建销售单",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning);
-                if (result != DialogResult.Yes)
-                    return;
+                var result = MessageBox.Show(this, "当前单据还有商品。新建空白销售单会清空这些内容，是否继续？", "新建销售单", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (result != DialogResult.Yes) return;
             }
-
             ResetOrder();
         }
 
         private void ClearCartWithConfirmation()
         {
-            if (_rows.Count == 0)
-                return;
-
-            var result = MessageBox.Show(
-                this,
-                "确定清空当前销售单中的全部商品吗？",
-                "清空当前单",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
-            if (result == DialogResult.Yes)
+            if (_rows.Count == 0) return;
+            if (MessageBox.Show(this, "确定清空当前销售单中的全部商品吗？", "清空当前单", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 ResetOrder();
         }
 
         private void ResetOrder()
         {
             _rows.Clear();
+            _selectedRow = null;
             _note.Text = "";
             _isbn.Text = "";
             _isbn.Focus();
@@ -676,10 +602,8 @@ namespace Win7BookManagement.Forms
             _total.Text = "应收金额  ¥" + total.ToString("0.00");
 
             _emptyState.Visible = _rows.Count == 0;
-            if (_rows.Count == 0)
-                _emptyState.BringToFront();
-            else
-                _grid.BringToFront();
+            if (_rows.Count == 0) _emptyState.BringToFront();
+            else _grid.BringToFront();
         }
 
         private void Submit()
@@ -693,16 +617,12 @@ namespace Win7BookManagement.Forms
 
             try
             {
-                _grid.EndEdit();
                 var lines = new List<TransactionLineInput>();
                 foreach (var row in _rows)
                 {
-                    if (row.Quantity <= 0)
-                        throw new InvalidOperationException("《" + row.Title + "》的数量必须大于 0。");
-                    if (row.Quantity > row.Stock)
-                        throw new InvalidOperationException("《" + row.Title + "》库存只有 " + row.Stock + " 册，请调整销售数量。");
-                    if (row.UnitPriceYuan < 0)
-                        throw new InvalidOperationException("《" + row.Title + "》的售价不能为负数。");
+                    if (row.Quantity <= 0) throw new InvalidOperationException("《" + row.Title + "》的数量必须大于 0。");
+                    if (row.Quantity > row.Stock) throw new InvalidOperationException("《" + row.Title + "》库存只有 " + row.Stock + " 册，请调整销售数量。");
+                    if (row.UnitPriceYuan < 0) throw new InvalidOperationException("《" + row.Title + "》的售价不能为负数。");
 
                     lines.Add(new TransactionLineInput
                     {
@@ -713,13 +633,7 @@ namespace Win7BookManagement.Forms
                 }
 
                 var orderNo = _services.Sales.Checkout(lines, _note.Text);
-                MessageBox.Show(
-                    this,
-                    "销售完成。\r\n单号：" + orderNo,
-                    "结账成功",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
+                MessageBox.Show(this, "销售完成。\r\n单号：" + orderNo, "结账成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ResetOrder();
             }
             catch (Exception ex)
