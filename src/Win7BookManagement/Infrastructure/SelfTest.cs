@@ -204,7 +204,10 @@ namespace Win7BookManagement.Infrastructure
                 var selfPublishedSnapshotFound = false;
                 foreach (System.Data.DataRow row in snapshot.Rows)
                 {
-                    if (Convert.ToInt64(row["图书ID"]) == selfPublishedId &&
+                    if (string.Equals(
+                            Convert.ToString(row["店内编码"]),
+                            selfPublished.SelfCode,
+                            StringComparison.Ordinal) &&
                         Convert.ToInt32(row["库存数量"]) == 0)
                     {
                         selfPublishedSnapshotFound = true;
