@@ -11,7 +11,7 @@
 
 ## 2. 第三方 UI 组件策略
 
-从本轮开始采用 **AntdUI 2.4.12** 作为新的 WinForms 基础控件层，并保留现有 UiTheme 作为布局、字体、间距、状态色和 DPI 安全规则的单一来源。
+采用 **AntdUI 2.4.12** 作为 WinForms 的单一首选交互控件层。AntdUI 使用其原生 Ant Design Light 主题；UiTheme 只负责字体回退、DPI 安全、间距与响应式规则，不再作为一套覆盖 AntdUI 的平行皮肤系统。
 
 选择这一固定版本的原则：
 
@@ -19,7 +19,8 @@
 - net48 包本身无额外 NuGet 依赖，便于 x86 离线打包；
 - BSD-3-Clause 许可允许项目长期维护；
 - 保持纯 WinForms，不引入 WebView2、WinUI、Windows App SDK 或浏览器运行时；
-- 当前优先使用 AntdUI.Input、Select、InputNumber、Button 和 Table；业务服务、SQLite、事务与报表层不随 UI 重构改写。
+- 优先使用 AntdUI.Menu、Input、InputNumber、Select、Checkbox、DatePicker、Button 和 Table；业务服务、SQLite、事务与报表层不随 UI 重构改写。
+- 除业务状态提示外，不在页面内覆盖 AntdUI 的 BorderColor、Radius、Hover、Active、Selected 等视觉属性；让组件库的主题统一负责状态视觉。
 
 迁移采用“核心流程先行、逐页替换”：
 
@@ -43,17 +44,11 @@
 
 ### 色彩
 
-- Background：暖灰工作区背景。
-- Surface：主卡片、表格、输入区。
-- SurfaceMuted：表头、摘要条等次级背景。
-- Accent：主操作、选中态。
-- AccentSoft：表格选中和弱强调。
-- TextPrimary：主要文字。
-- TextSecondary：说明、标签。
-- Border：所有卡片、输入、表格的统一边框。
-- Warning / Danger / Success：只用于真实状态。
-
-禁止页面自行大量定义随机 RGB。
+- AntdUI 控件使用内置 Ant Design Light 色彩算法，默认 Primary 为 #1677FF。
+- UiTheme 中 Background / Surface / Text / Border 仅用于 WinForms 容器、Label 等非 AntdUI 表面，并与 Ant Design 默认浅色 token 对齐。
+- Success / Warning / Danger 只用于真实业务状态。
+- 禁止页面重新定义一套品牌色、选中色、hover 色或输入边框色覆盖 AntdUI 原生状态。
+- 禁止页面自行大量定义随机 RGB。
 
 ### 字体
 
@@ -265,7 +260,7 @@ Win7 真机 smoke test 仍是发布前最终门槛。
 
 ### 主框架 / Dashboard
 
-- 主导航改为暖色浅底、分组导航、左侧连续选中指示条，不再使用整块深色侧栏作为视觉主体。
+- 主导航必须使用 AntdUI.Menu（Inline），由组件原生负责 hover、selected、展开和滚动；禁止恢复“Button + 自绘指示条 + 手写状态色”的侧栏实现。
 - 导航、页头、副标题、状态栏全部使用内容驱动高度，避免雅黑字体在高 DPI 下被截断。
 - Dashboard 指标卡在较窄窗口自动从 4 列变为 2×2；最近销售和低库存保持主次比例。
 - 首页标题、说明、刷新、销售入口、新手引导和数据卡全部统一到同一 spacing / typography 系统。
@@ -308,7 +303,7 @@ Release 自检除数据库 / 进销存事务外，还必须实例化主要 WinFo
 
 在裁字和 DPI 基础问题稳定后，视觉优化必须从“去掉 WinForms 默认控件感”入手，而不是增加更多装饰。
 
-- 页面分区依靠暖灰工作区、白色 Surface、留白和层级建立边界；普通业务卡片不再使用系统 FixedSingle 黑灰边框把每块内容框死。
+- 页面分区使用与 Ant Design Light 对齐的浅灰工作区、白色 Surface、留白和层级建立边界；普通业务卡片不使用系统 FixedSingle 黑灰边框。
 - SurfaceMuted 与表头使用更明确但克制的暖灰层次，AntdUI Table 表头和内容区需要能一眼区分。
 - 主按钮保持强调色 + Bold；普通次级按钮改用 Regular 字重，避免全页面每个按钮都同等抢眼。
 - 零售开单和采购入库的明细区必须有独立标题栏，明确说明表格中哪些字段可直接编辑。
