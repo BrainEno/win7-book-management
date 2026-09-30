@@ -82,56 +82,51 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 0, 0, 12)
             }, 0, 1);
 
-            var row = new TableLayoutPanel
+            var row = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 4,
-                RowCount = 1,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
                 BackColor = UiTheme.Surface,
-                Margin = Padding.Empty
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
             };
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             row.Controls.Add(new Label
             {
                 Text = "低库存阈值",
                 AutoSize = true,
-                Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextPrimary,
                 Font = UiTheme.Font(8.6F, FontStyle.Bold),
-                Margin = new Padding(0, 9, 12, 0)
-            }, 0, 0);
+                Margin = new Padding(0, 10, 12, 0)
+            });
 
             _lowStock.Minimum = 0;
             _lowStock.Maximum = 9999;
-            _lowStock.Dock = DockStyle.Fill;
-            _lowStock.Margin = new Padding(0, 3, 12, 3);
-            row.Controls.Add(_lowStock, 1, 0);
-
-            var save = new Button
-            {
-                Text = "保存",
-                Width = 88,
-                Height = UiTheme.ButtonHeight,
-                Margin = new Padding(0, 0, 10, 0),
-                Tag = "primary"
-            };
-            save.Click += delegate { Save(); };
-            row.Controls.Add(save, 2, 0);
+            _lowStock.Width = 120;
+            _lowStock.Margin = new Padding(0, 3, 6, 3);
+            row.Controls.Add(_lowStock);
 
             row.Controls.Add(new Label
             {
                 Text = "册",
                 AutoSize = true,
-                Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextSecondary,
-                Margin = new Padding(0, 9, 0, 0)
-            }, 3, 0);
+                Margin = new Padding(0, 10, 16, 0)
+            });
+
+            var save = new Button
+            {
+                Text = "保存设置",
+                AutoSize = true,
+                MinimumSize = new Size(96, UiTheme.ButtonHeight),
+                Margin = Padding.Empty,
+                Tag = "primary"
+            };
+            save.Click += delegate { Save(); };
+            row.Controls.Add(save);
 
             section.Controls.Add(row, 0, 2);
             return section;
