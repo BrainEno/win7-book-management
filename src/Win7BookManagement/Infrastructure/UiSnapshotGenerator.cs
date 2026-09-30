@@ -237,6 +237,44 @@ namespace Win7BookManagement.Infrastructure
                     true,
                     null);
 
+                Capture(
+                    outputDirectory,
+                    "24-inventory-adjustment-dialog.png",
+                    delegate
+                    {
+                        return CreateNestedForm(
+                            typeof(InventoryForm),
+                            "AdjustmentDialog",
+                            firstBook);
+                    },
+                    new Size(600, 470),
+                    false,
+                    null);
+
+                var suppliers = services.Suppliers.GetAll(false);
+                if (suppliers.Count > 0)
+                {
+                    Capture(
+                        outputDirectory,
+                        "25-supplier-editor-dialog.png",
+                        delegate
+                        {
+                            return CreateNestedForm(
+                                typeof(SupplierForm),
+                                "SupplierEditDialog",
+                                services,
+                                suppliers[0]);
+                        },
+                        new Size(760, 570),
+                        false,
+                        null);
+                }
+
+                CaptureOnboarding(
+                    outputDirectory,
+                    services,
+                    new Size(1024, 768));
+
                 return 0;
             }
             catch (Exception ex)
@@ -463,6 +501,76 @@ namespace Win7BookManagement.Infrastructure
                 "视觉快照销售");
 
             return stored;
+        }
+
+        private static Form CreateNestedForm(
+            Type ownerType,
+            string nestedTypeName,
+            params object[] arguments)
+        {
+            var nested = ownerType.GetNestedType(
+                nestedTypeName,
+                BindingFlags.NonPublic);
+            if (nested == null)
+                throw new InvalidOperationException(
+                    "找不到 UI 快照目标：" + ownerType.Name + "." + nestedTypeName);
+
+            var form = Activator.CreateInstance(
+                nested,
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic,
+                null,
+                arguments,
+                null) as Form;
+
+            if (form == null)
+                throw new InvalidOperationException(
+                    "无法创建 UI 快照目标：" + ownerType.Name + "." + nestedTypeName);
+
+            return form;
+        }
+
+        private static void CaptureOnboarding(
+            string outputDirectory,
+            ApplicationServices services,
+            Size size)
+        {
+            using (var main = new MainForm(services))
+            using (var guide = new OnboardingGuideForm(main, services))
+            {
+                main.StartPosition = FormStartPosition.Manual;
+                main.Location = Point.Empty;
+                main.Size = size;
+                main.ShowInTaskbar = false;
+                main.Show();
+                Application.DoEvents();
+
+                guide.StartPosition = FormStartPosition.Manual;
+                guide.Bounds = new Rectangle(Point.Empty, size);
+                guide.ShowInTaskbar = false;
+                guide.Show();
+                Application.DoEvents();
+                guide.PerformLayout();
+                Application.DoEvents();
+
+                using (var bitmap = new Bitmap(
+                    Math.Max(1, size.Width),
+                    Math.Max(1, size.Height)))
+                {
+                    guide.DrawToBitmap(
+                        bitmap,
+                        new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+                    bitmap.Save(
+                        Path.Combine(
+                            outputDirectory,
+                            "26-onboarding-guide-1024x768.png"),
+                        ImageFormat.Png);
+                }
+
+                guide.Hide();
+                main.Hide();
+            }
         }
 
         private static void PopulateByIsbn(Form form, IList<Book> books, int count)
