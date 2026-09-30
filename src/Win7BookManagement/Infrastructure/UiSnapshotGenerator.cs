@@ -110,6 +110,22 @@ namespace Win7BookManagement.Infrastructure
 
                 Capture(
                     outputDirectory,
+                    "28-purchase-1024x768.png",
+                    delegate { return new PurchaseForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    delegate(Form form) { PopulateByIsbn(form, books, 3); });
+
+                Capture(
+                    outputDirectory,
+                    "29-purchase-wide-1800x900.png",
+                    delegate { return new PurchaseForm(services); },
+                    new Size(1800, 900),
+                    true,
+                    delegate(Form form) { PopulateByIsbn(form, books, 3); });
+
+                Capture(
+                    outputDirectory,
                     "10-inventory-1366x768.png",
                     delegate { return new InventoryForm(services); },
                     new Size(1366, 768),

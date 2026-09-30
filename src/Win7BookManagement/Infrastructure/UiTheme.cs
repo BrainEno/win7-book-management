@@ -40,6 +40,7 @@ namespace Win7BookManagement.Infrastructure
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
+        private const string HostedInputTag = "ui-input-hosted";
         private static readonly string FontFamilyName = ResolveFontFamily();
 
         public static Font Font(float size)
@@ -117,15 +118,63 @@ namespace Win7BookManagement.Infrastructure
             };
         }
 
+        public static Panel CreateInputFrame(Control input)
+        {
+            if (input == null)
+                throw new ArgumentNullException("input");
+
+            input.Tag = HostedInputTag;
+            input.Dock = DockStyle.None;
+            input.Margin = Padding.Empty;
+            input.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+
+            var surface = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Surface,
+                Margin = Padding.Empty
+            };
+
+            var frame = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Border,
+                Padding = new Padding(1),
+                Margin = Padding.Empty,
+                MinimumSize = new Size(0, 42),
+                TabStop = false
+            };
+
+            surface.Controls.Add(input);
+            frame.Controls.Add(surface);
+
+            EventHandler layoutInput = delegate
+            {
+                LayoutHostedInput(surface, input);
+            };
+
+            surface.Resize += layoutInput;
+            input.FontChanged += layoutInput;
+            input.Enter += delegate { frame.BackColor = Accent; };
+            input.Leave += delegate { frame.BackColor = Border; };
+
+            return frame;
+        }
+
         public static void PrepareInput(Control control)
         {
             if (control == null)
                 return;
 
+            var hosted = string.Equals(
+                Convert.ToString(control.Tag),
+                HostedInputTag,
+                StringComparison.Ordinal);
+
             var textBox = control as TextBox;
             if (textBox != null)
             {
-                textBox.BorderStyle = BorderStyle.FixedSingle;
+                textBox.BorderStyle = hosted ? BorderStyle.None : BorderStyle.FixedSingle;
                 textBox.BackColor = Surface;
                 textBox.ForeColor = TextPrimary;
 
@@ -133,11 +182,14 @@ namespace Win7BookManagement.Infrastructure
                 {
                     // Native WinForms single-line TextBox does not vertically
                     // center correctly when forced to an arbitrary tall height.
-                    // Let the native control choose its text height, then reserve
-                    // enough layout room around it through MinimumSize / row metrics.
+                    // Hosted inputs keep the native text height and center it
+                    // inside a taller visual frame instead.
                     textBox.AutoSize = true;
-                    var minimum = Math.Max(InputHeight, textBox.Font.Height + 10);
-                    textBox.MinimumSize = new Size(textBox.MinimumSize.Width, minimum);
+                    if (!hosted)
+                    {
+                        var minimum = Math.Max(InputHeight, textBox.Font.Height + 10);
+                        textBox.MinimumSize = new Size(textBox.MinimumSize.Width, minimum);
+                    }
                 }
                 return;
             }
@@ -162,9 +214,12 @@ namespace Win7BookManagement.Infrastructure
                 combo.FlatStyle = FlatStyle.Flat;
                 combo.IntegralHeight = false;
                 combo.DropDownHeight = 240;
-                combo.MinimumSize = new Size(
-                    combo.MinimumSize.Width,
-                    Math.Max(InputHeight, combo.Font.Height + 10));
+                if (!hosted)
+                {
+                    combo.MinimumSize = new Size(
+                        combo.MinimumSize.Width,
+                        Math.Max(InputHeight, combo.Font.Height + 10));
+                }
                 return;
             }
 
@@ -220,6 +275,33 @@ namespace Win7BookManagement.Infrastructure
             grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(252, 251, 248);
             grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
             grid.RowTemplate.Resizable = DataGridViewTriState.False;
+        }
+
+        public static void StyleEditableGrid(DataGridView grid)
+        {
+            if (grid == null)
+                return;
+
+            StyleGrid(grid);
+
+            var bodyHeight = Math.Max(44, grid.Font.Height + 24);
+            var headerFont = grid.ColumnHeadersDefaultCellStyle.Font ?? grid.Font;
+            var headerHeight = Math.Max(44, headerFont.Height + 24);
+
+            grid.SelectionMode = DataGridViewSelectionMode.CellSelect;
+            grid.EditMode = DataGridViewEditMode.EditOnEnter;
+            grid.AllowUserToResizeRows = false;
+            grid.ShowCellToolTips = true;
+            grid.RowTemplate.Height = bodyHeight;
+            grid.ColumnHeadersHeight = headerHeight;
+            grid.DefaultCellStyle.Padding = new Padding(10, 0, 10, 0);
+            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(10, 0, 10, 0);
+
+            foreach (DataGridViewRow row in grid.Rows)
+            {
+                if (!row.IsNewRow)
+                    row.Height = bodyHeight;
+            }
         }
 
         public static void StyleButton(Button button, bool primary)
@@ -453,6 +535,18 @@ namespace Win7BookManagement.Infrastructure
                 return control.MinimumSize.Height + margin;
 
             return 0;
+        }
+
+        private static void LayoutHostedInput(Panel surface, Control input)
+        {
+            if (surface == null || input == null)
+                return;
+
+            const int horizontalPadding = 10;
+            var width = Math.Max(24, surface.ClientSize.Width - horizontalPadding * 2);
+            input.Width = width;
+            input.Left = horizontalPadding;
+            input.Top = Math.Max(0, (surface.ClientSize.Height - input.Height) / 2);
         }
 
         private static int MeasureSingleLineHeight(System.Drawing.Font font)

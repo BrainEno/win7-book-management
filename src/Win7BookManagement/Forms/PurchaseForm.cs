@@ -23,8 +23,12 @@ namespace Win7BookManagement.Forms
 
         private readonly DataGridViewColumn _selfCodeColumn;
         private readonly DataGridViewColumn _isbnColumn;
+        private readonly DataGridViewColumn _titleColumn;
         private readonly DataGridViewColumn _shelfColumn;
         private readonly DataGridViewColumn _stockColumn;
+        private readonly DataGridViewColumn _quantityColumn;
+        private readonly DataGridViewColumn _unitCostColumn;
+        private readonly DataGridViewColumn _lineTotalColumn;
 
         public PurchaseForm(ApplicationServices services)
         {
@@ -57,10 +61,61 @@ namespace Win7BookManagement.Forms
             {
                 HeaderText = "当前库存",
                 DataPropertyName = "CurrentStock",
-                Width = 82,
+                Width = 96,
                 ReadOnly = true,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
+                    Alignment = DataGridViewContentAlignment.MiddleRight
+                }
+            };
+            _titleColumn = new DataGridViewTextBoxColumn
+            {
+                HeaderText = "书名",
+                DataPropertyName = "Title",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                MinimumWidth = 240,
+                FillWeight = 240,
+                ReadOnly = true
+            };
+            _quantityColumn = new DataGridViewTextBoxColumn
+            {
+                HeaderText = "入库数量",
+                DataPropertyName = "Quantity",
+                Width = 112,
+                MinimumWidth = 96,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    BackColor = UiTheme.AccentSoft,
+                    SelectionBackColor = UiTheme.Surface,
+                    SelectionForeColor = UiTheme.TextPrimary
+                }
+            };
+            _unitCostColumn = new DataGridViewTextBoxColumn
+            {
+                HeaderText = "本次进价",
+                DataPropertyName = "UnitCostYuan",
+                Width = 120,
+                MinimumWidth = 104,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Format = "0.00",
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    BackColor = UiTheme.AccentSoft,
+                    SelectionBackColor = UiTheme.Surface,
+                    SelectionForeColor = UiTheme.TextPrimary
+                }
+            };
+            _lineTotalColumn = new DataGridViewTextBoxColumn
+            {
+                HeaderText = "小计",
+                DataPropertyName = "LineTotalYuan",
+                Width = 120,
+                MinimumWidth = 96,
+                ReadOnly = true,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Format = "0.00",
                     Alignment = DataGridViewContentAlignment.MiddleRight
                 }
             };
@@ -91,6 +146,7 @@ namespace Win7BookManagement.Forms
 
             _rows.ListChanged += delegate { UpdateTotals(); };
             Resize += delegate { ApplyResponsiveColumns(); };
+            _grid.SizeChanged += delegate { ApplyResponsiveColumns(); };
             Shown += delegate
             {
                 ReloadSuppliers();
@@ -100,6 +156,8 @@ namespace Win7BookManagement.Forms
             };
 
             UiTheme.Apply(this);
+            UiTheme.StyleEditableGrid(_grid);
+            ApplyResponsiveColumns();
         }
 
         public bool CanNavigateAway(IWin32Window owner)
@@ -180,13 +238,14 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 3,
+                ColumnCount = 4,
                 RowCount = 1,
                 Margin = new Padding(0, 2, 0, 2)
             };
             supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             supplierRow.Controls.Add(new Label
             {
@@ -200,9 +259,16 @@ namespace Win7BookManagement.Forms
             }, 0, 0);
 
             _supplier.DropDownStyle = ComboBoxStyle.DropDownList;
-            _supplier.Dock = DockStyle.Fill;
-            _supplier.Margin = new Padding(0, 4, 10, 4);
-            supplierRow.Controls.Add(_supplier, 1, 0);
+            _supplier.Font = UiTheme.Font(9.3F);
+            _supplier.Margin = Padding.Empty;
+
+            var supplierInput = UiTheme.CreateInputFrame(_supplier);
+            supplierInput.Dock = DockStyle.None;
+            supplierInput.Width = 390;
+            supplierInput.MinimumSize = new Size(340, 42);
+            supplierInput.Margin = new Padding(0, 4, 10, 4);
+            supplierInput.Anchor = AnchorStyles.Left;
+            supplierRow.Controls.Add(supplierInput, 1, 0);
 
             supplierRow.Controls.Add(new Label
             {
@@ -242,8 +308,7 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 10, 14, 0)
             }, 0, 0);
 
-            _isbn.Dock = DockStyle.Fill;
-            _isbn.Margin = new Padding(0, 4, 10, 4);
+            _isbn.Margin = Padding.Empty;
             _isbn.Font = UiTheme.Font(9.5F);
             _isbn.KeyDown += delegate(object sender, KeyEventArgs e)
             {
@@ -253,7 +318,10 @@ namespace Win7BookManagement.Forms
                     e.SuppressKeyPress = true;
                 }
             };
-            scanRow.Controls.Add(_isbn, 1, 0);
+
+            var isbnInput = UiTheme.CreateInputFrame(_isbn);
+            isbnInput.Margin = new Padding(0, 4, 10, 4);
+            scanRow.Controls.Add(isbnInput, 1, 0);
 
             var add = new Button
             {
@@ -335,7 +403,7 @@ namespace Win7BookManagement.Forms
 
             header.Controls.Add(new Label
             {
-                Text = "入库数量和本次进价可直接在表格中修改",
+                Text = "浅绿色单元格可直接编辑数量和进价",
                 AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleRight,
@@ -396,9 +464,10 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 9, 14, 0)
             }, 0, 0);
 
-            _note.Dock = DockStyle.Fill;
-            _note.Margin = new Padding(0, 3, 0, 3);
-            section.Controls.Add(_note, 1, 0);
+            _note.Margin = Padding.Empty;
+            var noteInput = UiTheme.CreateInputFrame(_note);
+            noteInput.Margin = new Padding(0, 3, 0, 3);
+            section.Controls.Add(noteInput, 1, 0);
 
             return section;
         }
@@ -482,55 +551,23 @@ namespace Win7BookManagement.Forms
 
             _grid.Columns.Add(_selfCodeColumn);
             _grid.Columns.Add(_isbnColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "书名",
-                DataPropertyName = "Title",
-                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-                MinimumWidth = 190,
-                FillWeight = 220,
-                ReadOnly = true
-            });
+            _grid.Columns.Add(_titleColumn);
             _grid.Columns.Add(_shelfColumn);
             _grid.Columns.Add(_stockColumn);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "入库数量",
-                DataPropertyName = "Quantity",
-                Width = 88,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Alignment = DataGridViewContentAlignment.MiddleRight,
-                    BackColor = UiTheme.AccentSoft
-                }
-            });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "本次进价",
-                DataPropertyName = "UnitCostYuan",
-                Width = 96,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight,
-                    BackColor = UiTheme.AccentSoft
-                }
-            });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                HeaderText = "小计",
-                DataPropertyName = "LineTotalYuan",
-                Width = 100,
-                ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Format = "0.00",
-                    Alignment = DataGridViewContentAlignment.MiddleRight
-                }
-            });
+            _grid.Columns.Add(_quantityColumn);
+            _grid.Columns.Add(_unitCostColumn);
+            _grid.Columns.Add(_lineTotalColumn);
 
-            _grid.CellEndEdit += delegate
+            _grid.CellBeginEdit += delegate(object sender, DataGridViewCellCancelEventArgs e)
             {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+                    _grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ErrorText = "";
+            };
+            _grid.EditingControlShowing += GridEditingControlShowing;
+            _grid.CellEndEdit += delegate(object sender, DataGridViewCellEventArgs e)
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+                    _grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ErrorText = "";
                 _grid.Refresh();
                 UpdateTotals();
             };
@@ -547,8 +584,95 @@ namespace Win7BookManagement.Forms
             _grid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e)
             {
                 e.ThrowException = false;
-                MessageBox.Show(this, "入库数量请输入整数，本次进价请输入有效金额。", "输入格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+                {
+                    var cell = _grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                    cell.ErrorText = cell.OwningColumn == _quantityColumn
+                        ? "请输入大于 0 的整数。"
+                        : "请输入有效金额。";
+                }
             };
+        }
+
+        private void GridEditingControlShowing(
+            object sender,
+            DataGridViewEditingControlShowingEventArgs e)
+        {
+            var editor = e.Control as TextBox;
+            if (editor == null)
+                return;
+
+            editor.TextAlign = HorizontalAlignment.Right;
+            editor.KeyDown -= GridEditorKeyDown;
+            editor.KeyDown += GridEditorKeyDown;
+
+            BeginInvoke((MethodInvoker)delegate
+            {
+                if (!editor.IsDisposed)
+                    editor.SelectAll();
+            });
+        }
+
+        private void GridEditorKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter)
+                return;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            _grid.EndEdit();
+            MoveToNextEditableCell();
+        }
+
+        private void MoveToNextEditableCell()
+        {
+            var current = _grid.CurrentCell;
+            if (current == null)
+                return;
+
+            var rowIndex = current.RowIndex;
+            if (current.OwningColumn == _quantityColumn)
+            {
+                _grid.CurrentCell = _grid.Rows[rowIndex].Cells[_unitCostColumn.Index];
+                _grid.BeginEdit(true);
+                return;
+            }
+
+            if (current.OwningColumn == _unitCostColumn)
+            {
+                if (rowIndex + 1 < _grid.Rows.Count)
+                {
+                    _grid.CurrentCell = _grid.Rows[rowIndex + 1].Cells[_quantityColumn.Index];
+                    _grid.BeginEdit(true);
+                }
+                else
+                {
+                    _isbn.Focus();
+                    _isbn.SelectAll();
+                }
+            }
+        }
+
+        private int MeasureGridColumnWidth(
+            DataGridViewColumn column,
+            string sample,
+            int minimum)
+        {
+            var headerFont = _grid.ColumnHeadersDefaultCellStyle.Font ?? _grid.Font;
+            var header = TextRenderer.MeasureText(
+                column.HeaderText ?? "",
+                headerFont,
+                new Size(int.MaxValue, int.MaxValue),
+                TextFormatFlags.NoPadding |
+                TextFormatFlags.SingleLine);
+            var body = TextRenderer.MeasureText(
+                sample ?? "",
+                _grid.Font,
+                new Size(int.MaxValue, int.MaxValue),
+                TextFormatFlags.NoPadding |
+                TextFormatFlags.SingleLine);
+
+            return Math.Max(minimum, Math.Max(header.Width, body.Width) + 30);
         }
 
         private void ReloadSuppliers()
@@ -569,11 +693,59 @@ namespace Win7BookManagement.Forms
 
         private void ApplyResponsiveColumns()
         {
-            var width = ClientSize.Width;
-            _selfCodeColumn.Visible = width >= 980;
-            _shelfColumn.Visible = width >= 860;
-            _isbnColumn.Visible = width >= 740;
-            _stockColumn.Visible = width >= 680;
+            _selfCodeColumn.Width = MeasureGridColumnWidth(
+                _selfCodeColumn, "BK-123456", 112);
+            _isbnColumn.Width = MeasureGridColumnWidth(
+                _isbnColumn, "9781234567890", 150);
+            _shelfColumn.Width = MeasureGridColumnWidth(
+                _shelfColumn, "A-01-12", 96);
+            _stockColumn.Width = MeasureGridColumnWidth(
+                _stockColumn, "99999", 100);
+            _quantityColumn.Width = MeasureGridColumnWidth(
+                _quantityColumn, "99999", 112);
+            _unitCostColumn.Width = MeasureGridColumnWidth(
+                _unitCostColumn, "99999.00", 120);
+            _lineTotalColumn.Width = MeasureGridColumnWidth(
+                _lineTotalColumn, "999999.00", 120);
+            _titleColumn.MinimumWidth = MeasureGridColumnWidth(
+                _titleColumn, "较长的中文图书名称", 240);
+
+            _selfCodeColumn.Visible = true;
+            _shelfColumn.Visible = true;
+            _isbnColumn.Visible = true;
+            _stockColumn.Visible = true;
+
+            var width = _grid.ClientSize.Width > 0
+                ? _grid.ClientSize.Width
+                : ClientSize.Width;
+            var required =
+                _titleColumn.MinimumWidth +
+                _quantityColumn.Width +
+                _unitCostColumn.Width +
+                _lineTotalColumn.Width +
+                _selfCodeColumn.Width +
+                _shelfColumn.Width +
+                _isbnColumn.Width +
+                _stockColumn.Width +
+                24;
+
+            if (required > width)
+            {
+                _selfCodeColumn.Visible = false;
+                required -= _selfCodeColumn.Width;
+            }
+            if (required > width)
+            {
+                _shelfColumn.Visible = false;
+                required -= _shelfColumn.Width;
+            }
+            if (required > width)
+            {
+                _isbnColumn.Visible = false;
+                required -= _isbnColumn.Width;
+            }
+            if (required > width)
+                _stockColumn.Visible = false;
         }
 
         private void AddByIsbn()
