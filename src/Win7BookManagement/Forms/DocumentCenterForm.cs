@@ -116,6 +116,8 @@ namespace Win7BookManagement.Forms
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            for (var row = 0; row < 4; row++)
+                section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
             {
@@ -131,7 +133,7 @@ namespace Win7BookManagement.Forms
 
             var filters = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, 58),
