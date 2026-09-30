@@ -230,9 +230,9 @@ namespace Win7BookManagement.Forms
 
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
-                Width = "220",
+                Width = "fill",
                 MinWidth = "180",
-                MaxWidth = "420",
+                MaxWidth = "360",
                 Ellipsis = true
             };
             var priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
@@ -432,9 +432,9 @@ namespace Win7BookManagement.Forms
             var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
             // The compact view keeps the fields most useful for finding and selling a book.
             // Administrative metadata is progressively restored on larger windows.
-            _selfCodeColumn.Visible = gridWidth >= 1180;
+            _selfCodeColumn.Visible = gridWidth >= 1000;
             _publisherColumn.Visible = gridWidth >= 1450;
-            _categoryColumn.Visible = gridWidth >= 1050;
+            _categoryColumn.Visible = gridWidth >= 900;
             _publicationColumn.Visible = gridWidth >= 1250;
             _bindingColumn.Visible = gridWidth >= 1500;
             _shelfColumn.Visible = gridWidth >= 900;
