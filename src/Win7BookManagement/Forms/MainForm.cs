@@ -64,11 +64,11 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, 80),
+                MinimumSize = new Size(0, 64),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(22, 11, 22, 9),
+                Padding = new Padding(20, 7, 20, 6),
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -90,7 +90,7 @@ namespace Win7BookManagement.Forms
             {
                 AutoSize = true,
                 Dock = DockStyle.Fill,
-                Font = UiTheme.Font(16F, FontStyle.Bold),
+                Font = UiTheme.Font(14F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Text = "经营概览",
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -114,7 +114,7 @@ namespace Win7BookManagement.Forms
                 Text = "●  本机离线",
                 AutoSize = true,
                 Padding = new Padding(10, 6, 10, 6),
-                Margin = new Padding(12, 10, 0, 0),
+                Margin = new Padding(12, 6, 0, 0),
                 BackColor = UiTheme.AccentSoft,
                 ForeColor = UiTheme.Success,
                 Font = UiTheme.Font(8F, FontStyle.Bold),
@@ -170,9 +170,9 @@ namespace Win7BookManagement.Forms
             var brand = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 92,
+                Height = 82,
                 BackColor = UiTheme.NavigationSurface,
-                Padding = new Padding(20, 18, 16, 10)
+                Padding = new Padding(20, 13, 16, 8)
             };
 
             var title = new Label
@@ -181,7 +181,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 Dock = DockStyle.Top,
                 ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(15F, FontStyle.Bold),
+                Font = UiTheme.Font(14F, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft
             };
             var sub = new Label
@@ -516,8 +516,8 @@ namespace Win7BookManagement.Forms
             _sidebar.Width = compact ? 214 : 240;
 
             _contentHost.Padding = compact
-                ? new Padding(10, 10, 10, 10)
-                : new Padding(20, 16, 20, 16);
+                ? new Padding(8, 8, 8, 8)
+                : new Padding(12, 10, 12, 10);
         }
     }
 }

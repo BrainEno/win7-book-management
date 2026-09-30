@@ -13,7 +13,6 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("输入店内编码、ISBN、书名、作者或出版社");
         private readonly AntdUI.Checkbox _includeInactive = new AntdUI.Checkbox();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
-        private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
         private readonly Label _lowStockChip = new Label();
         private readonly SplitContainer _split = new SplitContainer();
@@ -51,7 +50,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 BackColor = UiTheme.Background,
                 Padding = Padding.Empty,
                 Margin = Padding.Empty
@@ -59,19 +58,9 @@ namespace Win7BookManagement.Forms
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             root.Controls.Add(CreateSearchSection(), 0, 0);
             root.Controls.Add(CreateContentSection(), 0, 1);
-
-            _summary.AutoSize = true;
-            _summary.Dock = DockStyle.Fill;
-            _summary.MinimumSize = new Size(0, 38);
-            _summary.Padding = new Padding(12, 8, 8, 8);
-            _summary.ForeColor = UiTheme.TextSecondary;
-            _summary.BackColor = UiTheme.Surface;
-            _summary.Font = UiTheme.Font(8.2F);
-            root.Controls.Add(_summary, 0, 2);
 
             Controls.Add(root);
 
@@ -92,76 +81,47 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                ColumnCount = 2,
-                RowCount = 3,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(18, 16, 18, 15),
+                Padding = new Padding(14, 10, 14, 10),
                 Margin = Padding.Empty
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-            section.Controls.Add(new Label
-            {
-                Text = "图书资料",
-                AutoSize = true,
-                Font = UiTheme.Font(13F, FontStyle.Bold),
-                ForeColor = UiTheme.TextPrimary,
-                Margin = new Padding(0, 5, 0, 8)
-            }, 0, 0);
-
-            var actions = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                WrapContents = false,
-                FlowDirection = FlowDirection.LeftToRight,
-                Margin = Padding.Empty,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-
-            var addButton = UiTheme.CreateAntdButton("＋ 新增图书", true);
-            addButton.Width = 124;
-            var editButton = UiTheme.CreateAntdButton("编辑资料", false);
-            editButton.Width = 104;
-            addButton.Click += delegate { EditBook(null); };
-            editButton.Click += delegate { EditSelected(); };
-
-            _includeInactive.Text = "包含停用";
-            _includeInactive.AutoSize = true;
-            _includeInactive.Margin = new Padding(12, 11, 0, 0);
-            _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
-
-            actions.Controls.Add(addButton);
-            actions.Controls.Add(editButton);
-            actions.Controls.Add(_includeInactive);
-            section.Controls.Add(actions, 1, 0);
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             var searchRow = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 58,
-                MinimumSize = new Size(0, 58),
-                ColumnCount = 3,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, UiTheme.InputHeight + 6),
+                ColumnCount = 6,
                 RowCount = 1,
-                Margin = new Padding(0, 4, 0, 0)
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
             };
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             searchRow.Controls.Add(new Label
             {
-                Text = "综合搜索",
+                Text = "搜索",
                 AutoSize = true,
                 Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.8F, FontStyle.Bold),
-                Margin = new Padding(0, 12, 14, 0)
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 12, 0)
             }, 0, 0);
 
             _search.Dock = DockStyle.Fill;
-            _search.Margin = new Padding(0, 3, 10, 3);
+            _search.Margin = new Padding(0, 0, 8, 0);
             _search.KeyDown += delegate(object sender, KeyEventArgs e)
             {
                 if (e.KeyCode == Keys.Enter)
@@ -172,51 +132,61 @@ namespace Win7BookManagement.Forms
             };
             searchRow.Controls.Add(_search, 1, 0);
 
-            var searchButton = UiTheme.CreateAntdButton("查询", true);
-            searchButton.Width = 98;
-            searchButton.Margin = new Padding(0, 3, 0, 3);
+            var searchButton = UiTheme.CreateAntdButton("查询", false);
+            searchButton.Width = 78;
+            searchButton.Margin = new Padding(0, 0, 6, 0);
             searchButton.Click += delegate { Reload(); };
             searchRow.Controls.Add(searchButton, 2, 0);
 
-            section.Controls.Add(searchRow, 0, 1);
-            section.SetColumnSpan(searchRow, 2);
+            var addButton = UiTheme.CreateAntdButton("新增图书", true);
+            addButton.Width = 96;
+            addButton.Margin = new Padding(0, 0, 6, 0);
+            addButton.Click += delegate { EditBook(null); };
+            searchRow.Controls.Add(addButton, 3, 0);
+
+            var editButton = UiTheme.CreateAntdButton("编辑资料", false);
+            editButton.Width = 92;
+            editButton.Margin = new Padding(0, 0, 8, 0);
+            editButton.Click += delegate { EditSelected(); };
+            searchRow.Controls.Add(editButton, 4, 0);
+
+            _includeInactive.Text = "包含停用";
+            _includeInactive.AutoSize = true;
+            _includeInactive.Anchor = AnchorStyles.Left;
+            _includeInactive.Margin = new Padding(4, 4, 0, 0);
+            _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
+            searchRow.Controls.Add(_includeInactive, 5, 0);
 
             var stats = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
-                Margin = new Padding(0, 9, 0, 0)
+                WrapContents = false,
+                Margin = new Padding(44, 6, 0, 0),
+                Padding = Padding.Empty
             };
 
             _resultChip.AutoSize = true;
-            _resultChip.Padding = new Padding(10, 5, 10, 5);
-            _resultChip.Margin = new Padding(0, 0, 8, 0);
+            _resultChip.Padding = new Padding(8, 3, 8, 3);
+            _resultChip.Margin = new Padding(0, 0, 6, 0);
             _resultChip.BackColor = UiTheme.AccentSoft;
             _resultChip.ForeColor = UiTheme.Accent;
-            _resultChip.Font = UiTheme.Font(8.2F, FontStyle.Bold);
+            _resultChip.Font = UiTheme.Font(8F, FontStyle.Bold);
 
             _lowStockChip.AutoSize = true;
-            _lowStockChip.Padding = new Padding(10, 5, 10, 5);
-            _lowStockChip.Margin = new Padding(0, 0, 8, 0);
-            _lowStockChip.BackColor = Color.FromArgb(252, 241, 226);
+            _lowStockChip.Padding = new Padding(8, 3, 8, 3);
+            _lowStockChip.Margin = Padding.Empty;
+            _lowStockChip.BackColor = Color.FromArgb(255, 247, 230);
             _lowStockChip.ForeColor = UiTheme.Warning;
-            _lowStockChip.Font = UiTheme.Font(8.2F, FontStyle.Bold);
+            _lowStockChip.Font = UiTheme.Font(8F, FontStyle.Bold);
 
             stats.Controls.Add(_resultChip);
             stats.Controls.Add(_lowStockChip);
-            stats.Controls.Add(new Label
-            {
-                AutoSize = true,
-                Text = "可拖动表头调整列宽；窄窗口会自动收起低频字段。",
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F),
-                Margin = new Padding(4, 5, 0, 0)
-            });
 
-            section.Controls.Add(stats, 0, 2);
-            section.SetColumnSpan(stats, 2);
+            section.Controls.Add(searchRow, 0, 0);
+            section.Controls.Add(stats, 0, 1);
             return section;
         }
 
@@ -227,7 +197,7 @@ namespace Win7BookManagement.Forms
             _split.FixedPanel = FixedPanel.Panel2;
             _split.SplitterWidth = 8;
             _split.BackColor = UiTheme.Background;
-            _split.Margin = new Padding(0, 10, 0, 0);
+            _split.Margin = new Padding(0, 8, 0, 0);
 
             ConfigureGrid();
 
@@ -250,9 +220,9 @@ namespace Win7BookManagement.Forms
 
             _grid.Bordered = false;
 
-            _grid.Gap = 12;
-            _grid.RowHeight = 46;
-            _grid.RowHeightHeader = 46;
+            _grid.Gap = 8;
+            _grid.RowHeight = 42;
+            _grid.RowHeightHeader = 42;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = false;
             _grid.ShowTip = true;
@@ -260,9 +230,9 @@ namespace Win7BookManagement.Forms
 
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
-                Width = "260",
-                MinWidth = "220",
-                MaxWidth = "520",
+                Width = "fill",
+                MinWidth = "180",
+                MaxWidth = "360",
                 Ellipsis = true
             };
             var priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
@@ -288,7 +258,7 @@ namespace Win7BookManagement.Forms
                 stockColumn,
                 _activeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "book-master");
+            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-v2");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -438,7 +408,6 @@ namespace Win7BookManagement.Forms
 
             _resultChip.Text = "结果  " + books.Count;
             _lowStockChip.Text = "低库存  " + lowStockCount;
-            _summary.Text = "共 " + books.Count + " 条图书资料 · 低库存阈值 " + threshold + " 册 · 双击行可编辑 · 表头边界可拖动";
             ShowSelectedDetails();
         }
 
@@ -446,12 +415,12 @@ namespace Win7BookManagement.Forms
         {
             if (_split.Width <= 0) return;
 
-            var showDetails = ClientSize.Width >= 1680;
+            var showDetails = ClientSize.Width >= 1900;
             _split.Panel2Collapsed = !showDetails;
 
             if (showDetails)
             {
-                var desiredRightWidth = Math.Min(370, Math.Max(310, _split.Width / 3));
+                var desiredRightWidth = Math.Min(340, Math.Max(300, _split.Width / 4));
                 var distance = _split.Width - desiredRightWidth - _split.SplitterWidth;
                 const int minimumLeftWidth = 420;
                 const int minimumRightWidth = 300;
@@ -463,9 +432,9 @@ namespace Win7BookManagement.Forms
             var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
             // The compact view keeps the fields most useful for finding and selling a book.
             // Administrative metadata is progressively restored on larger windows.
-            _selfCodeColumn.Visible = gridWidth >= 1180;
+            _selfCodeColumn.Visible = gridWidth >= 1000;
             _publisherColumn.Visible = gridWidth >= 1450;
-            _categoryColumn.Visible = gridWidth >= 1050;
+            _categoryColumn.Visible = gridWidth >= 900;
             _publicationColumn.Visible = gridWidth >= 1250;
             _bindingColumn.Visible = gridWidth >= 1500;
             _shelfColumn.Visible = gridWidth >= 900;
