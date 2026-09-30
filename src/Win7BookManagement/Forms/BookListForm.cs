@@ -10,7 +10,7 @@ namespace Win7BookManagement.Forms
     public sealed class BookListForm : Form
     {
         private readonly ApplicationServices _services;
-        private readonly TextBox _search = new TextBox();
+        private readonly AntdUI.Input _search = ModernUi.CreateInput();
         private readonly CheckBox _includeInactive = new CheckBox();
         private readonly DataGridView _grid = new DataGridView();
         private readonly Label _summary = new Label();
