@@ -107,6 +107,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 2,
                 RowCount = 4,
                 BackColor = UiTheme.Surface,
@@ -173,8 +174,9 @@ namespace Win7BookManagement.Forms
 
             var chips = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 Margin = new Padding(0, 8, 0, 0)
