@@ -115,6 +115,9 @@ namespace Win7BookManagement.Forms
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
             {
@@ -156,12 +159,13 @@ namespace Win7BookManagement.Forms
 
             var searchRow = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, 48),
                 ColumnCount = 4,
                 RowCount = 1,
-                Margin = new Padding(0, 2, 0, 0)
+                Margin = new Padding(0, 4, 0, 0)
             };
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -171,10 +175,12 @@ namespace Win7BookManagement.Forms
             searchRow.Controls.Add(new Label
             {
                 Text = "综合搜索",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 14, 0)
             }, 0, 0);
 
             _search.Dock = DockStyle.Fill;
@@ -193,7 +199,9 @@ namespace Win7BookManagement.Forms
             var query = new Button
             {
                 Text = "查询",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                MinimumSize = new Size(92, UiTheme.ButtonHeight),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Margin = new Padding(0, 4, 8, 4)
             };
             query.Click += delegate { Reload(); };
@@ -201,9 +209,9 @@ namespace Win7BookManagement.Forms
 
             _includeInactive.Text = "包含停用";
             _includeInactive.AutoSize = true;
-            _includeInactive.Dock = DockStyle.Fill;
+            _includeInactive.Anchor = AnchorStyles.Left;
             _includeInactive.TextAlign = ContentAlignment.MiddleLeft;
-            _includeInactive.Margin = new Padding(8, 0, 0, 0);
+            _includeInactive.Margin = new Padding(8, 10, 0, 0);
             _includeInactive.CheckedChanged += delegate { Reload(); };
             searchRow.Controls.Add(_includeInactive, 3, 0);
 
