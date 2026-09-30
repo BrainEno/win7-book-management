@@ -108,6 +108,95 @@ namespace Win7BookManagement.Infrastructure
                     true,
                     delegate(Form form) { PopulateByIsbn(form, books, 3); });
 
+                Capture(
+                    outputDirectory,
+                    "10-inventory-1366x768.png",
+                    delegate { return new InventoryForm(services); },
+                    new Size(1366, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "11-suppliers-1366x768.png",
+                    delegate { return new SupplierForm(services); },
+                    new Size(1366, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "12-reports-1366x768.png",
+                    delegate { return new ReportsForm(services); },
+                    new Size(1366, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "13-documents-1366x768.png",
+                    delegate { return new DocumentCenterForm(services); },
+                    new Size(1366, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "14-settings-1024x768.png",
+                    delegate { return new SettingsForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "15-backup-1024x768.png",
+                    delegate { return new BackupForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "16-help-1024x768.png",
+                    delegate { return new HelpForm(services, delegate { }, delegate { }); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "17-book-lookup.png",
+                    delegate { return new BookLookupDialog(services); },
+                    new Size(920, 620),
+                    false,
+                    null);
+
+                var saleDocuments = services.Documents.Search(
+                    "sale",
+                    DateTime.Today,
+                    DateTime.Today,
+                    "");
+                if (saleDocuments.Rows.Count > 0)
+                {
+                    var sourceId = Convert.ToInt64(saleDocuments.Rows[0]["Id"]);
+                    var sourceNo = Convert.ToString(saleDocuments.Rows[0]["单号"]);
+                    Capture(
+                        outputDirectory,
+                        "18-sales-return-dialog.png",
+                        delegate
+                        {
+                            return new ReturnDialog(
+                                services,
+                                "sale",
+                                sourceId,
+                                sourceNo);
+                        },
+                        new Size(980, 680),
+                        false,
+                        null);
+                }
+
                 return 0;
             }
             catch (Exception ex)
