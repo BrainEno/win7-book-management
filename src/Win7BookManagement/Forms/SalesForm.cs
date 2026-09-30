@@ -109,40 +109,6 @@ namespace Win7BookManagement.Forms
                 MessageBoxIcon.Warning) == DialogResult.Yes;
         }
 
-        private Control CreateActionToolbar()
-        {
-            var toolbar = UiTheme.CreateResponsiveToolbar();
-            toolbar.BackColor = UiTheme.Surface;
-
-            var newOrder = UiTheme.CreateAntdButton("＋ 新单", false);
-            newOrder.Width = 96;
-            var pick = UiTheme.CreateAntdButton("选择图书", false);
-            pick.Width = 106;
-            var remove = UiTheme.CreateAntdButton("移除选中", false);
-            remove.Width = 106;
-            var clear = UiTheme.CreateAntdButton("清空当前单", false);
-            clear.Width = 116;
-
-            newOrder.Click += delegate { StartNewOrder(); };
-            pick.Click += delegate { PickBook(); };
-            remove.Click += delegate { RemoveSelected(); };
-            clear.Click += delegate { ClearCartWithConfirmation(); };
-
-            toolbar.Controls.Add(newOrder);
-            toolbar.Controls.Add(pick);
-            toolbar.Controls.Add(remove);
-            toolbar.Controls.Add(clear);
-            toolbar.Controls.Add(new Label
-            {
-                AutoSize = true,
-                Text = "扫描后回车，或按店内编码 / ISBN / 书名 / 作者搜索。",
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F),
-                Margin = new Padding(14, 12, 0, 0)
-            });
-            return toolbar;
-        }
-
         private Control CreateInputSection()
         {
             var section = new TableLayoutPanel
