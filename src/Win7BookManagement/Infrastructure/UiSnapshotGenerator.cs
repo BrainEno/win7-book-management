@@ -172,6 +172,31 @@ namespace Win7BookManagement.Infrastructure
                     false,
                     null);
 
+                var saleDocuments = services.Documents.Search(
+                    "sale",
+                    DateTime.Today,
+                    DateTime.Today,
+                    "");
+                if (saleDocuments.Rows.Count > 0)
+                {
+                    var sourceId = Convert.ToInt64(saleDocuments.Rows[0]["Id"]);
+                    var sourceNo = Convert.ToString(saleDocuments.Rows[0]["单号"]);
+                    Capture(
+                        outputDirectory,
+                        "18-sales-return-dialog.png",
+                        delegate
+                        {
+                            return new ReturnDialog(
+                                services,
+                                "sale",
+                                sourceId,
+                                sourceNo);
+                        },
+                        new Size(980, 680),
+                        false,
+                        null);
+                }
+
                 return 0;
             }
             catch (Exception ex)
