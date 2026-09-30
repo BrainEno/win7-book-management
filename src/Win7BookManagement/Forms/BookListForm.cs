@@ -120,7 +120,8 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 0, 12, 0)
             }, 0, 0);
 
-            _search.Dock = DockStyle.Fill;
+            _search.Dock = DockStyle.None;
+            _search.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             _search.Margin = new Padding(0, 0, 8, 0);
             _search.KeyDown += delegate(object sender, KeyEventArgs e)
             {
@@ -134,18 +135,21 @@ namespace Win7BookManagement.Forms
 
             var searchButton = UiTheme.CreateAntdButton("查询", false);
             searchButton.Width = 78;
+            searchButton.Anchor = AnchorStyles.Left;
             searchButton.Margin = new Padding(0, 0, 6, 0);
             searchButton.Click += delegate { Reload(); };
             searchRow.Controls.Add(searchButton, 2, 0);
 
             var addButton = UiTheme.CreateAntdButton("新增图书", true);
             addButton.Width = 96;
+            addButton.Anchor = AnchorStyles.Left;
             addButton.Margin = new Padding(0, 0, 6, 0);
             addButton.Click += delegate { EditBook(null); };
             searchRow.Controls.Add(addButton, 3, 0);
 
             var editButton = UiTheme.CreateAntdButton("编辑资料", false);
             editButton.Width = 92;
+            editButton.Anchor = AnchorStyles.Left;
             editButton.Margin = new Padding(0, 0, 8, 0);
             editButton.Click += delegate { EditSelected(); };
             searchRow.Controls.Add(editButton, 4, 0);
