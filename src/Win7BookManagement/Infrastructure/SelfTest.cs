@@ -182,6 +182,7 @@ namespace Win7BookManagement.Infrastructure
                     throw new InvalidOperationException("数据库备份自检失败。");
 
                 VerifyLegacyBookSchemaUpgrade(root);
+                UiLayoutAudit.AssertCoreForms(services);
 
                 return 0;
             }
