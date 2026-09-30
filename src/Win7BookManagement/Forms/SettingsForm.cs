@@ -201,11 +201,14 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 2, 12, 0)
             }, 0, 0);
 
-            _dataPath.AutoSize = true;
+            _dataPath.AutoSize = false;
+            _dataPath.Dock = DockStyle.Fill;
             _dataPath.AutoEllipsis = true;
+            _dataPath.MinimumSize = new Size(0, 28);
+            _dataPath.TextAlign = ContentAlignment.MiddleLeft;
             _dataPath.ForeColor = UiTheme.TextPrimary;
             _dataPath.Font = UiTheme.Font(8.2F);
-            _dataPath.Margin = new Padding(0, 2, 0, 0);
+            _dataPath.Margin = new Padding(0, 0, 0, 0);
             pathRow.Controls.Add(_dataPath, 1, 0);
 
             section.Controls.Add(pathRow, 0, 2);

@@ -338,7 +338,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.Surface,
                 Margin = Padding.Empty
             };
-            details.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78));
+            details.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             details.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             AddDetailRow(details, "名称", "name");
@@ -375,10 +375,11 @@ namespace Win7BookManagement.Forms
             table.Controls.Add(new Label
             {
                 Text = labelText,
+                AutoSize = true,
                 Dock = DockStyle.Fill,
                 MinimumSize = new Size(0, height),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(0, 0, 8, 0),
+                Padding = new Padding(0, 0, 12, 0),
                 ForeColor = UiTheme.TextSecondary,
                 Font = UiTheme.Font(8F, FontStyle.Bold)
             }, 0, row);
@@ -559,9 +560,9 @@ namespace Win7BookManagement.Forms
                 UiTheme.ConfigureForm(this);
                 Text = supplier == null ? "新增供应商" : "编辑供应商";
                 StartPosition = FormStartPosition.CenterParent;
-                Width = 680;
-                Height = 540;
-                MinimumSize = new Size(560, 460);
+                Width = 760;
+                Height = 570;
+                MinimumSize = new Size(600, 480);
                 BackColor = UiTheme.Background;
                 ShowInTaskbar = false;
                 MinimizeBox = false;
@@ -733,19 +734,30 @@ namespace Win7BookManagement.Forms
                 };
                 field.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
                 field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                field.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                field.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
                 field.Controls.Add(new Label
                 {
                     Text = labelText,
-                    Dock = DockStyle.Fill,
+                    AutoSize = true,
+                    Dock = DockStyle.Top,
                     TextAlign = ContentAlignment.MiddleLeft,
                     ForeColor = UiTheme.TextPrimary,
-                    Font = UiTheme.Font(8.6F, FontStyle.Bold)
+                    Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                    Margin = new Padding(0, 0, 0, 4)
                 }, 0, 0);
 
-                input.Dock = DockStyle.Fill;
-                input.Margin = new Padding(0, 2, 0, 2);
+                var multiline = input as TextBox;
+                if (multiline != null && multiline.Multiline)
+                {
+                    input.Dock = DockStyle.Fill;
+                    input.MinimumSize = new Size(0, Math.Max(76, height - 34));
+                }
+                else
+                {
+                    input.Dock = DockStyle.Top;
+                }
+                input.Margin = new Padding(0, 0, 0, 2);
                 field.Controls.Add(input, 0, 1);
                 return field;
             }

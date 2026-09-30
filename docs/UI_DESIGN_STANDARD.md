@@ -322,3 +322,13 @@ Release 自检除数据库 / 进销存事务外，还必须实例化主要 WinFo
 - 备注标签与操作按钮使用 AutoSize 列；输入框占据剩余空间。
 - 可直接编辑的 DataGridView 数量 / 价格单元格使用弱 AccentSoft 背景提示编辑性，但不改变业务校验规则。
 - 设置页中的短表单操作采用可换行 FlowLayout，不再为了一个输入框和按钮建立固定列宽网格。
+
+
+## 17. 主数据编辑与详情面板
+
+- 新增 / 编辑 Dialog 的默认尺寸应体现桌面商业软件的信息密度，不能把 10+ 个字段压缩进过窄的小弹窗。
+- 单字段容器的标签行和输入行都使用 AutoSize；单行 TextBox / NumericUpDown / CheckBox 不使用 Fill 强行拉高。
+- 多行备注可以 Fill，并通过 MinimumSize 保证有效编辑面积。
+- 详情面板的字段名列使用 AutoSize，不再用 78 / 86px 固定列承载中文字段名；字段值占据剩余空间。
+- 长路径、长说明等内容不能通过 AutoSize 把整个页面撑宽，应使用 Fill + AutoEllipsis 或可换行文本。
+- Dialog 仍通过 FitDialogToWorkingArea 限制在当前工作区内，保证 1024×768 和高 DPI 下保存 / 取消按钮可达。
