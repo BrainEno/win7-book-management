@@ -61,6 +61,14 @@ namespace Win7BookManagement.Infrastructure
 
                 Capture(
                     outputDirectory,
+                    "08-sales-wide-1800x900.png",
+                    delegate { return new SalesForm(services); },
+                    new Size(1800, 900),
+                    true,
+                    delegate(Form form) { PopulateByIsbn(form, books, 3); });
+
+                Capture(
+                    outputDirectory,
                     "04-book-master-1366x768.png",
                     delegate { return new BookListForm(services); },
                     new Size(1366, 768),
@@ -72,6 +80,14 @@ namespace Win7BookManagement.Infrastructure
                     "05-book-master-1024x768.png",
                     delegate { return new BookListForm(services); },
                     new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "09-book-master-wide-1800x900.png",
+                    delegate { return new BookListForm(services); },
+                    new Size(1800, 900),
                     true,
                     null);
 
