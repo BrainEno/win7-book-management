@@ -140,7 +140,9 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 0, 12, 0)
             }, 0, 0);
 
-            _isbn.Dock = DockStyle.Fill;
+            _isbn.Dock = DockStyle.None;
+            _isbn.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            _isbn.Tag = "toolbar-input";
             _isbn.Margin = new Padding(0, 0, 8, 0);
             _isbn.KeyDown += delegate(object sender, KeyEventArgs e)
             {
@@ -154,24 +156,32 @@ namespace Win7BookManagement.Forms
 
             var add = UiTheme.CreateAntdButton("加入", true);
             add.Width = 78;
+            add.Anchor = AnchorStyles.Left;
+            add.Tag = "toolbar-action";
             add.Margin = new Padding(0, 0, 6, 0);
             add.Click += delegate { AddByIsbn(); };
             section.Controls.Add(add, 2, 0);
 
             var pick = UiTheme.CreateAntdButton("选择图书", false);
             pick.Width = 92;
+            pick.Anchor = AnchorStyles.Left;
+            pick.Tag = "toolbar-action";
             pick.Margin = new Padding(0, 0, 6, 0);
             pick.Click += delegate { PickBook(); };
             section.Controls.Add(pick, 3, 0);
 
             var newOrder = UiTheme.CreateAntdButton("新单", false);
             newOrder.Width = 76;
+            newOrder.Anchor = AnchorStyles.Left;
+            newOrder.Tag = "toolbar-action";
             newOrder.Margin = new Padding(0, 0, 6, 0);
             newOrder.Click += delegate { StartNewOrder(); };
             section.Controls.Add(newOrder, 4, 0);
 
             var clear = UiTheme.CreateAntdButton("清空", false);
             clear.Width = 76;
+            clear.Anchor = AnchorStyles.Left;
+            clear.Tag = "toolbar-action";
             clear.Click += delegate { ClearCartWithConfirmation(); };
             section.Controls.Add(clear, 5, 0);
 

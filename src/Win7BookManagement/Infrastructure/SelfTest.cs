@@ -314,6 +314,13 @@ namespace Win7BookManagement.Infrastructure
                 throw new InvalidOperationException("响应式 UI 密度断点自检失败。");
             }
 
+            foreach (var width in new[] { 820, 1024, 1366, 1920 })
+            {
+                if (UiTheme.ResponsiveButtonHeight(width) != UiTheme.ResponsiveInputHeight(width))
+                    throw new InvalidOperationException(
+                        "搜索工具栏按钮与输入框高度不一致：" + width + "px。");
+            }
+
             try
             {
                 foreach (var form in forms)
@@ -416,6 +423,8 @@ namespace Win7BookManagement.Infrastructure
             var table = control as TableLayoutPanel;
             if (table != null)
             {
+                VerifyToolbarMidline(table, formName);
+
                 for (var row = 0; row < table.RowStyles.Count; row++)
                 {
                     var style = table.RowStyles[row];
@@ -464,6 +473,51 @@ namespace Win7BookManagement.Infrastructure
 
             foreach (Control child in control.Controls)
                 VerifyControlTree(child, formName, viewportWidth);
+        }
+
+        private static void VerifyToolbarMidline(TableLayoutPanel table, string formName)
+        {
+            for (var row = 0; row < table.RowCount; row++)
+            {
+                Control input = null;
+                var actions = new List<Control>();
+
+                foreach (Control child in table.Controls)
+                {
+                    if (!child.Visible || table.GetRow(child) != row)
+                        continue;
+
+                    var tag = Convert.ToString(child.Tag);
+                    if (string.Equals(tag, "toolbar-input", StringComparison.Ordinal))
+                        input = child;
+                    else if (string.Equals(tag, "toolbar-action", StringComparison.Ordinal))
+                        actions.Add(child);
+                }
+
+                if (input == null || actions.Count == 0)
+                    continue;
+
+                var inputCenterY = input.Top + (input.Height / 2.0);
+                foreach (var action in actions)
+                {
+                    var actionCenterY = action.Top + (action.Height / 2.0);
+                    if (Math.Abs(inputCenterY - actionCenterY) > 2.0)
+                    {
+                        throw new InvalidOperationException(
+                            formName + " 搜索工具栏控件未按中线对齐：" +
+                            action.Text + " 与输入框中线相差 " +
+                            Math.Abs(inputCenterY - actionCenterY).ToString("0.0") + "px。");
+                    }
+
+                    if (action.Height != input.Height)
+                    {
+                        throw new InvalidOperationException(
+                            formName + " 搜索工具栏按钮与输入框高度不一致：" +
+                            action.Text + " " + action.Height + "px / 输入框 " +
+                            input.Height + "px。");
+                    }
+                }
+            }
         }
 
         private static void VerifyLegacyBookSchemaUpgrade(string root)
