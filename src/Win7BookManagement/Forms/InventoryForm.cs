@@ -144,10 +144,12 @@ namespace Win7BookManagement.Forms
 
             var searchRow = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 4,
                 RowCount = 1,
-                Margin = new Padding(0, 2, 0, 0)
+                Margin = new Padding(0, 4, 0, 0)
             };
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -157,10 +159,12 @@ namespace Win7BookManagement.Forms
             searchRow.Controls.Add(new Label
             {
                 Text = "综合搜索",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold)
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 14, 0)
             }, 0, 0);
 
             _search.Dock = DockStyle.Fill;
@@ -179,7 +183,9 @@ namespace Win7BookManagement.Forms
             var query = new Button
             {
                 Text = "查询",
-                Dock = DockStyle.Fill,
+                AutoSize = true,
+                MinimumSize = new Size(92, UiTheme.ButtonHeight),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Margin = new Padding(0, 4, 8, 4)
             };
             query.Click += delegate { Reload(); };
@@ -187,9 +193,9 @@ namespace Win7BookManagement.Forms
 
             _lowOnly.Text = "仅看低库存";
             _lowOnly.AutoSize = true;
-            _lowOnly.Dock = DockStyle.Fill;
+            _lowOnly.Anchor = AnchorStyles.Left;
             _lowOnly.TextAlign = ContentAlignment.MiddleLeft;
-            _lowOnly.Margin = new Padding(8, 0, 0, 0);
+            _lowOnly.Margin = new Padding(8, 10, 0, 0);
             _lowOnly.CheckedChanged += delegate { Reload(); };
             searchRow.Controls.Add(_lowOnly, 3, 0);
 
