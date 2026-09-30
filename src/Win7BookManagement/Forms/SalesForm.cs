@@ -100,6 +100,7 @@ namespace Win7BookManagement.Forms
             };
 
             UiTheme.Apply(this);
+            UiTheme.StyleEditableGrid(_grid);
         }
 
         public bool CanNavigateAway(IWin32Window owner)
@@ -280,7 +281,7 @@ namespace Win7BookManagement.Forms
 
             header.Controls.Add(new Label
             {
-                Text = "数量和零售价可直接在表格中修改",
+                Text = "数量和销售价格可直接在表格中修改",
                 AutoSize = true,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleRight,
@@ -299,7 +300,7 @@ namespace Win7BookManagement.Forms
 
             _emptyState.Dock = DockStyle.Fill;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "购物车为空\r\n请扫描 ISBN、搜索加入，或从图书资料中选择";
+            _emptyState.Text = "购物车为空\r\n请扫描 ISBN，或按店内编码 / ISBN / 书名搜索加入";
             _emptyState.ForeColor = UiTheme.TextSecondary;
             _emptyState.Font = UiTheme.Font(9F);
             _emptyState.BackColor = UiTheme.Surface;
