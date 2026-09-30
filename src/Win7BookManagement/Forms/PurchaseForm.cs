@@ -114,32 +114,6 @@ namespace Win7BookManagement.Forms
                 MessageBoxIcon.Warning) == DialogResult.Yes;
         }
 
-        private Control CreateActionToolbar()
-        {
-            var toolbar = UiTheme.CreateResponsiveToolbar();
-            toolbar.BackColor = UiTheme.Surface;
-
-            var newOrder = UiTheme.CreateAntdButton("＋ 新入库单", false);
-            newOrder.Width = 112;
-            var clear = UiTheme.CreateAntdButton("清空当前单", false);
-            clear.Width = 116;
-
-            newOrder.Click += delegate { StartNewOrder(); };
-            clear.Click += delegate { ClearCartWithConfirmation(); };
-
-            toolbar.Controls.Add(newOrder);
-            toolbar.Controls.Add(clear);
-            toolbar.Controls.Add(new Label
-            {
-                AutoSize = true,
-                Text = "点击浅绿色单元格可直接修改入库数量或本次进价。",
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F),
-                Margin = new Padding(14, 12, 0, 0)
-            });
-            return toolbar;
-        }
-
         private Control CreateReceivingSection()
         {
             var section = new TableLayoutPanel
