@@ -90,7 +90,7 @@ namespace Win7BookManagement.Forms
             _type.Radius = 7;
             _type.BorderWidth = 1.2F;
             _type.BorderColor = UiTheme.Border;
-            _type.SelectedIndexChanged += delegate(int index)
+            _type.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e)
             {
                 UpdateDateControls();
                 Query();
