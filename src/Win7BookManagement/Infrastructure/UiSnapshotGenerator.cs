@@ -627,14 +627,14 @@ namespace Win7BookManagement.Infrastructure
             if (isbnField == null || addMethod == null)
                 return;
 
-            var textBox = isbnField.GetValue(form) as TextBox;
-            if (textBox == null)
+            var input = isbnField.GetValue(form) as Control;
+            if (input == null)
                 return;
 
             var maximum = Math.Min(count, books.Count);
             for (var i = 0; i < maximum; i++)
             {
-                textBox.Text = books[i].Isbn;
+                input.Text = books[i].Isbn;
                 addMethod.Invoke(form, null);
             }
         }
