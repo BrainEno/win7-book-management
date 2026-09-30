@@ -197,6 +197,46 @@ namespace Win7BookManagement.Infrastructure
                         null);
                 }
 
+                Capture(
+                    outputDirectory,
+                    "19-main-dashboard-1024x768.png",
+                    delegate { return new MainForm(services); },
+                    new Size(1024, 768),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "20-inventory-1024x768.png",
+                    delegate { return new InventoryForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "21-suppliers-1024x768.png",
+                    delegate { return new SupplierForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "22-reports-1024x768.png",
+                    delegate { return new ReportsForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "23-documents-1024x768.png",
+                    delegate { return new DocumentCenterForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
                 return 0;
             }
             catch (Exception ex)
