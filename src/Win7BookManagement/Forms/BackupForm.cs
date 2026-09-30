@@ -151,14 +151,9 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(0, 0, 0, 10)
             }, 0, 1);
 
-            var button = new Button
-            {
-                Text = buttonText,
-                Width = 118,
-                Height = UiTheme.ButtonHeight,
-                Tag = primary ? "primary" : null,
-                Anchor = AnchorStyles.Left
-            };
+            var button = UiTheme.CreateAntdButton(buttonText, primary);
+            button.Width = 124;
+            button.Anchor = AnchorStyles.Left;
             button.Click += action;
             card.Controls.Add(button, 0, 2);
             return card;
