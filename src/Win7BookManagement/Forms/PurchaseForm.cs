@@ -160,6 +160,7 @@ namespace Win7BookManagement.Forms
 
             _supplier.Dock = DockStyle.None;
             _supplier.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            _supplier.Tag = "toolbar-input";
             _supplier.Margin = new Padding(0, 0, 10, 0);
             _supplier.DropDownArrow = true;
             supplierRow.Controls.Add(_supplier, 1, 0);
@@ -167,6 +168,7 @@ namespace Win7BookManagement.Forms
             var newOrder = UiTheme.CreateAntdButton("新入库单", false);
             newOrder.Width = 88;
             newOrder.Anchor = AnchorStyles.Left;
+            newOrder.Tag = "toolbar-action";
             newOrder.Margin = new Padding(0, 0, 6, 0);
             newOrder.Click += delegate { StartNewOrder(); };
             supplierRow.Controls.Add(newOrder, 3, 0);
@@ -174,6 +176,7 @@ namespace Win7BookManagement.Forms
             var clear = UiTheme.CreateAntdButton("清空", false);
             clear.Width = 76;
             clear.Anchor = AnchorStyles.Left;
+            clear.Tag = "toolbar-action";
             clear.Click += delegate { ClearCartWithConfirmation(); };
             supplierRow.Controls.Add(clear, 4, 0);
 
@@ -205,6 +208,7 @@ namespace Win7BookManagement.Forms
 
             _isbn.Dock = DockStyle.None;
             _isbn.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            _isbn.Tag = "toolbar-input";
             _isbn.Margin = new Padding(0, 0, 8, 0);
             _isbn.KeyDown += delegate(object sender, KeyEventArgs e)
             {
@@ -219,6 +223,7 @@ namespace Win7BookManagement.Forms
             var add = UiTheme.CreateAntdButton("加入", true);
             add.Width = 78;
             add.Anchor = AnchorStyles.Left;
+            add.Tag = "toolbar-action";
             add.Margin = new Padding(0, 0, 6, 0);
             add.Click += delegate { AddByIsbn(); };
             scanRow.Controls.Add(add, 2, 0);
@@ -226,6 +231,7 @@ namespace Win7BookManagement.Forms
             var pick = UiTheme.CreateAntdButton("选择图书", false);
             pick.Width = 92;
             pick.Anchor = AnchorStyles.Left;
+            pick.Tag = "toolbar-action";
             pick.Click += delegate { PickBook(); };
             scanRow.Controls.Add(pick, 3, 0);
 
