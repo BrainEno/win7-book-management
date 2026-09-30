@@ -178,12 +178,8 @@ namespace Win7BookManagement.Forms
             toolbar.BackColor = UiTheme.Surface;
             toolbar.BorderStyle = BorderStyle.None;
 
-            var newOrder = new Button
-            {
-                Text = "新入库单",
-                Width = 96,
-                Height = UiTheme.ButtonHeight
-            };
+            var newOrder = ModernUi.CreateButton("新入库单", false);
+            newOrder.Width = 104;
             var clear = new Button
             {
                 Text = "清空当前单",
