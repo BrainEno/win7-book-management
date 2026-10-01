@@ -393,7 +393,9 @@ namespace Win7BookManagement.Infrastructure
             {
                 new Size(1024, 768),
                 new Size(1366, 768),
-                new Size(1920, 1080)
+                new Size(1600, 900),
+                new Size(1920, 1080),
+                new Size(2560, 1440)
             };
 
             if (!(UiTheme.ResponsiveButtonHeight(820) < UiTheme.ResponsiveButtonHeight(1500)) ||
@@ -420,7 +422,12 @@ namespace Win7BookManagement.Infrastructure
                     {
                         form.Size = viewport;
                         UiTheme.Apply(form);
-                        UiTheme.ApplyResponsiveDensity(form, viewport.Width);
+                        var specPage = form as IUiSpecPage;
+                        if (specPage != null)
+                            specPage.ApplyUiSpecProfile(
+                                BookDeskUiSpec.Resolve(viewport.Width, viewport.Height));
+                        else
+                            UiTheme.ApplyResponsiveDensity(form, viewport.Width);
                         form.PerformLayout();
                         VerifyControlTree(
                             form,
@@ -477,6 +484,25 @@ namespace Win7BookManagement.Infrastructure
                 throw new InvalidOperationException(
                     formName + " 存在高度不足的 AntdUI 输入框：" +
                     antdInput.Height + "px < " + expectedInputHeight + "px。");
+            }
+
+            var expectedInputHeight = UiTheme.ResponsiveInputHeight(viewportWidth);
+            var antdSelect = control as AntdUI.Select;
+            if (antdSelect != null && antdSelect.Visible &&
+                antdSelect.Height > 0 && antdSelect.Height < expectedInputHeight)
+            {
+                throw new InvalidOperationException(
+                    formName + " 存在高度不足的 AntdUI 下拉框：" +
+                    antdSelect.Height + "px < " + expectedInputHeight + "px。");
+            }
+
+            var antdDate = control as AntdUI.DatePicker;
+            if (antdDate != null && antdDate.Visible &&
+                antdDate.Height > 0 && antdDate.Height < expectedInputHeight)
+            {
+                throw new InvalidOperationException(
+                    formName + " 存在高度不足的 AntdUI 日期框：" +
+                    antdDate.Height + "px < " + expectedInputHeight + "px。");
             }
 
             var expectedButtonHeight = UiTheme.ResponsiveButtonHeight(viewportWidth);
