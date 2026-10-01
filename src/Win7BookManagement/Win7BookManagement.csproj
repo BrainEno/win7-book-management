@@ -52,11 +52,69 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
-    <Compile Include="Models\PurchaseDocument.cs" />
+    <!--
+      Legacy .NET Framework project: keep source files explicit.
+      Visual Studio can cache wildcard Compile items and miss newly-added .cs files
+      until the project is reloaded. The CI validator enforces that every tracked
+      source file appears exactly once in this manifest.
+    -->
+    <Compile Include="Database\DatabaseConnectionFactory.cs" />
+    <Compile Include="Database\DatabaseInitializer.cs" />
+
+    <Compile Include="Forms\AdvancedBookLookupDialog.cs" />
+    <Compile Include="Forms\BackupForm.cs" />
+    <Compile Include="Forms\BookEditForm.cs" />
+    <Compile Include="Forms\BookListForm.cs" />
+    <Compile Include="Forms\BookLookupDialog.cs" />
+    <Compile Include="Forms\DashboardForm.cs" />
+    <Compile Include="Forms\DocumentCenterForm.cs" />
+    <Compile Include="Forms\HelpForm.cs" />
+    <Compile Include="Forms\INavigationGuard.cs" />
+    <Compile Include="Forms\InventoryForm.cs" />
+    <Compile Include="Forms\MainForm.cs" />
+    <Compile Include="Forms\OnboardingGuideForm.cs" />
+    <Compile Include="Forms\PurchaseForm.cs" />
     <Compile Include="Forms\PurchaseHistoryDialog.cs" />
-    <Compile Include="**\*.cs"
-             Exclude="bin\**\*;obj\**\*;packages\**\*;Infrastructure\BookDeskUiSpec.cs;Models\PurchaseDocument.cs;Forms\PurchaseHistoryDialog.cs" />
+    <Compile Include="Forms\ReportsForm.cs" />
+    <Compile Include="Forms\ReturnDialog.cs" />
+    <Compile Include="Forms\SalesForm.cs" />
+    <Compile Include="Forms\SettingsForm.cs" />
+    <Compile Include="Forms\SupplierForm.cs" />
+
+    <Compile Include="Infrastructure\AppPaths.cs" />
+    <Compile Include="Infrastructure\ApplicationServices.cs" />
+    <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
+    <Compile Include="Infrastructure\Money.cs" />
+    <Compile Include="Infrastructure\PersistentAntdTable.cs" />
+    <Compile Include="Infrastructure\SelfTest.cs" />
+    <Compile Include="Infrastructure\UiSnapshotGenerator.cs" />
+    <Compile Include="Infrastructure\UiTheme.cs" />
+
+    <Compile Include="Models\Book.cs" />
+    <Compile Include="Models\DashboardSummary.cs" />
+    <Compile Include="Models\PurchaseDocument.cs" />
+    <Compile Include="Models\ReturnLineInput.cs" />
+    <Compile Include="Models\ReturnableDocumentLine.cs" />
+    <Compile Include="Models\Supplier.cs" />
+    <Compile Include="Models\TransactionLineInput.cs" />
+
+    <Compile Include="Program.cs" />
+
+    <Compile Include="Reporting\ExcelReportExporter.cs" />
+
+    <Compile Include="Repositories\BookRepository.cs" />
+    <Compile Include="Repositories\DashboardRepository.cs" />
+    <Compile Include="Repositories\DocumentRepository.cs" />
+    <Compile Include="Repositories\ReportRepository.cs" />
+    <Compile Include="Repositories\SettingsRepository.cs" />
+    <Compile Include="Repositories\SupplierRepository.cs" />
+
+    <Compile Include="Services\BackupService.cs" />
+    <Compile Include="Services\InventoryService.cs" />
+    <Compile Include="Services\PurchaseService.cs" />
+    <Compile Include="Services\ReturnService.cs" />
+    <Compile Include="Services\SalesService.cs" />
+
     <None Include="App.config" />
     <None Include="app.manifest" />
   </ItemGroup>
