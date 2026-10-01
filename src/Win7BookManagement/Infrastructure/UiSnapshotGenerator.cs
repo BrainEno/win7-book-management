@@ -173,7 +173,7 @@ namespace Win7BookManagement.Infrastructure
                     },
                     new Size(1586, 945),
                     false,
-                    delegate(Form form) { FilterBookMaster(form, books[5].Isbn); });
+                    delegate(Form form) { FilterBookMaster(form, books[5].SelfCode); });
 
                 var firstBook = services.Books.GetById(books[0].Id);
                 Capture(
@@ -498,19 +498,19 @@ namespace Win7BookManagement.Infrastructure
                 },
                 new Book
                 {
-                    SelfCode = "BK-0006",
-                    Isbn = "9780000000106",
-                    Title = "诗歌的声音",
-                    Author = "陈野",
-                    Publisher = "远岸出版社",
-                    Category = "诗歌",
-                    PublicationYear = "2022",
-                    Edition = "1版1印",
-                    Binding = "平装",
-                    ShelfCode = "A-05-2",
-                    ListPriceCent = 4200,
+                    SelfCode = "001",
+                    Isbn = "",
+                    Title = "羸弱的恶",
+                    Author = "多罗",
+                    Publisher = "",
+                    Category = "",
+                    PublicationYear = "",
+                    Edition = "",
+                    Binding = "",
+                    ShelfCode = "",
+                    ListPriceCent = 3600,
                     DefaultPurchasePriceCent = 2200,
-                    SalePriceCent = 3900,
+                    SalePriceCent = 3600,
                     Note = ""
                 },
                 new Book
@@ -553,7 +553,7 @@ namespace Win7BookManagement.Infrastructure
             for (var i = 0; i < samples.Length; i++)
             {
                 var id = services.Books.Insert(samples[i]);
-                services.Inventory.Adjust(id, i == 5 ? 2 : 6 + i, "视觉快照初始库存");
+                services.Inventory.Adjust(id, i == 5 ? 3 : 6 + i, "视觉快照初始库存");
                 stored.Add(services.Books.GetById(id));
             }
 
@@ -749,12 +749,13 @@ namespace Win7BookManagement.Infrastructure
                 var embedded = child as Form;
                 if (embedded != null &&
                     !embedded.TopLevel &&
-                    embedded.Parent != null &&
-                    embedded.Dock == DockStyle.Fill)
+                    embedded.Parent != null)
                 {
                     var client = embedded.Parent.ClientSize;
                     if (client.Width > 0 && client.Height > 0)
                     {
+                        embedded.Dock = DockStyle.None;
+                        embedded.Location = Point.Empty;
                         SetWindowPos(
                             embedded.Handle,
                             IntPtr.Zero,
