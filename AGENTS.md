@@ -116,6 +116,7 @@ Exports must be valid .xlsx files and must not require Microsoft Excel.
 
 ## Testing expectations
 At minimum, verify:
+- legacy csproj source manifest validation passes, and both Debug x86 and Release x86 compile from a clean checkout;
 - clean database creation and forward schema upgrade;
 - onboarding/settings persistence;
 - purchase/sale/return inventory correctness and rollback;
@@ -136,3 +137,4 @@ Before changing behavior:
 4. Keep business logic out of Forms.
 5. Update README/docs when user-visible behavior or setup changes.
 6. Do not weaken inventory, return, offline packaging, or beginner-safety invariants for convenience.
+7. This is a legacy non-SDK .NET Framework project. Every added or removed `.cs` file must be added to or removed from `Win7BookManagement.csproj` explicitly in the same change. Do not reintroduce wildcard `Compile Include="**\\*.cs"`; run `scripts/validate-csproj-sources.ps1` before merging.
