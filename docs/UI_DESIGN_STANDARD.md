@@ -1,6 +1,6 @@
 # Win7 Book Management UI 设计与验收标准
 
-本文件是 Win7 版本的 UI 单一标准。后续页面重构必须优先遵守本文件，而不是在每个 Form 内自行决定尺寸、颜色和布局。
+本文件描述 UI 设计原则；所有几何尺寸、间距、响应式阈值和组件尺寸以 `docs/ui-spec.json` 为唯一数值 Source of Truth。凡 ui-spec.json 已定义的数值，禁止重新通过截图估算。
 
 ## 1. 兼容性优先级
 
@@ -71,7 +71,7 @@
 
 ### 控件高度与字体度量
 
-- 已迁移到 `docs/ui-spec.json` / `BookDeskUiSpec` 的原型页经 1586×992 原型与 CI 实测截图逐像素复核后，以 48 logical px 作为 96 DPI Standard / Expanded 的 Input / Button 高度；1366×768 的 Compact 档使用 44px。尚未迁移的旧页面继续沿用其现有安全高度，避免一次性改动造成回归。
+- 已迁移到 `docs/ui-spec.json` / `BookDeskUiSpec` 的页面，以 36 logical px 作为 96 DPI Standard / Expanded 的 Input / Button 高度；1366×768 的 Compact 档使用 34px。所有相邻输入框、下拉框、日期框和动作按钮必须同高同基线。
 - 单行 TextBox 不再强制 AutoSize=false 或硬拉到 38px。原生 WinForms 单行 TextBox 必须保留系统文本基线，外层布局负责提供足够的上下空间。
 - ComboBox / NumericUpDown / DateTimePicker 使用内容驱动的最小高度，不能依靠过小的固定 TableLayout 行。
 - AntdUI Table 行与表头的最小高度根据实际字体度量计算；38 / 40px 只作为 96 DPI 下的最低基线。

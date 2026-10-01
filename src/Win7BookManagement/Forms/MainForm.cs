@@ -32,9 +32,9 @@ namespace Win7BookManagement.Forms
 
             Text = "简易图书管理系统  BOOK DESK";
             StartPosition = FormStartPosition.CenterScreen;
-            Width = 1400;
-            Height = 860;
-            MinimumSize = new Size(960, 640);
+            Width = 1600;
+            Height = 900;
+            MinimumSize = new Size(1280, 720);
             BackColor = UiTheme.Background;
             Font = UiTheme.Font(9F);
 
@@ -98,7 +98,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextSecondary,
                 Padding = new Padding(14, 0, 8, 0),
-                Font = UiTheme.Font(7.8F),
+                Font = UiTheme.Font(8.25F),
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
                 Text = "完全离线  |  数据库：" + _services.Database.DatabasePath
@@ -111,7 +111,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextSecondary,
                 Padding = new Padding(8, 0, 14, 0),
-                Font = UiTheme.Font(7.8F),
+                Font = UiTheme.Font(8.25F),
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoEllipsis = true,
                 Text = ""

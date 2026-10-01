@@ -1,6 +1,6 @@
 {
   "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
-  "specVersion": "1.0.1",
+  "specVersion": "1.1.0",
   "project": {
     "name": "BOOK DESK / 简易图书管理系统",
     "repository": "https://github.com/BrainEno/win7-book-management",
@@ -13,80 +13,113 @@
       "Windows 10",
       "Windows 11"
     ],
-    "purpose": "Machine-readable visual source of truth for high-fidelity implementation of four core desktop pages."
+    "purpose": "Single numeric source of truth for production WinForms/AntdUI geometry, spacing, responsive behavior, table sizing and screenshot-diff acceptance."
   },
   "sourceOfTruth": {
     "priority": [
-      "ui-spec.json geometry, tokens, responsive rules",
-      "approved prototype screenshots for visual appearance",
-      "current application code for business logic and fields"
+      "ui-spec.json for every numeric geometry, spacing, responsive and component-size decision",
+      "approved prototype PNGs for visual appearance / hierarchy / color verification",
+      "current application code for business logic, data and behavior"
     ],
-    "prototypeRaster": {
-      "width": 1586,
-      "height": 992,
-      "aspectRatio": 1.59879,
-      "usage": "Primary visual reference. Geometry below is normalized from this 1586x992 prototype family."
-    },
-    "rule": "Do not infer an existing numeric value from screenshots when the value exists in this spec. Screenshots are for visual validation, not dimension guessing.",
-    "calibration": {
-      "status": "raster-verified",
-      "reference": "approved 1586x992 prototype set",
-      "note": "Shared control/table/shell metrics were recalibrated after pixel comparison against CI WinForms screenshots. These values supersede the initial screenshot estimate. Shell status height and inventory toolbar height were also corrected from direct raster boundary measurement. Document Center filter/card/table values are aligned to the same raster-calibrated 44/48px control and 48/52px table profiles."
+    "hardRule": "If a dimension or responsive behavior is defined in ui-spec.json, implementation MUST NOT re-estimate it from a screenshot. Prototype PNGs are visual references only.",
+    "prototypeUsage": {
+      "geometryInferenceAllowed": false,
+      "visualValidationAllowed": true,
+      "textAndBusinessStructureMayBeCrossChecked": true
     }
   },
   "measurement": {
     "unit": "logical_px_at_96_dpi",
+    "coordinateSystem": "WinForms client logical pixels",
     "dpiPolicy": {
       "winFormsAutoScaleMode": "Dpi",
-      "breakpointsUseLogicalClientPixels": true,
-      "doNot": [
-        "Scale the entire UI uniformly by screen resolution",
-        "Multiply all dimensions by a custom resolution factor",
-        "Use fixed absolute coordinates for the whole page"
+      "designDpi": 96,
+      "autoScaleDimensions": [
+        96,
+        96
       ],
-      "guidance": "Use Dock/Anchor/TableLayoutPanel/FlowLayoutPanel and DPI-aware logical dimensions. DPI handles physical scaling; responsive rules handle layout."
+      "manifestDpiAwareness": "System DPI aware (Win7-compatible baseline)",
+      "perMonitorV2Required": false,
+      "breakpointsUseLogicalClientPixels": true,
+      "layoutBeforeDpiScaling": true,
+      "rules": [
+        "Use AutoScaleMode.Dpi, not AutoScaleMode.Font, on shell/forms participating in the responsive system.",
+        "Do not apply a custom global scale factor based on resolution.",
+        "Do not multiply all coordinates, fonts, padding, control heights or column widths by screenWidth/referenceWidth.",
+        "DPI scaling handles physical pixel density; responsive profiles handle available logical client area.",
+        "Use Dock, Anchor, TableLayoutPanel and FlowLayoutPanel for responsive structure; avoid page-wide absolute coordinates.",
+        "Test at 100%, 125% and 150% Windows scaling for clipping; geometry screenshot diff baseline is captured at 100% / 96 DPI."
+      ],
+      "win7Notes": [
+        "Do not require PerMonitorV2 APIs for correctness.",
+        "Changing monitor DPI while the process is running is not an acceptance requirement on Windows 7.",
+        "All primary controls must remain readable and unclipped at common system DPI settings."
+      ]
     },
     "pixelTolerance": {
-      "referenceViewport": 2,
-      "otherSupportedViewports": 4,
-      "textBaseline": 2,
-      "controlHeight": 1,
-      "note": "Tolerance is in logical pixels. Differences caused by font rasterization are excluded if geometry is correct."
+      "baselineDpi": 96,
+      "criticalGeometryLogicalPx": 2,
+      "nonCriticalGeometryLogicalPx": 3,
+      "textBaselineLogicalPx": 2,
+      "controlHeightLogicalPx": 1,
+      "tableColumnSeparatorLogicalPx": 2,
+      "borderLogicalPx": 1,
+      "colorChannelToleranceRgb": 12,
+      "antiAliasedTextExclusion": true,
+      "maxChangedPixelRatio": {
+        "1366x768": 0.02,
+        "1600x900": 0.015,
+        "1920x1080": 0.015,
+        "2560x1440": 0.015
+      },
+      "criticalRegionMaxChangedPixelRatio": 0.005,
+      "zeroToleranceFailures": [
+        "clipped text",
+        "missing primary action",
+        "overlapping controls",
+        "wrong responsive profile",
+        "workspace-level horizontal scrollbar at supported sizes",
+        "search input and adjacent action button not equal height / baseline",
+        "bottom primary purchase action not visible"
+      ]
     }
   },
   "viewports": {
-    "reference": {
-      "name": "Reference",
-      "width": 1586,
-      "height": 992,
-      "layoutProfile": "standard"
-    },
     "testMatrix": [
       {
         "width": 1366,
         "height": 768,
-        "profile": "compact"
+        "profile": "compact",
+        "captureName": "1366x768",
+        "mandatory": true
       },
       {
         "width": 1600,
         "height": 900,
-        "profile": "standard"
+        "profile": "standard",
+        "captureName": "1600x900",
+        "mandatory": true
       },
       {
         "width": 1920,
         "height": 1080,
-        "profile": "standard"
+        "profile": "standard",
+        "captureName": "1920x1080",
+        "mandatory": true
       },
       {
         "width": 2560,
         "height": 1440,
-        "profile": "expanded"
+        "profile": "expanded",
+        "captureName": "2560x1440",
+        "mandatory": true
       }
     ],
+    "captureDimensionMeaning": "Target application window outer size for manual screenshots. Automated pixel diff MUST crop to the application client content region so native OS window chrome does not create false diffs.",
     "minimumSupportedClient": {
       "width": 1280,
       "height": 720,
-      "policy": "No clipping of primary actions or key data. Horizontal scrolling is a last resort and should be limited to data tables only."
+      "policy": "Primary actions and key data may not clip. Whole-workspace horizontal scrolling is forbidden; table-local horizontal scrolling is last resort only below the mandatory 1366x768 test size."
     }
   },
   "tokens": {
@@ -112,7 +145,10 @@
       "successSoft": "#F6FFED",
       "danger": "#FF4D4F",
       "disabledBackground": "#F5F5F5",
-      "disabledText": "#B8B8B8"
+      "disabledText": "#B8B8B8",
+      "infoSoft": "#EAF4FF",
+      "infoBorder": "#91CAFF",
+      "infoText": "#0958D9"
     },
     "typography": {
       "fontFamilyDesign": "Noto Sans SC",
@@ -132,7 +168,7 @@
         "lineHeight": 24
       },
       "body": {
-        "size": 15,
+        "size": 14,
         "weight": 400,
         "lineHeight": 22
       },
@@ -147,12 +183,12 @@
         "lineHeight": 18
       },
       "tableHeader": {
-        "size": 14,
+        "size": 13,
         "weight": 600,
         "lineHeight": 20
       },
       "tableCell": {
-        "size": 14,
+        "size": 13,
         "weight": 400,
         "lineHeight": 20
       },
@@ -187,22 +223,28 @@
       "focusWidth": 2
     },
     "control": {
-      "standardHeight": 48,
-      "compactHeight": 44,
-      "expandedHeight": 48,
+      "standardHeight": 36,
+      "compactHeight": 34,
+      "expandedHeight": 36,
+      "absoluteMinimumHeight": 32,
       "buttonHorizontalPadding": 14,
+      "compactButtonHorizontalPadding": 10,
       "buttonMinWidth": 68,
       "inputHorizontalPadding": 12,
       "iconSize": 16,
       "checkboxSize": 18,
-      "gap": 8
+      "gap": 8,
+      "sameHeightRule": "All inputs/selects/date controls and adjacent action buttons in one row use the profile controlHeight."
     },
     "table": {
-      "headerHeight": 52,
-      "rowHeight": 52,
-      "compactHeaderHeight": 48,
-      "compactRowHeight": 48,
+      "headerHeight": 42,
+      "rowHeight": 46,
+      "compactHeaderHeight": 38,
+      "compactRowHeight": 42,
+      "expandedHeaderHeight": 42,
+      "expandedRowHeight": 46,
       "cellPaddingX": 12,
+      "compactCellPaddingX": 8,
       "cellPaddingY": 8,
       "gridLineWidth": 1
     },
@@ -218,8 +260,8 @@
       "background": "#F7FBFF"
     },
     "sidebar": {
-      "width": 230,
-      "compactWidth": 218,
+      "width": 228,
+      "compactWidth": 208,
       "expandedWidth": 232,
       "minWidth": 200,
       "maxWidth": 240,
@@ -237,13 +279,19 @@
       "selectedBehavior": "Selected row background uses selectedNavBackground and a 3px primary left indicator."
     },
     "pageHeader": {
-      "height": 68,
-      "compactHeight": 64,
+      "height": 64,
+      "compactHeight": 56,
       "horizontalPadding": 16,
       "titleIconSize": 22,
       "titleIconGap": 10,
       "titleSize": 20,
-      "compactTitleSize": 18
+      "compactTitleSize": 18,
+      "statusControlWidth": 148,
+      "statusControlHeight": 36,
+      "expandedHeight": 64,
+      "subtitleVisible": false,
+      "rightPageStatusVisible": false,
+      "note": "Do not render the per-page top-right text/status '本机离线'. Sidebar bottom offline state may remain."
     },
     "content": {
       "paddingX": 12,
@@ -255,7 +303,7 @@
       "background": "#F5F7FA"
     },
     "footerStatusBar": {
-      "height": 58,
+      "height": 28,
       "horizontalPadding": 16,
       "fontSize": 11,
       "background": "#F8FAFC"
@@ -264,66 +312,72 @@
   "responsiveProfiles": {
     "compact": {
       "when": "clientWidth <= 1440 OR clientHeight <= 800",
-      "sidebarWidth": 218,
-      "pageHeaderHeight": 64,
+      "mandatoryTestViewport": "1366x768",
+      "sidebarWidth": 208,
+      "pageHeaderHeight": 56,
       "pageTitleSize": 18,
       "contentPaddingX": 10,
       "contentPaddingY": 8,
       "sectionGap": 8,
-      "controlHeight": 44,
+      "controlHeight": 34,
       "buttonHorizontalPadding": 10,
       "controlGap": 6,
-      "tableHeaderHeight": 48,
-      "tableRowHeight": 48,
-      "bodyFontSize": 14,
-      "tableFontSize": 13,
-      "secondaryFontSize": 12,
+      "tableHeaderHeight": 38,
+      "tableRowHeight": 42,
+      "bodyFontSize": 13,
+      "tableFontSize": 12,
+      "secondaryFontSize": 11,
       "rules": [
-        "Shrink margins and gaps before reducing font size.",
-        "Never shrink standard controls below 32px height.",
-        "Toolbar actions may wrap to a second row if required.",
-        "Long helper text may collapse to one line or hide when explicitly marked optional.",
-        "Tables should compress flexible columns before enabling horizontal scroll.",
-        "Primary actions must remain visible without scrolling."
+        "Reduce margins/padding/gaps before reducing font size.",
+        "Never reduce normal control height below 32 logical px.",
+        "Primary actions never move below the viewport.",
+        "Toolbar may wrap only at explicitly declared wrap points.",
+        "Table columns shrink to minWidth by shrinkPriority before any table-local horizontal scroll.",
+        "Do not hide business-critical columns unless the page explicitly defines a hide priority."
       ]
     },
     "standard": {
       "when": "1441 <= clientWidth < 2200 AND clientHeight > 800",
-      "sidebarWidth": 230,
-      "pageHeaderHeight": 68,
+      "mandatoryTestViewports": [
+        "1600x900",
+        "1920x1080"
+      ],
+      "sidebarWidth": 228,
+      "pageHeaderHeight": 64,
       "pageTitleSize": 20,
       "contentPaddingX": 12,
       "contentPaddingY": 12,
       "sectionGap": 12,
-      "controlHeight": 48,
+      "controlHeight": 36,
       "buttonHorizontalPadding": 14,
       "controlGap": 8,
-      "tableHeaderHeight": 52,
-      "tableRowHeight": 52,
-      "bodyFontSize": 15,
-      "tableFontSize": 14,
+      "tableHeaderHeight": 42,
+      "tableRowHeight": 46,
+      "bodyFontSize": 14,
+      "tableFontSize": 13,
       "secondaryFontSize": 12
     },
     "expanded": {
       "when": "clientWidth >= 2200",
+      "mandatoryTestViewport": "2560x1440",
       "sidebarWidth": 232,
-      "pageHeaderHeight": 68,
+      "pageHeaderHeight": 64,
       "pageTitleSize": 20,
       "contentPaddingX": 16,
       "contentPaddingY": 14,
       "sectionGap": 12,
-      "controlHeight": 48,
+      "controlHeight": 36,
       "buttonHorizontalPadding": 14,
       "controlGap": 8,
-      "tableHeaderHeight": 52,
-      "tableRowHeight": 52,
-      "bodyFontSize": 15,
-      "tableFontSize": 14,
+      "tableHeaderHeight": 42,
+      "tableRowHeight": 46,
+      "bodyFontSize": 14,
+      "tableFontSize": 13,
       "secondaryFontSize": 12,
       "rules": [
-        "Do not scale buttons, row heights, sidebar, or fonts indefinitely.",
-        "Give additional width to search fields, tables, and content panes.",
-        "Use the extra width to reduce truncation rather than increasing whitespace."
+        "Do not enlarge controls, fonts, sidebar or table row heights merely because more pixels are available.",
+        "Give extra width to flexible search/table/detail regions.",
+        "Use additional width to reduce truncation and expose more table content, not to create oversized whitespace."
       ]
     }
   },
@@ -361,11 +415,16 @@
         "background": "#FFFFFF",
         "foreground": "#1F2329",
         "borderColor": "#D8DEE8"
+      },
+      "info": {
+        "background": "#EAF4FF",
+        "foreground": "#0958D9",
+        "borderColor": "#91CAFF"
       }
     },
     "metricChip": {
-      "height": 36,
-      "compactHeight": 34,
+      "height": 34,
+      "compactHeight": 30,
       "radius": 4,
       "paddingX": 14,
       "gap": 6
@@ -427,173 +486,235 @@
         "type": "vertical",
         "gap": 12,
         "toolbar": {
-          "height": 138,
-          "compactHeight": 116,
+          "height": 104,
+          "compactHeight": 92,
           "padding": 14,
           "compactPadding": 10,
           "rows": [
             {
               "name": "searchActions",
-              "height": 36,
+              "height": "$profile.controlHeight",
               "layout": "horizontal",
+              "verticalAlign": "center",
+              "baseline": "shared",
+              "wrap": {
+                "compact": "afterSearchInputOnlyIfRequired",
+                "standard": "never",
+                "expanded": "never"
+              },
               "items": [
                 {
                   "type": "label",
                   "text": "搜索",
-                  "width": 56
+                  "width": 48
                 },
                 {
                   "type": "input",
                   "name": "search",
                   "flex": 1,
                   "minWidth": 360,
-                  "placeholder": "输入店内编码、ISBN、书名、作者或出版社"
+                  "preferredWidth": 560,
+                  "maxWidth": null,
+                  "placeholder": "输入店内编码、ISBN、书名、作者或出版社",
+                  "height": "$profile.controlHeight"
                 },
                 {
                   "type": "button",
                   "text": "查询",
                   "variant": "info",
-                  "width": 82
+                  "width": 78,
+                  "minWidth": 72,
+                  "height": "$profile.controlHeight"
                 },
                 {
                   "type": "button",
                   "text": "新增图书",
                   "variant": "primary",
-                  "width": 136
+                  "width": 118,
+                  "minWidth": 108,
+                  "height": "$profile.controlHeight"
                 },
                 {
                   "type": "button",
                   "text": "编辑资料",
                   "variant": "info",
-                  "width": 126
+                  "width": 110,
+                  "minWidth": 104,
+                  "height": "$profile.controlHeight"
                 }
               ],
-              "gap": 8
+              "gap": "$profile.controlGap",
+              "forbiddenItems": [
+                "包含停用"
+              ]
             },
             {
               "name": "summary",
-              "height": 34,
-              "topGap": 14,
+              "height": 30,
+              "compactHeight": 28,
+              "topGap": 10,
               "items": [
                 {
                   "type": "metric",
-                  "text": "结果 1",
+                  "textTemplate": "结果 {count}",
                   "tone": "primary",
                   "width": 96
                 },
                 {
                   "type": "metric",
-                  "text": "低库存 1",
+                  "textTemplate": "低库存 {count}",
                   "tone": "warning",
                   "width": 112
                 }
               ],
-              "gap": 12
+              "gap": 10
             }
           ]
         },
         "tableRegion": {
           "flex": 1,
           "minHeight": 300,
-          "horizontalScrollPolicy": "last_resort",
+          "headerHeight": "$profile.tableHeaderHeight",
+          "rowHeight": "$profile.tableRowHeight",
+          "horizontalScrollPolicy": "forbidden_at_mandatory_viewports",
+          "columnSizingAlgorithm": [
+            "Start from preferred width.",
+            "Allocate extra width to columns with flex > 0 by flex weight up to maxWidth.",
+            "When width is constrained, shrink by shrinkPriority (1 shrinks first) down to minWidth.",
+            "At mandatory viewports, every listed column remains visible; no column is hidden.",
+            "If all columns are at minWidth, remaining surplus goes to title first, then author/publisher."
+          ],
           "columns": [
             {
               "key": "storeCode",
               "title": "店内编码",
               "width": 108,
               "minWidth": 82,
-              "flex": 0
+              "maxWidth": 128,
+              "flex": 0,
+              "shrinkPriority": 8
             },
             {
               "key": "isbn",
               "title": "ISBN",
               "width": 110,
               "minWidth": 92,
-              "flex": 0
+              "maxWidth": 132,
+              "flex": 0,
+              "shrinkPriority": 9
             },
             {
               "key": "title",
               "title": "书名",
-              "width": 170,
-              "minWidth": 140,
-              "flex": 2
+              "width": 200,
+              "minWidth": 150,
+              "maxWidth": 360,
+              "flex": 3,
+              "shrinkPriority": 2
             },
             {
               "key": "author",
               "title": "作者",
-              "width": 110,
-              "minWidth": 90,
-              "flex": 1
+              "width": 116,
+              "minWidth": 88,
+              "maxWidth": 180,
+              "flex": 1,
+              "shrinkPriority": 3
             },
             {
               "key": "price",
               "title": "销售价格",
-              "width": 102,
-              "minWidth": 90,
+              "width": 98,
+              "minWidth": 88,
+              "maxWidth": 108,
               "flex": 0,
-              "align": "right"
+              "align": "right",
+              "shrinkPriority": 10
             },
             {
               "key": "stock",
               "title": "库存",
               "width": 72,
               "minWidth": 62,
+              "maxWidth": 80,
               "flex": 0,
-              "align": "right"
+              "align": "right",
+              "shrinkPriority": 11
             },
             {
               "key": "publisher",
               "title": "出版社",
-              "width": 105,
-              "minWidth": 86,
-              "flex": 1
+              "width": 112,
+              "minWidth": 84,
+              "maxWidth": 180,
+              "flex": 1,
+              "shrinkPriority": 4
             },
             {
               "key": "category",
               "title": "分类",
               "width": 92,
-              "minWidth": 78,
-              "flex": 1
+              "minWidth": 76,
+              "maxWidth": 132,
+              "flex": 1,
+              "shrinkPriority": 1
             },
             {
               "key": "publishYear",
               "title": "出版年",
-              "width": 86,
-              "minWidth": 72,
-              "flex": 0
+              "width": 82,
+              "minWidth": 70,
+              "maxWidth": 92,
+              "flex": 0,
+              "shrinkPriority": 6
             },
             {
               "key": "binding",
               "title": "装帧",
-              "width": 78,
-              "minWidth": 66,
-              "flex": 0
+              "width": 74,
+              "minWidth": 64,
+              "maxWidth": 86,
+              "flex": 0,
+              "shrinkPriority": 5
             },
             {
               "key": "shelf",
               "title": "货架位",
-              "width": 92,
-              "minWidth": 78,
-              "flex": 1
+              "width": 88,
+              "minWidth": 74,
+              "maxWidth": 124,
+              "flex": 1,
+              "shrinkPriority": 7
             },
             {
               "key": "enabled",
               "title": "启用",
-              "width": 94,
-              "minWidth": 82,
-              "flex": 0
+              "width": 82,
+              "minWidth": 72,
+              "maxWidth": 92,
+              "flex": 0,
+              "shrinkPriority": 12
             }
           ]
         }
       },
       "responsive": {
         "compact": [
-          "Toolbar row may wrap after the search input.",
-          "Search input stays on the first row and remains at least 360px wide.",
-          "Action buttons use compact height 34 and horizontal padding 10.",
-          "Metric row top gap reduces to 10.",
-          "Keep title, author, sales price and stock ahead of secondary publishing metadata.",
-          "Do not hide columns at 1366x768."
+          "Toolbar may use two rows only if the first row cannot keep the search input >= 360px.",
+          "If wrapped: row 1 = 搜索 + search input + 查询; row 2 = 新增图书 + 编辑资料, right aligned.",
+          "Search input, 查询, 新增图书 and 编辑资料 always use the same profile controlHeight.",
+          "Do not render '包含停用'.",
+          "Reduce table columns to minWidth by shrinkPriority; do not hide columns at 1366x768.",
+          "Search field gets remaining horizontal space before buttons gain extra width."
+        ],
+        "standard": [
+          "Keep all search/actions on one row.",
+          "Search input flexes first; buttons keep specified preferred widths.",
+          "All 12 table columns remain visible without workspace horizontal scrolling."
+        ],
+        "expanded": [
+          "Keep toolbar on one row.",
+          "Grow title/author/publisher/category/shelf columns according to flex; do not enlarge fixed numeric/status columns."
         ]
       }
     },
@@ -604,201 +725,369 @@
       "layout": {
         "type": "vertical",
         "gap": 12,
-        "toolbar": {
-          "height": 148,
-          "compactHeight": 126,
-          "padding": 14,
-          "compactPadding": 10,
-          "rows": [
+        "topToolbar": {
+          "height": 50,
+          "compactHeight": 44,
+          "paddingX": 0,
+          "items": [
             {
-              "name": "supplierActions",
-              "height": 36,
-              "items": [
-                {
-                  "type": "label",
-                  "text": "供应商",
-                  "width": 72
-                },
-                {
-                  "type": "select",
-                  "name": "supplier",
-                  "width": 304,
-                  "minWidth": 240,
-                  "value": "不区分（默认）"
-                },
-                {
-                  "type": "spacer",
-                  "flex": 1
-                },
-                {
-                  "type": "button",
-                  "text": "新入库单",
-                  "width": 112
-                },
-                {
-                  "type": "button",
-                  "text": "清空",
-                  "width": 78
-                }
-              ],
-              "gap": 8
+              "type": "button",
+              "text": "新入库单",
+              "variant": "primary",
+              "width": 112
             },
             {
-              "name": "scanSearch",
-              "height": 36,
-              "topGap": 12,
-              "items": [
-                {
-                  "type": "label",
-                  "text": "扫码 / 搜索",
-                  "width": 94
-                },
-                {
-                  "type": "input",
-                  "name": "scanSearch",
-                  "flex": 1,
-                  "minWidth": 400,
-                  "placeholder": "扫码或输入店内编码 / ISBN / 书名 / 作者"
-                },
-                {
-                  "type": "button",
-                  "text": "加入",
-                  "variant": "primary",
-                  "width": 108
-                },
-                {
-                  "type": "button",
-                  "text": "选择图书",
-                  "width": 118
-                }
-              ],
-              "gap": 8
+              "type": "button",
+              "text": "历史单据",
+              "variant": "default",
+              "width": 106
+            },
+            {
+              "type": "button",
+              "text": "上一张",
+              "variant": "default",
+              "width": 92
+            },
+            {
+              "type": "button",
+              "text": "下一张",
+              "variant": "default",
+              "width": 92
+            },
+            {
+              "type": "button",
+              "text": "导出 Excel",
+              "variant": "default",
+              "width": 112
+            },
+            {
+              "type": "button",
+              "text": "清空明细",
+              "variant": "defaultDanger",
+              "width": 112
             }
-          ]
+          ],
+          "gap": "$profile.controlGap",
+          "heightRule": "All buttons use $profile.controlHeight."
+        },
+        "documentCard": {
+          "height": 92,
+          "compactHeight": 80,
+          "padding": 14,
+          "compactPadding": 10,
+          "row": {
+            "height": "$profile.controlHeight",
+            "verticalAlign": "center",
+            "items": [
+              {
+                "type": "label",
+                "text": "采购日期",
+                "width": 72
+              },
+              {
+                "type": "date",
+                "name": "purchaseDate",
+                "width": 206,
+                "minWidth": 176,
+                "height": "$profile.controlHeight"
+              },
+              {
+                "type": "label",
+                "text": "采购单号",
+                "width": 72
+              },
+              {
+                "type": "input",
+                "name": "documentNumber",
+                "width": 258,
+                "minWidth": 210,
+                "placeholder": "留空时保存草稿会自动生成…",
+                "height": "$profile.controlHeight"
+              },
+              {
+                "type": "label",
+                "text": "供应商",
+                "width": 62
+              },
+              {
+                "type": "select",
+                "name": "supplier",
+                "flex": 1,
+                "minWidth": 230,
+                "preferredWidth": 320,
+                "value": "不区分（默认）",
+                "height": "$profile.controlHeight"
+              },
+              {
+                "type": "status",
+                "name": "draftStatus",
+                "text": "草稿",
+                "width": 118,
+                "height": "$profile.controlHeight",
+                "tone": "primarySoft"
+              }
+            ],
+            "gap": "$profile.controlGap"
+          }
+        },
+        "scanCard": {
+          "height": 64,
+          "compactHeight": 56,
+          "padding": 10,
+          "compactPadding": 8,
+          "row": {
+            "height": "$profile.controlHeight",
+            "verticalAlign": "center",
+            "items": [
+              {
+                "type": "label",
+                "text": "扫码 / 搜索",
+                "width": 112
+              },
+              {
+                "type": "input",
+                "name": "scanSearch",
+                "flex": 1,
+                "minWidth": 360,
+                "placeholder": "扫码或输入店内编码 / ISBN / 书名 / 作者",
+                "height": "$profile.controlHeight"
+              },
+              {
+                "type": "button",
+                "text": "加入",
+                "variant": "primary",
+                "width": 104,
+                "height": "$profile.controlHeight"
+              },
+              {
+                "type": "button",
+                "text": "选择图书",
+                "variant": "default",
+                "width": 118,
+                "height": "$profile.controlHeight"
+              }
+            ],
+            "gap": "$profile.controlGap"
+          }
         },
         "detailPanel": {
           "flex": 1,
-          "minHeight": 300,
-          "headerHeight": 52,
+          "minHeight": 250,
+          "headerHeight": 48,
+          "compactHeaderHeight": 44,
           "title": "入库明细",
-          "rightHint": "数量和进价可直接编辑",
-          "rightAction": "移除选中",
+          "rightHint": "草稿状态下可直接编辑数量和进价",
+          "rightAction": {
+            "text": "移除选中",
+            "width": 106,
+            "height": "$profile.controlHeight"
+          },
+          "rowSelection": "single_or_multi_row_selection_without_dedicated_checkbox_column",
           "columns": [
-            {
-              "key": "select",
-              "title": "",
-              "width": 42,
-              "minWidth": 38
-            },
             {
               "key": "index",
               "title": "序号",
-              "width": 60,
-              "minWidth": 54
+              "width": 58,
+              "minWidth": 52,
+              "maxWidth": 64,
+              "flex": 0,
+              "shrinkPriority": 9
             },
             {
               "key": "storeCode",
               "title": "店内编码",
-              "width": 110,
-              "minWidth": 90
+              "width": 112,
+              "minWidth": 86,
+              "maxWidth": 132,
+              "flex": 0,
+              "shrinkPriority": 3
             },
             {
               "key": "isbn",
               "title": "ISBN",
-              "width": 118,
-              "minWidth": 96
+              "width": 122,
+              "minWidth": 94,
+              "maxWidth": 142,
+              "flex": 0,
+              "shrinkPriority": 4
             },
             {
               "key": "title",
               "title": "书名",
-              "width": 170,
-              "minWidth": 130,
-              "flex": 2
+              "width": 220,
+              "minWidth": 150,
+              "maxWidth": 420,
+              "flex": 3,
+              "shrinkPriority": 1
             },
             {
               "key": "author",
               "title": "作者",
-              "width": 110,
-              "minWidth": 86
+              "width": 118,
+              "minWidth": 84,
+              "maxWidth": 180,
+              "flex": 1,
+              "shrinkPriority": 2
             },
             {
               "key": "publisher",
               "title": "出版社",
-              "width": 110,
-              "minWidth": 86
+              "width": 118,
+              "minWidth": 84,
+              "maxWidth": 180,
+              "flex": 1,
+              "shrinkPriority": 5
             },
             {
               "key": "quantity",
               "title": "数量",
               "width": 82,
               "minWidth": 70,
-              "align": "right"
+              "maxWidth": 92,
+              "flex": 0,
+              "align": "right",
+              "editable": true,
+              "shrinkPriority": 8
             },
             {
               "key": "cost",
               "title": "进价（元）",
-              "width": 112,
-              "minWidth": 94,
-              "align": "right"
+              "width": 108,
+              "minWidth": 92,
+              "maxWidth": 118,
+              "flex": 0,
+              "align": "right",
+              "editable": true,
+              "shrinkPriority": 7
             },
             {
               "key": "subtotal",
               "title": "小计（元）",
-              "width": 112,
+              "width": 110,
               "minWidth": 94,
-              "align": "right"
-            },
-            {
-              "key": "actions",
-              "title": "操作",
-              "width": 96,
-              "minWidth": 82
+              "maxWidth": 124,
+              "flex": 0,
+              "align": "right",
+              "shrinkPriority": 6
             }
+          ],
+          "columnSizingAlgorithm": [
+            "Start from preferred widths.",
+            "Give surplus to title first, then author/publisher.",
+            "Shrink title/author/storeCode/ISBN/publisher according to shrinkPriority down to minWidth.",
+            "Quantity, cost and subtotal remain readable and are never hidden.",
+            "No workspace horizontal scrollbar at mandatory viewports."
           ],
           "emptyState": {
             "title": "当前入库单为空",
-            "body": "请扫码、搜索或选择图书"
+            "body": "请扫码、搜索或选择图书添加明细"
           }
         },
         "noteRow": {
           "height": 48,
           "compactHeight": 42,
-          "labelWidth": 64,
-          "inputHeight": 36,
+          "labelWidth": 54,
+          "inputHeight": "$profile.controlHeight",
           "placeholder": "可选：填写到货批次、物流或其他备注"
         },
         "summaryBar": {
-          "height": 72,
-          "compactHeight": 62,
-          "metrics": [
-            {
-              "text": "图书项 0",
-              "width": 110
-            },
-            {
-              "text": "入库册数 0",
-              "width": 126
-            },
-            {
-              "text": "采购金额 ¥0.00",
-              "width": 214,
-              "emphasis": "primary"
-            }
-          ],
-          "primaryAction": {
-            "text": "确认入库",
-            "width": 146,
-            "height": 40
-          }
+          "dock": "bottom",
+          "sticky": true,
+          "mustRemainVisible": true,
+          "height": 68,
+          "compactHeight": 58,
+          "expandedHeight": 68,
+          "background": "#FFFFFF",          "topBorder": "#E5EAF0",
+          "paddingX": 12,
+          "compactPaddingX": 8,
+          "metricsGroup": {
+            "flex": 1,
+            "minWidth": 360,
+            "items": [
+              {
+                "key": "bookKinds",
+                "label": "图书项",
+                "valueTemplate": "{count}",
+                "preferredWidth": 110,
+                "minWidth": 84
+              },
+              {
+                "key": "bookCount",
+                "label": "入库册数",
+                "valueTemplate": "{count}",
+                "preferredWidth": 126,
+                "minWidth": 94
+              },
+              {
+                "key": "amount",
+                "label": "采购金额",
+                "valueTemplate": "¥{amount}",
+                "preferredWidth": 190,
+                "minWidth": 146,
+                "emphasis": "primary"
+              }
+            ],
+            "compactBehavior": "Shrink chip widths and horizontal padding; if still constrained, render metrics as compact inline label/value pairs. Metrics may never force the action group off-screen."
+          },
+          "actionGroup": {
+            "dock": "right",
+            "flex": 0,
+            "minWidth": 336,
+            "gap": "$profile.controlGap",
+            "items": [
+              {
+                "type": "button",
+                "text": "保存草稿",
+                "variant": "default",
+                "width": 104,
+                "minWidth": 96,
+                "height": "$profile.controlHeight"
+              },
+              {
+                "type": "button",
+                "text": "反复核",
+                "variant": "default",
+                "width": 88,
+                "minWidth": 80,
+                "height": "$profile.controlHeight"
+              },
+              {
+                "type": "button",
+                "text": "复核入库",
+                "variant": "primary",
+                "width": 112,
+                "minWidth": 104,
+                "height": "$profile.controlHeight"
+              }
+            ]
+          },
+          "visibilityContract": [
+            "summaryBar is outside the scrollable detail/table region and Dock=Bottom.",
+            "actionGroup is right-pinned and never wraps.",
+            "复核入库 must be fully visible at 1366x768 without vertical or horizontal scrolling.",
+            "When width is constrained, shrink metrics first, then metric gaps/padding; never shrink or hide the primary action.",
+            "When height is constrained, detail table loses height first; summaryBar height remains fixed for the profile."
+          ]
         }
       },
       "responsive": {
         "compact": [
-          "Supplier row remains one row; shrink supplier select to 240px if needed.",
-          "Scan/search row keeps search input flexible and at least 360px.",
-          "Table column compression order: publisher, author, title, storeCode, isbn.",
-          "Summary metrics remain one row; reduce width/padding before wrapping.",
-          "Do not place the primary Confirm button below the fold."
+          "Top toolbar may wrap after 导出 Excel; 清空明细 may move to row 2, but scan row and document row retain their control heights.",
+          "Document card may split into two rows: row 1 = 采购日期 + 采购单号; row 2 = 供应商 + 草稿状态.",
+          "Scan row remains one row with search input >= 360px whenever the client width is 1366.",
+          "Summary bar stays docked to bottom; actionGroup never wraps and always shows 复核入库.",
+          "Reduce metric chip widths/padding before reducing table width or action buttons.",
+          "Table columns shrink to minWidth according to shrinkPriority; no business-critical column is hidden at 1366x768."
+        ],
+        "standard": [
+          "Top toolbar remains one row.",
+          "Document card remains one row at 1600x900 and 1920x1080.",
+          "Summary metrics and actionGroup remain one row."
+        ],
+        "expanded": [
+          "Do not scale toolbar/buttons larger.",
+          "Grow supplier/search/title/author/publisher regions with available width.",
+          "Keep bottom summary/action group compact and right anchored."
         ]
       }
     },
@@ -810,7 +1099,7 @@
         "type": "vertical",
         "gap": 12,
         "toolbar": {
-          "height": 140,
+          "height": 136,
           "compactHeight": 112,
           "padding": 14,
           "compactPadding": 10,
@@ -832,13 +1121,13 @@
               {
                 "type": "button",
                 "text": "查询",
-                "width": 78
+                "width": 72
               },
               {
                 "type": "button",
                 "text": "库存调整",
                 "variant": "primary",
-                "width": 140
+                "width": 118
               },
               {
                 "type": "checkbox",
@@ -937,9 +1226,9 @@
           },
           "right": {
             "type": "detailPane",
-            "width": 460,
-            "minWidth": 340,
-            "maxWidth": 480,
+            "width": 330,
+            "minWidth": 286,
+            "maxWidth": 360,
             "title": "库存详情",
             "action": "库存调整",
             "rowHeight": 64,
@@ -958,11 +1247,11 @@
       },
       "responsive": {
         "compact": [
-          "At main-content width >= 1020px keep horizontal split and set detail pane to 340px.",
+          "At main-content width >= 1020px keep horizontal split and set detail pane to 286px.",
           "At main-content width < 1020px switch to vertical stack: inventory table first, detail pane below.",
           "In vertical stack, detail fields use two columns when width >= 900px, otherwise one column.",
           "Optional helper text in summary row may hide before any primary control moves.",
-          "Never shrink the detail pane below 340px while it is in side-by-side mode."
+          "Never shrink the detail pane below 286px while it is in side-by-side mode."
         ]
       }
     },
@@ -975,17 +1264,17 @@
         "gap": 12,
         "filterCard": {
           "height": 236,
-          "compactHeight": 210,
+          "compactHeight": 184,
           "padding": 14,
           "compactPadding": 10,
           "topAction": {
             "text": "从选中单据发起退货",
-            "width": 200,
-            "height": 48,
+            "width": 184,
+            "height": 36,
             "align": "right"
           },
           "filterRow": {
-            "height": 75,
+            "height": 58,
             "items": [
               {
                 "type": "field",
@@ -1140,11 +1429,11 @@
       },
       "responsive": {
         "compact": [
-          "1366×768 uses the shared compact profile: 44px controls and 48px table rows/headers.",
-          "Keep the filter controls on one row at 1366px when space permits by using compact field widths (160 / 170 / 170 / flexible keyword / 78 query).",
-          "If the page becomes narrower than the supported 1280px client minimum, allow the keyword field to wrap only after reducing gaps and padding.",
-          "Keep both bill list and bill detail visible; allocate about 57% / 43% of the post-filter workspace.",
-          "Do not hide the prototype columns at 1366×768 or above."
+          "Filter controls become two rows instead of reducing date/input heights below compact control height.",
+          "Row 1: 类型 / 从 / 到 / 查询.",
+          "Row 2: 关键词 input fills available width; return action remains top-right or moves to row 2 far-right if necessary.",
+          "Helper text becomes a single-line ellipsis or hides if vertical space is constrained.",
+          "Bill list and bill detail both remain visible; allocate vertical space approximately 58% / 42% after filters."
         ]
       }
     }
@@ -1152,62 +1441,130 @@
   "implementationRules": {
     "winFormsLayout": [
       "Use Dock/Anchor for shell regions.",
-      "Use TableLayoutPanel or equivalent structured layout for toolbars and responsive row wrapping.",
-      "Use FlowLayoutPanel only where item wrapping is desired.",
+      "Use TableLayoutPanel for deterministic toolbar/form geometry.",
+      "Use FlowLayoutPanel only where the spec explicitly permits wrapping.",
       "Avoid page-wide absolute Location/Size placement.",
-      "Fixed geometry is allowed inside stable components such as a 36px button or 42px table header."
+      "Fixed logical sizes are allowed for stable controls defined by this spec.",
+      "Apply MinimumSize / MaximumSize to columns and key controls according to this spec."
     ],
     "resizingPriority": [
       "Reduce page margins",
       "Reduce panel padding",
       "Reduce inter-control gaps",
       "Reduce button horizontal padding",
-      "Compress flexible table columns",
-      "Reduce font sizes only within compact profile limits",
-      "Wrap lower-priority toolbar actions",
-      "Hide optional helper text",
-      "Use scrolling only as a last resort"
+      "Compress flexible table columns to minWidth by shrinkPriority",
+      "Wrap only at explicitly declared wrap points",
+      "Hide optional helper text only where explicitly allowed",
+      "Never hide primary actions",
+      "Use table-local scrolling only below mandatory test sizes"
     ],
     "forbidden": [
-      "Whole-page resolution scaling",
-      "Oversized cards and mobile-app spacing",
-      "Large drop shadows or glass effects",
-      "Page title larger than 20px in standard/expanded profiles",
-      "Search button height different from adjacent input height",
+      "Whole-page resolution-proportional scaling",
+      "Global ScaleTransform / custom scale factor based on screen resolution",
+      "Oversized cards or mobile-app spacing",
+      "Large shadows, glassmorphism, complex gradients or 3D effects",
+      "Page title larger than 20 logical px in standard/expanded profiles",
+      "Input/select/date control height different from adjacent action button height",
+      "Re-estimating any defined dimension from a prototype PNG",
+      "Per-page top-right '本机离线' text/status",
+      "Book Data '包含停用' checkbox/text",
       "Primary action hidden below viewport",
-      "Horizontal scrollbar across the entire main workspace at 1366x768 or above",
-      "Render top-right offline status as a bordered/dropdown-like control"
+      "Workspace-level horizontal scrollbar at 1366x768 or larger"
     ]
   },
   "visualValidation": {
     "required": true,
-    "referenceCaptureViewport": {
-      "width": 1586,
-      "height": 992
+    "referenceOwnership": "Approved prototype PNG per page and viewport",
+    "requiredViewports": [
+      {
+        "width": 1366,
+        "height": 768,
+        "profile": "compact"
+      },
+      {
+        "width": 1600,
+        "height": 900,
+        "profile": "standard"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "profile": "standard"
+      },
+      {
+        "width": 2560,
+        "height": 1440,
+        "profile": "expanded"
+      }
+    ],
+    "capture": {
+      "windowsScaling": "100% / 96 DPI for automated diff",
+      "theme": "light",
+      "windowState": "normal",
+      "outerWindowSize": "exact required viewport",
+      "automatedDiffCrop": "application client content region; exclude native OS frame/chrome",
+      "dataFixture": "deterministic seeded fixture; identical records/order/content for reference and implementation",
+      "cursorAndFocus": "hide mouse cursor; focus state must match reference",
+      "animation": "disabled or settled before capture"
     },
     "process": [
-      "Build",
-      "Run application",
-      "Open target page",
-      "Capture screenshot at exact test viewport",
-      "Compare to approved reference",
-      "Generate image diff",
-      "Fix geometry first, typography second, color third",
-      "Repeat until within tolerance"
+      "Build Release or deterministic UI-test build.",
+      "Launch with the fixed screenshot fixture/database.",
+      "Set exact required viewport size.",
+      "Navigate to the target page.",
+      "Wait until layout, fonts and AntdUI animations are settled.",
+      "Capture PNG.",
+      "Crop to the defined client content region for automated comparison.",
+      "Create 50% opacity overlay and absolute RGB diff image.",
+      "Check geometry anchors before typography/color.",
+      "Measure changed-pixel ratio using the configured RGB tolerance.",
+      "Fail immediately on any zero-tolerance condition.",
+      "Repeat for all four required viewports."
     ],
-    "requiredViewports": [
-      "1366x768",
-      "1600x900",
-      "1920x1080",
-      "2560x1440"
-    ],
+    "diffAlgorithm": {
+      "mode": "absolute_rgb",
+      "perChannelThreshold": 12,
+      "overlayOpacity": 0.5,
+      "ignoreAntiAliasedTextInterior": true,
+      "doNotIgnore": [
+        "text bounding boxes",
+        "text baseline",
+        "control edges",
+        "panel edges",
+        "table column separators",
+        "button/input heights",
+        "selected navigation geometry"
+      ]
+    },
+    "geometryToleranceLogicalPx": {
+      "criticalAnchors": 2,
+      "nonCriticalSpacing": 3,
+      "textBaseline": 2,
+      "controlHeight": 1,
+      "tableColumnSeparator": 2,
+      "border": 1
+    },
     "acceptance": {
+      "maxChangedPixelRatioByViewport": {
+        "1366x768": 0.02,
+        "1600x900": 0.015,
+        "1920x1080": 0.015,
+        "2560x1440": 0.015
+      },
+      "criticalRegionMaxChangedPixelRatio": 0.005,
       "noClippedText": true,
       "noMissingPrimaryActions": true,
       "alignedToolbarBaselines": true,
+      "inputAndAdjacentButtonSameHeight": true,
       "noWorkspaceHorizontalScrollAtOrAbove1366": true,
-      "pageTitleMaxStandardPx": 20,
-      "inputAndAdjacentButtonSameHeight": true
+      "purchasePrimaryActionAlwaysVisible": true,
+      "bookDataAllDeclaredColumnsVisibleAtMandatoryViewports": true
+    },
+    "artifactNaming": {
+      "reference": "{page}.{width}x{height}.reference.png",
+      "actual": "{page}.{width}x{height}.actual.png",
+      "diff": "{page}.{width}x{height}.diff.png",
+      "overlay": "{page}.{width}x{height}.overlay.png"
     }
   }
 }

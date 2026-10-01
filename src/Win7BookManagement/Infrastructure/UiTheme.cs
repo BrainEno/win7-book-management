@@ -12,11 +12,11 @@ namespace Win7BookManagement.Infrastructure
         // own default appearance and state colors.
         // Prototype-derived neutral surfaces.  Keep these values centralized:
         // pages may change layout, but they must not invent their own shell colors.
-        public static readonly Color Background = Color.FromArgb(244, 246, 249);
+        public static readonly Color Background = Color.FromArgb(245, 247, 250);
         public static readonly Color Surface = Color.White;
-        public static readonly Color SurfaceMuted = Color.FromArgb(249, 251, 253);
+        public static readonly Color SurfaceMuted = Color.FromArgb(250, 251, 252);
 
-        public static readonly Color NavigationSurface = Color.FromArgb(249, 250, 252);
+        public static readonly Color NavigationSurface = Color.FromArgb(248, 250, 252);
         public static readonly Color NavigationHover = Color.FromArgb(244, 247, 250);
         public static readonly Color NavigationSelected = Color.FromArgb(230, 242, 254);
         public static readonly Color NavigationText = Color.FromArgb(31, 31, 31);
@@ -27,34 +27,33 @@ namespace Win7BookManagement.Infrastructure
         public static readonly Color Accent = Color.FromArgb(22, 119, 255);
         public static readonly Color AccentHover = Color.FromArgb(64, 150, 255);
         public static readonly Color AccentSoft = Color.FromArgb(230, 244, 255);
-        public static readonly Color TextPrimary = Color.FromArgb(31, 31, 31);
-        public static readonly Color TextSecondary = Color.FromArgb(140, 140, 140);
-        public static readonly Color Border = Color.FromArgb(217, 217, 217);
+        public static readonly Color TextPrimary = Color.FromArgb(31, 35, 41);
+        public static readonly Color TextSecondary = Color.FromArgb(102, 112, 133);
+        public static readonly Color Border = Color.FromArgb(229, 234, 240);
         public static readonly Color Success = Color.FromArgb(82, 196, 26);
         public static readonly Color Warning = Color.FromArgb(250, 173, 20);
         public static readonly Color Danger = Color.FromArgb(255, 77, 79);
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
-        public const int InputHeight = 48;
-        public const int ButtonHeight = 48;
+        public const int InputHeight = 36;
+        public const int ButtonHeight = 36;
 
-        // 96-DPI shell/page metrics reverse-engineered from the approved
-        // desktop prototype.  They are logical pixels and therefore still
-        // participate in WinForms DPI scaling.
-        public const int SidebarWidth = 233;
-        public const int SidebarMediumWidth = 204;
-        public const int SidebarCompactWidth = 178;
-        public const int ShellHeaderHeight = 66;
-        public const int ShellStatusHeight = 58;
-        public const int PagePadding = 14;
+        // 96-DPI logical metrics. Resolution changes select a responsive
+        // profile; they never apply a whole-window scale factor.
+        public const int SidebarWidth = 228;
+        public const int SidebarMediumWidth = 208;
+        public const int SidebarCompactWidth = 200;
+        public const int ShellHeaderHeight = 64;
+        public const int ShellStatusHeight = 28;
+        public const int PagePadding = 12;
         public const int PagePaddingMedium = 10;
-        public const int PagePaddingCompact = 7;
+        public const int PagePaddingCompact = 8;
         public const int SectionGap = 12;
-        public const int SectionRadius = 7;
+        public const int SectionRadius = 8;
         public const int SectionBorderWidth = 1;
-        public const int TableHeaderHeight = 52;
-        public const int TableRowHeight = 52;
+        public const int TableHeaderHeight = 42;
+        public const int TableRowHeight = 46;
         public const int ToolbarHorizontalGap = 8;
 
         public const int CompactBreakpoint = 980;
@@ -71,7 +70,7 @@ namespace Win7BookManagement.Infrastructure
             AntdUI.Config.Font = Font(9F);
             AntdUI.Config.TextRenderingHighQuality = true;
             AntdUI.Config.Animation = true;
-            AntdUI.Config.ShadowEnabled = true;
+            AntdUI.Config.ShadowEnabled = false;
             AntdUI.Config.ScrollBarHide = false;
         }
 
@@ -87,9 +86,8 @@ namespace Win7BookManagement.Infrastructure
 
         public static int ResponsiveInputHeight(int availableWidth)
         {
-            if (availableWidth < 900) return 40;
-            if (availableWidth < 1180) return 44;
-            return InputHeight;
+            if (availableWidth <= 1440) return 34;
+            return 36;
         }
 
         public static int ResponsiveButtonHeight(int availableWidth)
@@ -102,9 +100,8 @@ namespace Win7BookManagement.Infrastructure
 
         public static float ResponsiveControlFontSize(int availableWidth)
         {
-            if (availableWidth < 900) return 9F;
-            if (availableWidth < 1180) return 10.2F;
-            return 11.5F;
+            if (availableWidth <= 1440) return 9.75F;
+            return 10.5F;
         }
 
         public static void ApplyResponsiveDensity(Control root, int availableWidth)
