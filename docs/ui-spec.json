@@ -244,8 +244,10 @@
       "titleIconGap": 10,
       "titleSize": 20,
       "compactTitleSize": 18,
-      "statusControlWidth": 148,
-      "statusControlHeight": 36
+      "statusControlWidth": 84,
+      "statusControlHeight": 28,
+      "statusPresentation": "plain_text",
+      "statusText": "本机离线"
     },
     "content": {
       "paddingX": 12,
@@ -390,8 +392,7 @@
       {
         "name": "工作台",
         "items": [
-          "工作台",
-          "经营概览"
+          "工作台"
         ]
       },
       {
@@ -1181,7 +1182,8 @@
       "Page title larger than 20px in standard/expanded profiles",
       "Search button height different from adjacent input height",
       "Primary action hidden below viewport",
-      "Horizontal scrollbar across the entire main workspace at 1366x768 or above"
+      "Horizontal scrollbar across the entire main workspace at 1366x768 or above",
+      "Render top-right offline status as a bordered/dropdown-like control"
     ]
   },
   "visualValidation": {

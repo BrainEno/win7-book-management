@@ -80,10 +80,10 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Fill,
                 Font = UiTheme.Font(BookDeskUiSpec.Standard.PageTitleFontPoints, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
-                Text = "经营概览",
+                Text = "工作台",
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
-                PrefixSvg = "BarChartFilled",
+                PrefixSvg = "HomeOutlined",
                 PrefixColor = UiTheme.Accent,
                 IconRatio = 0.9F,
                 IconGap = 8,
@@ -201,10 +201,10 @@ namespace Win7BookManagement.Forms
 
         private void BuildNavigation()
         {
-            // The approved prototype treats "工作台" as a visual entry label,
-            // followed by the actual overview page, then expandable business groups.
-            AddRootLabel("工作台", "HomeOutlined");
-            AddRootNavigation("dashboard", "经营概览", "BarChartOutlined");
+            // Dashboard and operating overview are one screen. Keep a single
+            // clickable entry so the sidebar does not spend two rows on the same
+            // destination.
+            AddRootNavigation("dashboard", "工作台", "HomeOutlined");
 
             var core = AddGroup("核心业务");
             AddNavigation(core, "sales", "销售开单", "FileAddOutlined");
@@ -221,15 +221,6 @@ namespace Win7BookManagement.Forms
             AddNavigation(system, "backup", "备份与恢复", "DatabaseOutlined");
             AddNavigation(system, "help", "使用帮助", "QuestionCircleOutlined");
             AddNavigation(system, "settings", "系统设置", "SettingOutlined");
-        }
-
-        private void AddRootLabel(string text, string iconSvg)
-        {
-            _navigation.Items.Add(new AntdUI.MenuItem(text)
-            {
-                IconSvg = iconSvg,
-                Tag = null
-            });
         }
 
         private void AddRootNavigation(string key, string text, string iconSvg)
@@ -343,7 +334,7 @@ namespace Win7BookManagement.Forms
             switch (key)
             {
                 case "dashboard":
-                    title = "经营概览";
+                    title = "工作台";
                     child = new DashboardForm(_services, Navigate, StartOnboardingGuide);
                     break;
                 case "books":
@@ -526,62 +517,27 @@ namespace Win7BookManagement.Forms
 
         private static Control CreateOfflineBadge()
         {
-            var host = new AntdUI.Panel
-            {
-                AutoSize = false,
-                Width = BookDeskUiSpec.OfflineBadgeWidth,
-                Height = BookDeskUiSpec.OfflineBadgeHeight,
-                MinimumSize = new Size(BookDeskUiSpec.OfflineBadgeWidth, BookDeskUiSpec.OfflineBadgeHeight),
-                Back = UiTheme.Surface,
-                BorderWidth = 1F,
-                BorderColor = UiTheme.Border,
-                Radius = 6,
-                Margin = new Padding(10, 4, 0, 4),
-                Padding = new Padding(10, 0, 8, 0)
-            };
-
-            var row = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = false,
-                WrapContents = false,
-                FlowDirection = FlowDirection.LeftToRight,
-                BackColor = Color.Transparent,
-                Margin = Padding.Empty,
-                Padding = new Padding(0, 5, 0, 0)
-            };
-            row.Controls.Add(new Label
-            {
-                Text = "●",
-                AutoSize = true,
-                ForeColor = UiTheme.Success,
-                Font = UiTheme.Font(9.5F, FontStyle.Bold),
-                Margin = new Padding(0, 0, 7, 0)
-            });
-            row.Controls.Add(new Label
+            return new Label
             {
                 Text = "本机离线",
-                AutoSize = true,
-                ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(9.5F, FontStyle.Bold),
-                Margin = new Padding(0, 0, 8, 0)
-            });
-            row.Controls.Add(new Label
-            {
-                Text = "⌄",
-                AutoSize = true,
+                AutoSize = false,
+                Width = 84,
+                Height = 28,
+                MinimumSize = new Size(84, 28),
+                Anchor = AnchorStyles.Right,
+                TextAlign = ContentAlignment.MiddleRight,
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(9F),
-                Margin = Padding.Empty
-            });
-            host.Controls.Add(row);
-            return host;
+                Font = UiTheme.Font(9F, FontStyle.Bold),
+                Margin = new Padding(10, 0, 0, 0),
+                Padding = Padding.Empty
+            };
         }
 
         private static string ResolvePageIcon(string key)
         {
             switch (key)
             {
+                case "dashboard": return "HomeOutlined";
                 case "books": return "BookFilled";
                 case "purchase": return "ShoppingCartOutlined";
                 case "inventory": return "CodeSandboxOutlined";

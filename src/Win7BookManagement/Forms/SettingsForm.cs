@@ -74,7 +74,7 @@ namespace Win7BookManagement.Forms
 
             section.Controls.Add(new Label
             {
-                Text = "当启用图书库存小于或等于这个数量时，经营概览和库存页会把它标记为低库存。小型书店可以先从 3–5 册开始。",
+                Text = "当启用图书库存小于或等于这个数量时，工作台和库存页会把它标记为低库存。小型书店可以先从 3–5 册开始。",
                 AutoSize = true,
                 MaximumSize = new Size(900, 0),
                 ForeColor = UiTheme.TextSecondary,
@@ -214,7 +214,7 @@ namespace Win7BookManagement.Forms
             try
             {
                 _services.Settings.SetLowStockThreshold(Decimal.ToInt32(_lowStock.Value));
-                MessageBox.Show(this, "设置已保存。经营概览和库存页会立即使用新的低库存阈值。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "设置已保存。工作台和库存页会立即使用新的低库存阈值。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
