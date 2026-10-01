@@ -94,8 +94,10 @@ SELECT pi.id AS source_item_id,
        b.stock_quantity AS current_stock,
        pi.unit_cost_cent AS unit_price_cent
 FROM purchase_order_items pi
+JOIN purchase_orders po ON po.id = pi.purchase_order_id
 JOIN books b ON b.id = pi.book_id
 WHERE pi.purchase_order_id = @id
+  AND po.status = 'reviewed'
 ORDER BY pi.id;";
                 command.Parameters.AddWithValue("@id", sourceDocumentId);
 
@@ -202,6 +204,7 @@ LEFT JOIN (
   GROUP BY source_purchase_order_item_id
 ) r ON r.source_purchase_order_item_id=pi.id
 WHERE po.purchased_at>=@from AND po.purchased_at<@to
+  AND po.status='reviewed'
   AND (@keyword='' OR po.order_no LIKE @like OR po.supplier_name_snapshot LIKE @like OR po.note LIKE @like
        OR EXISTS (
          SELECT 1 FROM purchase_order_items px

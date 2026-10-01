@@ -82,6 +82,9 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     total_cent INTEGER NOT NULL CHECK(total_cent >= 0),
     note TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'reviewed',
+    reviewed_at TEXT NULL,
+    updated_at TEXT NOT NULL DEFAULT '',
     FOREIGN KEY(supplier_id) REFERENCES suppliers(id)
 );
 
@@ -220,14 +223,37 @@ ON purchase_return_items(source_purchase_order_item_id);
                     command.ExecuteNonQuery();
 
                     EnsureBookMetadataColumns(connection, transaction);
+                    EnsurePurchaseWorkflowColumns(connection, transaction);
 
                     using (var bookIndexes = connection.CreateCommand())
                     {
                         bookIndexes.Transaction = transaction;
                         bookIndexes.CommandText = @"
 CREATE UNIQUE INDEX IF NOT EXISTS ux_books_self_code_nonempty
-ON books(self_code) WHERE self_code <> '';";
+ON books(self_code) WHERE self_code <> '';
+
+CREATE INDEX IF NOT EXISTS ix_purchase_orders_status_date
+ON purchase_orders(status, purchased_at, id);";
                         bookIndexes.ExecuteNonQuery();
+                    }
+
+                    using (var normalizePurchases = connection.CreateCommand())
+                    {
+                        normalizePurchases.Transaction = transaction;
+                        normalizePurchases.CommandText = @"
+UPDATE purchase_orders
+SET status='reviewed'
+WHERE status IS NULL OR trim(status)='';
+
+UPDATE purchase_orders
+SET reviewed_at=purchased_at
+WHERE status='reviewed'
+  AND (reviewed_at IS NULL OR trim(reviewed_at)='');
+
+UPDATE purchase_orders
+SET updated_at=created_at
+WHERE updated_at IS NULL OR trim(updated_at)='';";
+                        normalizePurchases.ExecuteNonQuery();
                     }
 
                     using (var version = connection.CreateCommand())
@@ -235,11 +261,11 @@ ON books(self_code) WHERE self_code <> '';";
                         version.Transaction = transaction;
                         version.CommandText = @"
 INSERT INTO schema_info(version)
-SELECT 4 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+SELECT 5 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
 
 UPDATE schema_info
-SET version = 4
-WHERE version < 4;
+SET version = 5
+WHERE version < 5;
 
 INSERT OR IGNORE INTO app_settings(key, value, updated_at)
 VALUES('low_stock_threshold', '3', @now);";
@@ -271,6 +297,16 @@ VALUES('low_stock_threshold', '3', @now);";
                 "ALTER TABLE books ADD COLUMN note TEXT NOT NULL DEFAULT '';");
             EnsureColumn(connection, transaction, "books", "default_purchase_price_cent",
                 "ALTER TABLE books ADD COLUMN default_purchase_price_cent INTEGER NOT NULL DEFAULT 0 CHECK(default_purchase_price_cent >= 0);");
+        }
+
+        private static void EnsurePurchaseWorkflowColumns(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
+            EnsureColumn(connection, transaction, "purchase_orders", "status",
+                "ALTER TABLE purchase_orders ADD COLUMN status TEXT NOT NULL DEFAULT 'reviewed';");
+            EnsureColumn(connection, transaction, "purchase_orders", "reviewed_at",
+                "ALTER TABLE purchase_orders ADD COLUMN reviewed_at TEXT NULL;");
+            EnsureColumn(connection, transaction, "purchase_orders", "updated_at",
+                "ALTER TABLE purchase_orders ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';");
         }
 
         private static void EnsureColumn(

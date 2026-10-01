@@ -142,11 +142,11 @@ VALUES(@returnId, @sourceItemId, @bookId, @isbn, @title, @qty, @unit, @total);";
                     {
                         sourceCommand.Transaction = transaction;
                         sourceCommand.CommandText =
-                            "SELECT order_no, supplier_name_snapshot FROM purchase_orders WHERE id=@id;";
+                            "SELECT order_no, supplier_name_snapshot FROM purchase_orders WHERE id=@id AND status='reviewed';";
                         sourceCommand.Parameters.AddWithValue("@id", sourcePurchaseOrderId);
                         using (var reader = sourceCommand.ExecuteReader())
                         {
-                            if (!reader.Read()) throw new InvalidOperationException("原采购单不存在。");
+                            if (!reader.Read()) throw new InvalidOperationException("原采购单不存在或尚未复核。");
                             sourceOrderNo = Convert.ToString(reader["order_no"]);
                             supplierName = Convert.ToString(reader["supplier_name_snapshot"]);
                         }

@@ -45,6 +45,7 @@ SELECT po.purchased_at AS 日期,
 FROM purchase_orders po
 JOIN purchase_order_items pi ON pi.purchase_order_id = po.id
 WHERE po.purchased_at >= @from AND po.purchased_at < @to
+  AND po.status = 'reviewed'
 ORDER BY po.purchased_at, po.id, pi.id;", fromDate, toDate);
         }
 
@@ -93,6 +94,7 @@ SELECT it.occurred_at AS 日期,
          WHEN 'SALE' THEN '销售出库'
          WHEN 'SALE_RETURN' THEN '销售退货入库'
          WHEN 'PURCHASE_RETURN' THEN '采购退货出库'
+         WHEN 'PURCHASE_UNREVIEW' THEN '采购反复核'
          WHEN 'ADJUSTMENT' THEN '库存调整'
          ELSE it.type
        END AS 类型,
