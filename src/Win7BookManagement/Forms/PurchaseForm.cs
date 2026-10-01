@@ -309,7 +309,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(10),
+                Padding = new Padding(10, 14, 10, 14),
                 Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0)
             };
             _scanSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -397,6 +397,9 @@ namespace Win7BookManagement.Forms
             {
                 Width = labelWidth + controlWidth,
                 Height = BookDeskUiSpec.PurchaseFieldStandardHeight,
+                MinimumSize = new Size(
+                    labelWidth + controlWidth,
+                    BookDeskUiSpec.PurchaseFieldStandardHeight),
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 10, 0),
