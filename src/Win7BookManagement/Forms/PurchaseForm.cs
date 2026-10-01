@@ -90,6 +90,7 @@ namespace Win7BookManagement.Forms
 
             _purchaseDate.Format = "yyyy-MM-dd";
             _purchaseDate.Value = DateTime.Today;
+            _purchaseDate.Leave += delegate { UpdateStatusLabel(); };
 
             _indexColumn = new AntdUI.Column("Index", "序号") { Width = "58", MinWidth = "52", ReadOnly = true };
             _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", MinWidth = "86", ReadOnly = true };
@@ -1188,8 +1189,19 @@ namespace Win7BookManagement.Forms
 
             using (var dialog = new PurchaseHistoryDialog(_services, _currentDocumentId))
             {
-                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedDocumentId.HasValue)
+                var result = dialog.ShowDialog(this);
+                if (result == DialogResult.OK && dialog.SelectedDocumentId.HasValue)
+                {
                     LoadDocument(dialog.SelectedDocumentId.Value);
+                }
+                else if (dialog.DeletedCurrentDocument)
+                {
+                    ResetOrder(true);
+                }
+                else
+                {
+                    UpdateNavigationState();
+                }
             }
         }
 
