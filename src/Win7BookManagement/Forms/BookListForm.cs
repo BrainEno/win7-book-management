@@ -36,6 +36,9 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Column _bindingColumn;
         private readonly AntdUI.Column _shelfColumn;
         private readonly AntdUI.Column _activeColumn;
+        private AntdUI.Column _titleColumn;
+        private AntdUI.Column _priceColumn;
+        private AntdUI.Column _stockColumn;
 
         private Book _selectedBook;
 
@@ -265,7 +268,7 @@ namespace Win7BookManagement.Forms
             _grid.ShowTip = true;
             _grid.EmptyText = "没有找到符合条件的图书资料";
 
-            var titleColumn = new AntdUI.Column("Title", "书名")
+            _titleColumn = new AntdUI.Column("Title", "书名")
             {
                 Width = "fill",
                 MinWidth = "140",
@@ -273,28 +276,28 @@ namespace Win7BookManagement.Forms
                 Ellipsis = true,
                 SortOrder = true
             };
-            var priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
+            _priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
             {
                 Width = "102",
                 MinWidth = "90",
                 DisplayFormat = "0.00",
                 SortOrder = true
             };
-            var stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "72", MinWidth = "62", SortOrder = true };
+            _stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "72", MinWidth = "62", SortOrder = true };
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
                 _selfCodeColumn,
                 _isbnColumn,
-                titleColumn,
+                _titleColumn,
                 _authorColumn,
                 _publisherColumn,
                 _categoryColumn,
                 _publicationColumn,
                 _bindingColumn,
                 _shelfColumn,
-                priceColumn,
-                stockColumn,
+                _priceColumn,
+                _stockColumn,
                 _activeColumn
             };
             _grid.ConfigureColumnPersistence(_services.Settings, "book-master-ui-spec-v4");
@@ -519,6 +522,7 @@ namespace Win7BookManagement.Forms
             _grid.RowHeightHeader = profile.TableHeaderHeight;
             _grid.RowHeight = profile.TableRowHeight;
             _grid.Font = UiTheme.Font(profile.TableFontPoints);
+            ApplyColumnWidths(profile);
 
             // The approved four-page spec is table-first through 2560x1440.
             // Retain the legacy detail pane for exceptional ultra-wide setups,
@@ -554,6 +558,34 @@ namespace Win7BookManagement.Forms
             _activeColumn.Visible = gridWidth >= 900;
 
             _grid.LoadLayout();
+        }
+
+        private void ApplyColumnWidths(UiSpecProfile profile)
+        {
+            var compact = profile != null && profile.IsCompact;
+
+            _selfCodeColumn.Width = compact ? "82" : "108";
+            _isbnColumn.Width = compact ? "92" : "110";
+            _authorColumn.Width = compact ? "90" : "110";
+            _publisherColumn.Width = compact ? "86" : "105";
+            _categoryColumn.Width = compact ? "78" : "92";
+            _publicationColumn.Width = compact ? "72" : "86";
+            _bindingColumn.Width = compact ? "66" : "78";
+            _shelfColumn.Width = compact ? "78" : "92";
+            _activeColumn.Width = compact ? "82" : "94";
+
+            if (_titleColumn != null)
+            {
+                _titleColumn.Width = "fill";
+                _titleColumn.MinWidth = "140";
+                _titleColumn.MaxWidth = compact ? "260" : "300";
+            }
+
+            if (_priceColumn != null)
+                _priceColumn.Width = compact ? "90" : "102";
+
+            if (_stockColumn != null)
+                _stockColumn.Width = compact ? "62" : "72";
         }
 
         private static void SetToolbarButton(
