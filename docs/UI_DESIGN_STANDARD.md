@@ -71,7 +71,7 @@
 
 ### 控件高度与字体度量
 
-- 已确认的桌面原型页以 48 logical px 作为 96 DPI 标准 Input / Button 高度；中等窗口压缩至 44px，紧凑窗口可压缩至 40px，并始终保证文字和图标完整显示。
+- 已迁移到 `docs/ui-spec.json` / `BookDeskUiSpec` 的原型页以 36 logical px 作为 96 DPI 标准 Input / Button 高度；Compact 档使用 34px，并始终保证文字和图标完整显示。尚未迁移的旧页面继续沿用其现有安全高度，避免一次性改动造成回归。
 - 单行 TextBox 不再强制 AutoSize=false 或硬拉到 38px。原生 WinForms 单行 TextBox 必须保留系统文本基线，外层布局负责提供足够的上下空间。
 - ComboBox / NumericUpDown / DateTimePicker 使用内容驱动的最小高度，不能依靠过小的固定 TableLayout 行。
 - AntdUI Table 行与表头的最小高度根据实际字体度量计算；38 / 40px 只作为 96 DPI 下的最低基线。
@@ -114,17 +114,19 @@
 
 ## 7. 响应式断点
 
-当前统一断点：
+四个已确认原型页使用 `BookDeskUiSpec` 的窗口级断点：
 
-- Compact：< 980 logical px
-- Wide：>= 1180 logical px
+- Compact：clientWidth <= 1440，或 clientHeight <= 800；
+- Standard：1441 <= clientWidth < 2200，且 clientHeight > 800；
+- Expanded：clientWidth >= 2200。
 
 典型行为：
 
-- 商品资料页在非 Wide 宽度隐藏右侧详情面板；
-- 表格按可用宽度依次隐藏出版社、装帧、出版年等次要列；
-- 工具栏允许 Wrap；
-- 主输入区保留完整输入框和主按钮。
+- 1366×768 进入 Compact；1600×900 / 1920×1080 使用 Standard；2560×1440 使用 Expanded；
+- 缩小时先减少 margin / padding / gap，再压缩可伸缩表格列；最后才允许表格自身出现横向滚动；
+- 不允许整页工作区在 1366×768 及以上出现横向滚动；
+- 工具栏只有在确有必要时才换行，主输入框和主操作必须始终可见；
+- 大窗口只扩大搜索框、表格和内容区，不无限放大按钮、字号、Sidebar 或行高。
 
 ## 8. 第一阶段重构范围
 
@@ -143,12 +145,13 @@
 
 “图书资料”已存在确认原型，因此该页的视觉验收优先级高于早期通用布局设想。业务字段仍以代码为准，不为匹配截图删除能力。
 
-- 96 DPI 原型基线：Sidebar 233px、Shell Header 66px、Shell Status 58px。
-- Wide 页边距以左 14 / 上 13 / 右 18 / 下 12px 为基线；查询区与表格间隔 12px。
-- Input / Button 标准高度 48px；统计 chip 36px；Table Header / Row 均为 52px。
-- 查询区圆角 7px、1px 边框，不使用阴影；新增 / 编辑 / 包含停用保持同一基线。
-- 标准与大窗口以单一高密度主表格为视觉主区域；早期详情面板能力仅在超宽工作区保留，1366×768 至 2560×1440 的验收范围不占用右侧空间。
-- 1366×768 起按列优先级隐藏次要字段；窗口增宽后恢复列，但按钮、输入、Sidebar、字体和行高不随窗口无限放大。
+- Standard 96 DPI 基线：Sidebar 228px、Shell Header 64px、Shell Status 28px；Compact 为 208 / 56 / 28px，Expanded Sidebar 为 232px。
+- Standard 页边距 12px；Compact 为左右 10 / 上下 8px；Expanded 为左右 16 / 上下 14px；查询区与表格间隔分别为 12 / 8 / 12px。
+- Input / Button：Standard / Expanded 36px，Compact 34px；统计 chip：34 / 30px；Table Header / Row：Standard 42 / 46px，Compact 38 / 42px。
+- 页面标题 Standard / Expanded 20px、Compact 18px；标题仅用于导航确认，不做 Banner。
+- 查询区圆角 8px、1px 边框，不使用大阴影；查询按钮与 Search Input 必须同高且几何中线对齐。
+- 标准与大窗口以单一高密度主表格为视觉主区域；早期详情面板能力只保留在 3000px 以上的异常超宽工作区，不进入 1366×768 至 2560×1440 验收矩阵。
+- 1366×768 起要求 12 个图书列表字段全部可见；只有低于支持范围的工作区才允许逐步隐藏出版社、出版年、装帧等次要字段。
 - 编辑 Dialog 仍按“基础信息 / 分类与出版 / 价格信息 / 经营备注”组织，业务能力不随列表页视觉还原而改变。
 
 ## 9. 验收矩阵

@@ -1,0 +1,1000 @@
+{
+  "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
+  "specVersion": "1.0.0",
+  "project": {
+    "name": "BOOK DESK / 简易图书管理系统",
+    "repository": "https://github.com/BrainEno/win7-book-management",
+    "platform": "Windows Desktop",
+    "framework": "C# WinForms",
+    "runtime": ".NET Framework 4.8",
+    "uiLibrary": "AntdUI",
+    "windowsCompatibility": [
+      "Windows 7",
+      "Windows 10",
+      "Windows 11"
+    ],
+    "purpose": "Machine-readable visual source of truth for high-fidelity implementation of four core desktop pages."
+  },
+  "sourceOfTruth": {
+    "priority": [
+      "ui-spec.json geometry, tokens, responsive rules",
+      "approved prototype screenshots for visual appearance",
+      "current application code for business logic and fields"
+    ],
+    "prototypeRaster": {
+      "width": 1586,
+      "height": 992,
+      "aspectRatio": 1.59879,
+      "usage": "Primary visual reference. Geometry below is normalized from this 1586x992 prototype family."
+    },
+    "rule": "Do not infer an existing numeric value from screenshots when the value exists in this spec. Screenshots are for visual validation, not dimension guessing."
+  },
+  "measurement": {
+    "unit": "logical_px_at_96_dpi",
+    "dpiPolicy": {
+      "winFormsAutoScaleMode": "Dpi",
+      "breakpointsUseLogicalClientPixels": true,
+      "doNot": [
+        "Scale the entire UI uniformly by screen resolution",
+        "Multiply all dimensions by a custom resolution factor",
+        "Use fixed absolute coordinates for the whole page"
+      ],
+      "guidance": "Use Dock/Anchor/TableLayoutPanel/FlowLayoutPanel and DPI-aware logical dimensions. DPI handles physical scaling; responsive rules handle layout."
+    },
+    "pixelTolerance": {
+      "referenceViewport": 2,
+      "otherSupportedViewports": 4,
+      "textBaseline": 2,
+      "controlHeight": 1,
+      "note": "Tolerance is in logical pixels. Differences caused by font rasterization are excluded if geometry is correct."
+    }
+  },
+  "viewports": {
+    "reference": {
+      "name": "Reference",
+      "width": 1586,
+      "height": 992,
+      "layoutProfile": "standard"
+    },
+    "testMatrix": [
+      {
+        "width": 1366,
+        "height": 768,
+        "profile": "compact"
+      },
+      {
+        "width": 1600,
+        "height": 900,
+        "profile": "standard"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "profile": "standard"
+      },
+      {
+        "width": 2560,
+        "height": 1440,
+        "profile": "expanded"
+      }
+    ],
+    "minimumSupportedClient": {
+      "width": 1280,
+      "height": 720,
+      "policy": "No clipping of primary actions or key data. Horizontal scrolling is a last resort and should be limited to data tables only."
+    }
+  },
+  "tokens": {
+    "color": {
+      "appBackground": "#F5F7FA",
+      "surface": "#FFFFFF",
+      "surfaceMuted": "#FAFBFC",
+      "sidebarBackground": "#F8FAFC",
+      "border": "#E5EAF0",
+      "borderStrong": "#D8DEE8",
+      "textPrimary": "#1F2329",
+      "textSecondary": "#667085",
+      "textTertiary": "#98A2B3",
+      "primary": "#1677FF",
+      "primaryHover": "#4096FF",
+      "primaryPressed": "#0958D9",
+      "primarySoft": "#EAF4FF",
+      "selectedNavBackground": "#E6F4FF",
+      "selectedRowBackground": "#EAF4FF",
+      "warning": "#FA8C16",
+      "warningSoft": "#FFF7E6",
+      "success": "#52C41A",
+      "successSoft": "#F6FFED",
+      "danger": "#FF4D4F",
+      "disabledBackground": "#F5F5F5",
+      "disabledText": "#B8B8B8"
+    },
+    "typography": {
+      "fontFamilyDesign": "Noto Sans SC",
+      "fontFamilyWinForms": [
+        "Microsoft YaHei",
+        "Segoe UI"
+      ],
+      "rendering": "Prefer GDI/TextRenderer-compatible metrics for WinForms; do not mix font families on the same page.",
+      "pageTitle": {
+        "size": 20,
+        "weight": 600,
+        "lineHeight": 28
+      },
+      "sectionTitle": {
+        "size": 16,
+        "weight": 600,
+        "lineHeight": 24
+      },
+      "body": {
+        "size": 14,
+        "weight": 400,
+        "lineHeight": 22
+      },
+      "bodyStrong": {
+        "size": 14,
+        "weight": 600,
+        "lineHeight": 22
+      },
+      "secondary": {
+        "size": 12,
+        "weight": 400,
+        "lineHeight": 18
+      },
+      "tableHeader": {
+        "size": 13,
+        "weight": 600,
+        "lineHeight": 20
+      },
+      "tableCell": {
+        "size": 13,
+        "weight": 400,
+        "lineHeight": 20
+      },
+      "sidebarItem": {
+        "size": 14,
+        "weight": 500,
+        "lineHeight": 22
+      },
+      "sidebarSection": {
+        "size": 12,
+        "weight": 600,
+        "lineHeight": 18
+      }
+    },
+    "radius": {
+      "xs": 4,
+      "sm": 6,
+      "md": 8,
+      "pill": 999
+    },
+    "spacing": {
+      "xxs": 4,
+      "xs": 6,
+      "sm": 8,
+      "md": 12,
+      "lg": 16,
+      "xl": 20,
+      "xxl": 24
+    },
+    "border": {
+      "width": 1,
+      "focusWidth": 2
+    },
+    "control": {
+      "standardHeight": 36,
+      "compactHeight": 34,
+      "expandedHeight": 36,
+      "buttonHorizontalPadding": 14,
+      "buttonMinWidth": 68,
+      "inputHorizontalPadding": 12,
+      "iconSize": 16,
+      "checkboxSize": 18,
+      "gap": 8
+    },
+    "table": {
+      "headerHeight": 42,
+      "rowHeight": 46,
+      "compactHeaderHeight": 38,
+      "compactRowHeight": 42,
+      "cellPaddingX": 12,
+      "cellPaddingY": 8,
+      "gridLineWidth": 1
+    },
+    "shadow": {
+      "enabled": false,
+      "note": "Use border hierarchy instead of large web-style shadows. A very subtle 1px ambient shadow is allowed only where AntdUI already provides it."
+    }
+  },
+  "appShell": {
+    "windowTitleBar": {
+      "height": 44,
+      "appName": "简易图书管理系统  BOOK DESK",
+      "background": "#F7FBFF"
+    },
+    "sidebar": {
+      "width": 228,
+      "compactWidth": 208,
+      "expandedWidth": 232,
+      "minWidth": 200,
+      "maxWidth": 240,
+      "horizontalPadding": 10,
+      "topPadding": 14,
+      "bottomStatusHeight": 72,
+      "sectionLabelTopGap": 18,
+      "sectionLabelBottomGap": 6,
+      "itemHeight": 46,
+      "itemRadius": 6,
+      "itemHorizontalPadding": 12,
+      "iconColumnWidth": 28,
+      "selectedIndicatorWidth": 3,
+      "scrollbarWidth": 6,
+      "selectedBehavior": "Selected row background uses selectedNavBackground and a 3px primary left indicator."
+    },
+    "pageHeader": {
+      "height": 64,
+      "compactHeight": 56,
+      "horizontalPadding": 16,
+      "titleIconSize": 22,
+      "titleIconGap": 10,
+      "titleSize": 20,
+      "compactTitleSize": 18,
+      "statusControlWidth": 148,
+      "statusControlHeight": 36
+    },
+    "content": {
+      "paddingX": 12,
+      "paddingY": 12,
+      "compactPaddingX": 10,
+      "compactPaddingY": 8,
+      "sectionGap": 12,
+      "compactSectionGap": 8,
+      "background": "#F5F7FA"
+    },
+    "footerStatusBar": {
+      "height": 28,
+      "horizontalPadding": 16,
+      "fontSize": 11,
+      "background": "#F8FAFC"
+    }
+  },
+  "responsiveProfiles": {
+    "compact": {
+      "when": "clientWidth <= 1440 OR clientHeight <= 800",
+      "sidebarWidth": 208,
+      "pageHeaderHeight": 56,
+      "pageTitleSize": 18,
+      "contentPaddingX": 10,
+      "contentPaddingY": 8,
+      "sectionGap": 8,
+      "controlHeight": 34,
+      "buttonHorizontalPadding": 10,
+      "controlGap": 6,
+      "tableHeaderHeight": 38,
+      "tableRowHeight": 42,
+      "bodyFontSize": 13,
+      "tableFontSize": 12,
+      "secondaryFontSize": 11,
+      "rules": [
+        "Shrink margins and gaps before reducing font size.",
+        "Never shrink standard controls below 32px height.",
+        "Toolbar actions may wrap to a second row if required.",
+        "Long helper text may collapse to one line or hide when explicitly marked optional.",
+        "Tables should compress flexible columns before enabling horizontal scroll.",
+        "Primary actions must remain visible without scrolling."
+      ]
+    },
+    "standard": {
+      "when": "1441 <= clientWidth < 2200 AND clientHeight > 800",
+      "sidebarWidth": 228,
+      "pageHeaderHeight": 64,
+      "pageTitleSize": 20,
+      "contentPaddingX": 12,
+      "contentPaddingY": 12,
+      "sectionGap": 12,
+      "controlHeight": 36,
+      "buttonHorizontalPadding": 14,
+      "controlGap": 8,
+      "tableHeaderHeight": 42,
+      "tableRowHeight": 46,
+      "bodyFontSize": 14,
+      "tableFontSize": 13,
+      "secondaryFontSize": 12
+    },
+    "expanded": {
+      "when": "clientWidth >= 2200",
+      "sidebarWidth": 232,
+      "pageHeaderHeight": 64,
+      "pageTitleSize": 20,
+      "contentPaddingX": 16,
+      "contentPaddingY": 14,
+      "sectionGap": 12,
+      "controlHeight": 36,
+      "buttonHorizontalPadding": 14,
+      "controlGap": 8,
+      "tableHeaderHeight": 42,
+      "tableRowHeight": 46,
+      "bodyFontSize": 14,
+      "tableFontSize": 13,
+      "secondaryFontSize": 12,
+      "rules": [
+        "Do not scale buttons, row heights, sidebar, or fonts indefinitely.",
+        "Give additional width to search fields, tables, and content panes.",
+        "Use the extra width to reduce truncation rather than increasing whitespace."
+      ]
+    }
+  },
+  "components": {
+    "toolbarCard": {
+      "background": "#FFFFFF",
+      "borderColor": "#E5EAF0",
+      "borderWidth": 1,
+      "radius": 8,
+      "padding": 14,
+      "compactPadding": 10
+    },
+    "searchInput": {
+      "height": "$tokens.control.standardHeight",
+      "radius": 6,
+      "borderColor": "#D8DEE8",
+      "focusBorderColor": "#1677FF",
+      "focusRing": {
+        "color": "#E6F4FF",
+        "width": 2
+      },
+      "placeholderColor": "#A7AFBA",
+      "minWidth": 260
+    },
+    "button": {
+      "height": "$tokens.control.standardHeight",
+      "radius": 6,
+      "fontSize": 14,
+      "minWidth": 68,
+      "primary": {
+        "background": "#1677FF",
+        "foreground": "#FFFFFF"
+      },
+      "default": {
+        "background": "#FFFFFF",
+        "foreground": "#1F2329",
+        "borderColor": "#D8DEE8"
+      }
+    },
+    "metricChip": {
+      "height": 34,
+      "compactHeight": 30,
+      "radius": 4,
+      "paddingX": 14,
+      "gap": 6
+    },
+    "table": {
+      "background": "#FFFFFF",
+      "headerBackground": "#FAFBFC",
+      "selectedBackground": "#EAF4FF",
+      "borderColor": "#E5EAF0",
+      "emptyState": {
+        "iconSize": 56,
+        "titleSize": 13,
+        "bodySize": 12,
+        "verticalGap": 6
+      }
+    }
+  },
+  "navigation": {
+    "sections": [
+      {
+        "name": "工作台",
+        "items": [
+          "工作台",
+          "经营概览"
+        ]
+      },
+      {
+        "name": "核心业务",
+        "items": [
+          "销售开单",
+          "图书资料",
+          "采购入库",
+          "库存管理",
+          "单据中心"
+        ]
+      },
+      {
+        "name": "经营管理",
+        "items": [
+          "供应商",
+          "报表与导出"
+        ]
+      },
+      {
+        "name": "系统",
+        "items": [
+          "备份与恢复",
+          "使用帮助",
+          "系统设置"
+        ]
+      }
+    ]
+  },
+  "pages": {
+    "bookData": {
+      "routeName": "图书资料",
+      "selectedNav": "图书资料",
+      "pageIconSize": 22,
+      "layout": {
+        "type": "vertical",
+        "gap": 12,
+        "toolbar": {
+          "height": 138,
+          "compactHeight": 116,
+          "padding": 14,
+          "compactPadding": 10,
+          "rows": [
+            {
+              "name": "searchActions",
+              "height": 36,
+              "layout": "horizontal",
+              "items": [
+                {
+                  "type": "label",
+                  "text": "搜索",
+                  "width": 56
+                },
+                {
+                  "type": "input",
+                  "name": "search",
+                  "flex": 1,
+                  "minWidth": 360,
+                  "placeholder": "输入店内编码、ISBN、书名、作者或出版社"
+                },
+                {
+                  "type": "button",
+                  "text": "查询",
+                  "width": 72
+                },
+                {
+                  "type": "button",
+                  "text": "新增图书",
+                  "variant": "primary",
+                  "width": 124
+                },
+                {
+                  "type": "button",
+                  "text": "编辑资料",
+                  "width": 116
+                },
+                {
+                  "type": "checkbox",
+                  "text": "包含停用",
+                  "width": 102
+                }
+              ],
+              "gap": 8
+            },
+            {
+              "name": "summary",
+              "height": 34,
+              "topGap": 14,
+              "items": [
+                {
+                  "type": "metric",
+                  "text": "结果 1",
+                  "tone": "primary",
+                  "width": 96
+                },
+                {
+                  "type": "metric",
+                  "text": "低库存 1",
+                  "tone": "warning",
+                  "width": 112
+                }
+              ],
+              "gap": 12
+            }
+          ]
+        },
+        "tableRegion": {
+          "flex": 1,
+          "minHeight": 300,
+          "horizontalScrollPolicy": "last_resort",
+          "columns": [
+            {
+              "key": "storeCode",
+              "title": "店内编码",
+              "width": 108,
+              "minWidth": 82,
+              "flex": 0
+            },
+            {
+              "key": "isbn",
+              "title": "ISBN",
+              "width": 110,
+              "minWidth": 92,
+              "flex": 0
+            },
+            {
+              "key": "title",
+              "title": "书名",
+              "width": 170,
+              "minWidth": 140,
+              "flex": 2
+            },
+            {
+              "key": "author",
+              "title": "作者",
+              "width": 110,
+              "minWidth": 90,
+              "flex": 1
+            },
+            {
+              "key": "publisher",
+              "title": "出版社",
+              "width": 105,
+              "minWidth": 86,
+              "flex": 1
+            },
+            {
+              "key": "category",
+              "title": "分类",
+              "width": 92,
+              "minWidth": 78,
+              "flex": 1
+            },
+            {
+              "key": "publishYear",
+              "title": "出版年",
+              "width": 86,
+              "minWidth": 72,
+              "flex": 0
+            },
+            {
+              "key": "binding",
+              "title": "装帧",
+              "width": 78,
+              "minWidth": 66,
+              "flex": 0
+            },
+            {
+              "key": "shelf",
+              "title": "货架位",
+              "width": 92,
+              "minWidth": 78,
+              "flex": 1
+            },
+            {
+              "key": "price",
+              "title": "销售价格",
+              "width": 102,
+              "minWidth": 90,
+              "flex": 0,
+              "align": "right"
+            },
+            {
+              "key": "stock",
+              "title": "库存",
+              "width": 72,
+              "minWidth": 62,
+              "flex": 0,
+              "align": "right"
+            },
+            {
+              "key": "enabled",
+              "title": "启用",
+              "width": 94,
+              "minWidth": 82,
+              "flex": 0
+            }
+          ]
+        }
+      },
+      "responsive": {
+        "compact": [
+          "Toolbar row may wrap after the search input.",
+          "Search input stays on the first row and remains at least 360px wide.",
+          "Action buttons use compact height 34 and horizontal padding 10.",
+          "Metric row top gap reduces to 10.",
+          "Reduce table flexible columns first: title, author, publisher, category, shelf.",
+          "Do not hide columns at 1366x768."
+        ]
+      }
+    },
+    "purchaseReceiving": {
+      "routeName": "采购入库",
+      "selectedNav": "采购入库",
+      "pageIconSize": 22,
+      "layout": {
+        "type": "vertical",
+        "gap": 12,
+        "toolbar": {
+          "height": 148,
+          "compactHeight": 126,
+          "padding": 14,
+          "compactPadding": 10,
+          "rows": [
+            {
+              "name": "supplierActions",
+              "height": 36,
+              "items": [
+                {
+                  "type": "label",
+                  "text": "供应商",
+                  "width": 72
+                },
+                {
+                  "type": "select",
+                  "name": "supplier",
+                  "width": 304,
+                  "minWidth": 240,
+                  "value": "不区分（默认）"
+                },
+                {
+                  "type": "spacer",
+                  "flex": 1
+                },
+                {
+                  "type": "button",
+                  "text": "新入库单",
+                  "width": 112
+                },
+                {
+                  "type": "button",
+                  "text": "清空",
+                  "width": 78
+                }
+              ],
+              "gap": 8
+            },
+            {
+              "name": "scanSearch",
+              "height": 36,
+              "topGap": 12,
+              "items": [
+                {
+                  "type": "label",
+                  "text": "扫码 / 搜索",
+                  "width": 94
+                },
+                {
+                  "type": "input",
+                  "name": "scanSearch",
+                  "flex": 1,
+                  "minWidth": 400,
+                  "placeholder": "扫码或输入店内编码 / ISBN / 书名 / 作者"
+                },
+                {
+                  "type": "button",
+                  "text": "加入",
+                  "variant": "primary",
+                  "width": 108
+                },
+                {
+                  "type": "button",
+                  "text": "选择图书",
+                  "width": 118
+                }
+              ],
+              "gap": 8
+            }
+          ]
+        },
+        "detailPanel": {
+          "flex": 1,
+          "minHeight": 300,
+          "headerHeight": 52,
+          "title": "入库明细",
+          "rightHint": "数量和进价可直接编辑",
+          "rightAction": "移除选中",
+          "columns": [
+            {
+              "key": "select",
+              "title": "",
+              "width": 42,
+              "minWidth": 38
+            },
+            {
+              "key": "index",
+              "title": "序号",
+              "width": 60,
+              "minWidth": 54
+            },
+            {
+              "key": "storeCode",
+              "title": "店内编码",
+              "width": 110,
+              "minWidth": 90
+            },
+            {
+              "key": "isbn",
+              "title": "ISBN",
+              "width": 118,
+              "minWidth": 96
+            },
+            {
+              "key": "title",
+              "title": "书名",
+              "width": 170,
+              "minWidth": 130,
+              "flex": 2
+            },
+            {
+              "key": "author",
+              "title": "作者",
+              "width": 110,
+              "minWidth": 86
+            },
+            {
+              "key": "publisher",
+              "title": "出版社",
+              "width": 110,
+              "minWidth": 86
+            },
+            {
+              "key": "quantity",
+              "title": "数量",
+              "width": 82,
+              "minWidth": 70,
+              "align": "right"
+            },
+            {
+              "key": "cost",
+              "title": "进价（元）",
+              "width": 112,
+              "minWidth": 94,
+              "align": "right"
+            },
+            {
+              "key": "subtotal",
+              "title": "小计（元）",
+              "width": 112,
+              "minWidth": 94,
+              "align": "right"
+            },
+            {
+              "key": "actions",
+              "title": "操作",
+              "width": 96,
+              "minWidth": 82
+            }
+          ],
+          "emptyState": {
+            "title": "当前入库单为空",
+            "body": "请扫码、搜索或选择图书"
+          }
+        },
+        "noteRow": {
+          "height": 48,
+          "compactHeight": 42,
+          "labelWidth": 64,
+          "inputHeight": 36,
+          "placeholder": "可选：填写到货批次、物流或其他备注"
+        },
+        "summaryBar": {
+          "height": 72,
+          "compactHeight": 62,
+          "metrics": [
+            {
+              "text": "图书项 0",
+              "width": 110
+            },
+            {
+              "text": "入库册数 0",
+              "width": 126
+            },
+            {
+              "text": "采购金额 ¥0.00",
+              "width": 214,
+              "emphasis": "primary"
+            }
+          ],
+          "primaryAction": {
+            "text": "确认入库",
+            "width": 146,
+            "height": 40
+          }
+        }
+      },
+      "responsive": {
+        "compact": [
+          "Supplier row remains one row; shrink supplier select to 240px if needed.",
+          "Scan/search row keeps search input flexible and at least 360px.",
+          "Table column compression order: publisher, author, title, storeCode, isbn.",
+          "Summary metrics remain one row; reduce width/padding before wrapping.",
+          "Do not place the primary Confirm button below the fold."
+        ]
+      }
+    },
+    "inventory": {
+      "routeName": "库存管理",
+      "selectedNav": "库存管理",
+      "pageIconSize": 22,
+      "layout": {
+        "type": "vertical",
+        "gap": 12,
+        "toolbar": {
+          "height": 136,
+          "compactHeight": 112,
+          "padding": 14,
+          "compactPadding": 10,
+          "searchRow": {
+            "height": 36,
+            "items": [
+              {
+                "type": "label",
+                "text": "综合搜索",
+                "width": 80
+              },
+              {
+                "type": "input",
+                "name": "search",
+                "flex": 1,
+                "minWidth": 380,
+                "placeholder": "按编码、ISBN、书名、作者、分类或货架位搜索"
+              },
+              {
+                "type": "button",
+                "text": "查询",
+                "width": 72
+              },
+              {
+                "type": "button",
+                "text": "库存调整",
+                "variant": "primary",
+                "width": 118
+              },
+              {
+                "type": "checkbox",
+                "text": "仅看低库存",
+                "width": 120
+              }
+            ],
+            "gap": 8
+          },
+          "summaryRow": {
+            "height": 34,
+            "topGap": 12,
+            "items": [
+              {
+                "type": "metric",
+                "text": "结果 1",
+                "tone": "primary",
+                "width": 96
+              },
+              {
+                "type": "metric",
+                "text": "低库存 1",
+                "tone": "warning",
+                "width": 108
+              },
+              {
+                "type": "metric",
+                "text": "合计库存 3 册",
+                "tone": "neutral",
+                "width": 138
+              },
+              {
+                "type": "helperText",
+                "text": "库存变化必须来自业务单据或带原因的库存调整。",
+                "flex": 1,
+                "optionalInCompact": true
+              }
+            ],
+            "gap": 10
+          }
+        },
+        "split": {
+          "direction": "horizontal",
+          "gap": 12,
+          "left": {
+            "type": "table",
+            "flex": 1,
+            "minWidth": 720,
+            "columns": [
+              {
+                "key": "storeCode",
+                "title": "店内编码",
+                "width": 108,
+                "minWidth": 88
+              },
+              {
+                "key": "isbn",
+                "title": "ISBN",
+                "width": 116,
+                "minWidth": 96
+              },
+              {
+                "key": "title",
+                "title": "书名",
+                "width": 180,
+                "minWidth": 140,
+                "flex": 2
+              },
+              {
+                "key": "author",
+                "title": "作者",
+                "width": 112,
+                "minWidth": 92
+              },
+              {
+                "key": "category",
+                "title": "分类",
+                "width": 96,
+                "minWidth": 82
+              },
+              {
+                "key": "shelf",
+                "title": "货架位",
+                "width": 100,
+                "minWidth": 84
+              },
+              {
+                "key": "stock",
+                "title": "当前库存",
+                "width": 100,
+                "minWidth": 90,
+                "align": "right"
+              }
+            ],
+            "footerHint": "显示 1 个启用品种 · 低库存阈值 ≤ 3 册 · 表头可拖动调整宽度"
+          },
+          "right": {
+            "type": "detailPane",
+            "width": 330,
+            "minWidth": 286,
+            "maxWidth": 360,
+            "title": "库存详情",
+            "action": "库存调整",
+            "rowHeight": 64,
+            "labelWidth": 88,
+            "fields": [
+              "书名",
+              "店内编码",
+              "ISBN",
+              "作者",
+              "分类",
+              "货架位",
+              "当前库存"
+            ]
+          }
+        }
+      },
+      "responsive": {
+        "compact": [
+          "At main-content width >= 1020px keep horizontal split and set detail pane to 286px.",
+          "At main-content width < 1020px switch to vertical stack: inventory table first, detail pane below.",
+          "In vertical stack, detail fields use two columns when width >= 900px, otherwise one column.",
+          "Optional helper text in summary row may hide before any primary control moves.",
+          "Never shrink the detail pane below 286px while it is in side-by-side mode."
+        ]
+      }
+    },
+    "documents": {
+      "routeName": "单据中心",
+      "selectedNav": "单据中心",
+      "pageIconSize": 22,
+      "layout": {
+        "type": "vertical",
+        "gap": 12,
+        "filterCard": {
+          "height": 236,
+          "compactHeight": 184,
+          "padding": 14,
+          "compactPadding": 10,
+          "topAction": {
+            "text": "从选中单据发起退货",
+            "width": 184,
+            "height": 36,
+            "align": "right"
+          },
+          "filterRow": {
+            "height": 58,
+            "items": [
+              {
+                "type": "field",
+                "label": "类型",
+                "control": "select",
+                "width": 210,
+                "value": "销售单"
+              },
+              {
+                "type": "field",
+                "label": "从",
