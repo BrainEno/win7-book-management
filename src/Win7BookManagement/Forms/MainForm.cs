@@ -65,14 +65,13 @@ namespace Win7BookManagement.Forms
                 AutoSize = false,
                 Height = BookDeskUiSpec.Standard.PageHeaderHeight,
                 MinimumSize = new Size(0, BookDeskUiSpec.Compact.PageHeaderHeight),
-                ColumnCount = 2,
+                ColumnCount = 1,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(16, 6, 16, 6),
                 Margin = Padding.Empty
             };
             _header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             _pageTitle = new AntdUI.Label
             {
@@ -90,10 +89,7 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
 
-            var offlineBadge = CreateOfflineBadge();
-
             _header.Controls.Add(_pageTitle, 0, 0);
-            _header.Controls.Add(offlineBadge, 1, 0);
 
             _status = new Label
             {
@@ -513,24 +509,6 @@ namespace Win7BookManagement.Forms
             {
                 _syncingNavigation = false;
             }
-        }
-
-        private static Control CreateOfflineBadge()
-        {
-            return new Label
-            {
-                Text = "本机离线",
-                AutoSize = false,
-                Width = 84,
-                Height = 28,
-                MinimumSize = new Size(84, 28),
-                Anchor = AnchorStyles.Right,
-                TextAlign = ContentAlignment.MiddleRight,
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(9F, FontStyle.Bold),
-                Margin = new Padding(10, 0, 0, 0),
-                Padding = Padding.Empty
-            };
         }
 
         private static string ResolvePageIcon(string key)

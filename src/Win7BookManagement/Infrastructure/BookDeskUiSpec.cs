@@ -135,8 +135,6 @@ namespace Win7BookManagement.Infrastructure
 
         public const int ShellStatusHeight = 58;
         public const int SidebarFooterHeight = 72;
-        public const int OfflineBadgeWidth = 148;
-        public const int OfflineBadgeHeight = 36;
         public const int PageTitleIconSize = 22;
 
         public const int BookToolbarStandardHeight = 138;
