@@ -71,7 +71,7 @@
 
 ### 控件高度与字体度量
 
-- 已迁移到 `docs/ui-spec.json` / `BookDeskUiSpec` 的原型页以 36 logical px 作为 96 DPI 标准 Input / Button 高度；Compact 档使用 34px，并始终保证文字和图标完整显示。尚未迁移的旧页面继续沿用其现有安全高度，避免一次性改动造成回归。
+- 已迁移到 `docs/ui-spec.json` / `BookDeskUiSpec` 的原型页经 1586×992 原型与 CI 实测截图逐像素复核后，以 48 logical px 作为 96 DPI Standard / Expanded 的 Input / Button 高度；1366×768 的 Compact 档使用 44px。尚未迁移的旧页面继续沿用其现有安全高度，避免一次性改动造成回归。
 - 单行 TextBox 不再强制 AutoSize=false 或硬拉到 38px。原生 WinForms 单行 TextBox 必须保留系统文本基线，外层布局负责提供足够的上下空间。
 - ComboBox / NumericUpDown / DateTimePicker 使用内容驱动的最小高度，不能依靠过小的固定 TableLayout 行。
 - AntdUI Table 行与表头的最小高度根据实际字体度量计算；38 / 40px 只作为 96 DPI 下的最低基线。
@@ -145,9 +145,9 @@
 
 “图书资料”已存在确认原型，因此该页的视觉验收优先级高于早期通用布局设想。业务字段仍以代码为准，不为匹配截图删除能力。
 
-- Standard 96 DPI 基线：Sidebar 228px、Shell Header 64px、Shell Status 28px；Compact 为 208 / 56 / 28px，Expanded Sidebar 为 232px。
+- Standard 96 DPI 基线：Sidebar 230px、Shell Header 68px、Shell Status 28px；Compact 为 218 / 64 / 28px，Expanded Sidebar 为 232px。
 - Standard 页边距 12px；Compact 为左右 10 / 上下 8px；Expanded 为左右 16 / 上下 14px；查询区与表格间隔分别为 12 / 8 / 12px。
-- Input / Button：Standard / Expanded 36px，Compact 34px；统计 chip：34 / 30px；Table Header / Row：Standard 42 / 46px，Compact 38 / 42px。
+- Input / Button：Standard / Expanded 48px，Compact 44px；统计 chip：36 / 34px；Table Header / Row：Standard 52 / 52px，Compact 48 / 48px。
 - 页面标题 Standard / Expanded 20px、Compact 18px；标题仅用于导航确认，不做 Banner。
 - 查询区圆角 8px、1px 边框，不使用大阴影；查询按钮与 Search Input 必须同高且几何中线对齐。
 - 标准与大窗口以单一高密度主表格为视觉主区域；早期详情面板能力只保留在 3000px 以上的异常超宽工作区，不进入 1366×768 至 2560×1440 验收矩阵。
@@ -176,6 +176,14 @@ Win7 真机 smoke test 仍是发布前最终门槛。
 
 
 ## 10. 第二阶段重构范围
+
+### 库存管理
+
+- 原型基准下保持“左侧库存表格 + 右侧库存详情”双栏，不再在 1366×768 以上自动隐藏详情面板。
+- Standard 详情栏宽度 460px；Compact 详情栏 340px；两栏间 gap 跟随 SectionGap。
+- 搜索、查询、库存调整、仅看低库存必须保持同一基线；查询按钮约 78px，顶部库存调整按钮约 140px。
+- 表格 7 个核心字段在 1366×768 及以上均保持可见；当页面实际内容宽度低于 1020px 时，详情区改为下方堆叠而不是挤压表格。
+- 详情面板主字段严格保持书名、店内编码、ISBN、作者、分类、货架位、当前库存；低库存阈值继续在底部摘要中显示，不重复占用详情字段高度。
 
 ### 采购入库
 
