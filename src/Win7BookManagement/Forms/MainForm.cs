@@ -12,8 +12,9 @@ namespace Win7BookManagement.Forms
         private readonly Panel _sidebar;
         private readonly AntdUI.Menu _navigation;
         private readonly Panel _contentHost;
-        private readonly Label _pageTitle;
+        private readonly AntdUI.Label _pageTitle;
         private readonly Label _status;
+        private readonly Label _recordStatus;
         private readonly Dictionary<string, AntdUI.MenuItem> _menuItems =
             new Dictionary<string, AntdUI.MenuItem>();
 
@@ -27,7 +28,7 @@ namespace Win7BookManagement.Forms
             _services = services;
             UiTheme.ConfigureForm(this);
 
-            Text = "简易图书管理系统";
+            Text = "简易图书管理系统  BOOK DESK";
             StartPosition = FormStartPosition.CenterScreen;
             Width = 1400;
             Height = 860;
@@ -38,19 +39,17 @@ namespace Win7BookManagement.Forms
             _sidebar = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 240,
+                Width = UiTheme.SidebarWidth,
                 BackColor = UiTheme.NavigationSurface,
                 Padding = Padding.Empty
             };
 
-            var brand = CreateBrand();
             _navigation = CreateNavigation();
             BuildNavigation();
             var sidebarFoot = CreateSidebarFooter();
 
             _sidebar.Controls.Add(_navigation);
             _sidebar.Controls.Add(sidebarFoot);
-            _sidebar.Controls.Add(brand);
 
             var main = new Panel
             {
@@ -61,57 +60,81 @@ namespace Win7BookManagement.Forms
             var header = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, 50),
+                AutoSize = false,
+                Height = UiTheme.ShellHeaderHeight,
+                MinimumSize = new Size(0, UiTheme.ShellHeaderHeight),
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(18, 5, 18, 5),
+                Padding = new Padding(23, 8, 18, 8),
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            _pageTitle = new Label
+            _pageTitle = new AntdUI.Label
             {
-                AutoSize = true,
+                AutoSize = false,
                 Dock = DockStyle.Fill,
-                Font = UiTheme.Font(12.5F, FontStyle.Bold),
+                Font = UiTheme.Font(16F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Text = "经营概览",
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
+                PrefixSvg = "BarChartFilled",
+                PrefixColor = UiTheme.Accent,
+                IconRatio = 1.1F,
+                IconGap = 10,
                 Margin = Padding.Empty
             };
 
-            var offlineBadge = new Label
-            {
-                Text = "●  本机离线",
-                AutoSize = true,
-                Padding = new Padding(9, 4, 9, 4),
-                Margin = new Padding(12, 1, 0, 0),
-                BackColor = UiTheme.AccentSoft,
-                ForeColor = UiTheme.Success,
-                Font = UiTheme.Font(8F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
+            var offlineBadge = CreateOfflineBadge();
 
             header.Controls.Add(_pageTitle, 0, 0);
             header.Controls.Add(offlineBadge, 1, 0);
 
             _status = new Label
             {
-                AutoSize = true,
-                Dock = DockStyle.Bottom,
-                MinimumSize = new Size(0, 26),
+                AutoSize = false,
+                Dock = DockStyle.Fill,
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextSecondary,
-                Padding = new Padding(14, 4, 8, 0),
-                Font = UiTheme.Font(7.5F),
+                Padding = new Padding(14, 0, 8, 0),
+                Font = UiTheme.Font(7.8F),
+                TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
-                Text = "完全离线 · 数据库：" + _services.Database.DatabasePath
+                Text = "完全离线  |  数据库：" + _services.Database.DatabasePath
             };
+
+            _recordStatus = new Label
+            {
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                BackColor = UiTheme.SurfaceMuted,
+                ForeColor = UiTheme.TextSecondary,
+                Padding = new Padding(8, 0, 14, 0),
+                Font = UiTheme.Font(7.8F),
+                TextAlign = ContentAlignment.MiddleRight,
+                AutoEllipsis = true,
+                Text = ""
+            };
+
+            var statusBar = new TableLayoutPanel
+            {
+                Dock = DockStyle.Bottom,
+                Height = UiTheme.ShellStatusHeight,
+                MinimumSize = new Size(0, UiTheme.ShellStatusHeight),
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = UiTheme.SurfaceMuted,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            statusBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            statusBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            statusBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            statusBar.Controls.Add(_status, 0, 0);
+            statusBar.Controls.Add(_recordStatus, 1, 0);
 
             _contentHost = new Panel
             {
@@ -121,7 +144,7 @@ namespace Win7BookManagement.Forms
             };
 
             main.Controls.Add(_contentHost);
-            main.Controls.Add(_status);
+            main.Controls.Add(statusBar);
             main.Controls.Add(header);
 
             Controls.Add(main);
@@ -133,47 +156,13 @@ namespace Win7BookManagement.Forms
             FormClosing += HandleFormClosing;
             Shown += delegate
             {
-                Navigate("dashboard");
+                if (string.IsNullOrWhiteSpace(_currentKey))
+                    Navigate("dashboard");
                 if (!_services.Settings.IsOnboardingCompleted())
                     BeginInvoke(new Action(StartOnboardingGuide));
             };
 
             ApplyResponsiveLayout();
-        }
-
-        private static Panel CreateBrand()
-        {
-            var brand = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 82,
-                BackColor = UiTheme.NavigationSurface,
-                Padding = new Padding(20, 13, 16, 8)
-            };
-
-            var title = new Label
-            {
-                Text = "BOOK DESK",
-                AutoSize = true,
-                Dock = DockStyle.Top,
-                ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(14F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            var sub = new Label
-            {
-                Text = "独立书店 · 离线进销存",
-                AutoSize = true,
-                Dock = DockStyle.Top,
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.6F),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(0, 5, 0, 0)
-            };
-
-            brand.Controls.Add(sub);
-            brand.Controls.Add(title);
-            return brand;
         }
 
         private AntdUI.Menu CreateNavigation()
@@ -187,7 +176,16 @@ namespace Win7BookManagement.Forms
                 Unique = false,
                 BackColor = UiTheme.NavigationSurface,
                 Margin = Padding.Empty,
-                Padding = new Padding(8, 4, 8, 4)
+                Padding = new Padding(9, 14, 6, 8),
+                Radius = 6,
+                Gap = 16,
+                itemMargin = 2,
+                InlineIndent = 18,
+                IconRatio = 1.05F,
+                FocusMode = AntdUI.TFocusMode.Line,
+                FocusModeAlign = AntdUI.TAlignMini.Left,
+                FocusModeColor = UiTheme.Accent,
+                FocusModeSize = 3
             };
 
             menu.SelectChanged += HandleNavigationSelection;
@@ -196,43 +194,69 @@ namespace Win7BookManagement.Forms
 
         private void BuildNavigation()
         {
-            var workbench = AddGroup("工作台");
-            AddNavigation(workbench, "dashboard", "经营概览");
+            // The approved prototype treats "工作台" as a visual entry label,
+            // followed by the actual overview page, then expandable business groups.
+            AddRootLabel("工作台", "HomeOutlined");
+            AddRootNavigation("dashboard", "经营概览", "BarChartOutlined");
 
             var core = AddGroup("核心业务");
-            AddNavigation(core, "sales", "销售开单");
-            AddNavigation(core, "books", "图书资料");
-            AddNavigation(core, "purchase", "采购入库");
-            AddNavigation(core, "inventory", "库存管理");
-            AddNavigation(core, "documents", "单据中心");
+            AddNavigation(core, "sales", "销售开单", "FileAddOutlined");
+            AddNavigation(core, "books", "图书资料", "BookOutlined");
+            AddNavigation(core, "purchase", "采购入库", "ShoppingCartOutlined");
+            AddNavigation(core, "inventory", "库存管理", "InboxOutlined");
+            AddNavigation(core, "documents", "单据中心", "FileTextOutlined");
 
             var management = AddGroup("经营管理");
-            AddNavigation(management, "suppliers", "供应商");
-            AddNavigation(management, "reports", "报表与导出");
+            AddNavigation(management, "suppliers", "供应商", "UsergroupAddOutlined");
+            AddNavigation(management, "reports", "报表与导出", "BarChartOutlined");
 
             var system = AddGroup("系统");
-            AddNavigation(system, "backup", "备份与恢复");
-            AddNavigation(system, "help", "使用帮助");
-            AddNavigation(system, "settings", "系统设置");
+            AddNavigation(system, "backup", "备份与恢复", "DatabaseOutlined");
+            AddNavigation(system, "help", "使用帮助", "QuestionCircleOutlined");
+            AddNavigation(system, "settings", "系统设置", "SettingOutlined");
+        }
+
+        private void AddRootLabel(string text, string iconSvg)
+        {
+            _navigation.Items.Add(new AntdUI.MenuItem(text)
+            {
+                IconSvg = iconSvg,
+                Tag = null
+            });
+        }
+
+        private void AddRootNavigation(string key, string text, string iconSvg)
+        {
+            var item = new AntdUI.MenuItem(text)
+            {
+                ID = key,
+                Name = key,
+                Tag = key,
+                IconSvg = iconSvg
+            };
+            _navigation.Items.Add(item);
+            _menuItems[key] = item;
         }
 
         private AntdUI.MenuItem AddGroup(string text)
         {
             var group = new AntdUI.MenuItem(text)
             {
-                Expand = true
+                Expand = true,
+                Font = UiTheme.Font(8.2F, FontStyle.Bold)
             };
             _navigation.Items.Add(group);
             return group;
         }
 
-        private void AddNavigation(AntdUI.MenuItem parent, string key, string text)
+        private void AddNavigation(AntdUI.MenuItem parent, string key, string text, string iconSvg)
         {
             var item = new AntdUI.MenuItem(text)
             {
                 ID = key,
                 Name = key,
-                Tag = key
+                Tag = key,
+                IconSvg = iconSvg
             };
             parent.Sub.Add(item);
             _menuItems[key] = item;
@@ -263,7 +287,7 @@ namespace Win7BookManagement.Forms
             var footer = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 66,
+                Height = 110,
                 BackColor = UiTheme.NavigationSurface,
                 Padding = new Padding(20, 10, 12, 8)
             };
@@ -369,6 +393,19 @@ namespace Win7BookManagement.Forms
             _currentKey = key;
             _currentPage = child;
             _pageTitle.Text = title;
+            _pageTitle.PrefixSvg = ResolvePageIcon(key);
+            _recordStatus.Text = "";
+
+            var bookPage = child as BookListForm;
+            if (bookPage != null)
+            {
+                _recordStatus.Text = "共 0 条记录";
+                bookPage.ResultCountChanged += delegate
+                {
+                    _recordStatus.Text = "共 " + bookPage.ResultCount + " 条记录";
+                };
+            }
+
             UpdateNavigationState();
 
             child.TopLevel = false;
@@ -474,29 +511,101 @@ namespace Win7BookManagement.Forms
             }
         }
 
+        private static Control CreateOfflineBadge()
+        {
+            var host = new AntdUI.Panel
+            {
+                AutoSize = false,
+                Width = 154,
+                Height = 40,
+                MinimumSize = new Size(154, 40),
+                Back = UiTheme.Surface,
+                BorderWidth = 1F,
+                BorderColor = UiTheme.Border,
+                Radius = 6,
+                Margin = new Padding(12, 5, 0, 5),
+                Padding = new Padding(10, 0, 8, 0)
+            };
+
+            var row = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight,
+                BackColor = Color.Transparent,
+                Margin = Padding.Empty,
+                Padding = new Padding(0, 7, 0, 0)
+            };
+            row.Controls.Add(new Label
+            {
+                Text = "●",
+                AutoSize = true,
+                ForeColor = UiTheme.Success,
+                Font = UiTheme.Font(9.5F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 7, 0)
+            });
+            row.Controls.Add(new Label
+            {
+                Text = "本机离线",
+                AutoSize = true,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(9.5F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 8, 0)
+            });
+            row.Controls.Add(new Label
+            {
+                Text = "⌄",
+                AutoSize = true,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(9F),
+                Margin = Padding.Empty
+            });
+            host.Controls.Add(row);
+            return host;
+        }
+
+        private static string ResolvePageIcon(string key)
+        {
+            switch (key)
+            {
+                case "books": return "BookFilled";
+                case "purchase": return "ShoppingCartOutlined";
+                case "inventory": return "InboxOutlined";
+                case "documents": return "FileTextOutlined";
+                case "sales": return "FileAddOutlined";
+                case "suppliers": return "UsergroupAddOutlined";
+                case "reports": return "BarChartOutlined";
+                case "backup": return "DatabaseOutlined";
+                case "help": return "QuestionCircleOutlined";
+                case "settings": return "SettingOutlined";
+                default: return "BarChartOutlined";
+            }
+        }
+
         private void ApplyResponsiveLayout()
         {
             var width = ClientSize.Width;
 
             if (width < 1080)
-                _sidebar.Width = 180;
+                _sidebar.Width = UiTheme.SidebarCompactWidth;
             else if (width < 1360)
-                _sidebar.Width = 198;
+                _sidebar.Width = UiTheme.SidebarMediumWidth;
             else
-                _sidebar.Width = 220;
+                _sidebar.Width = UiTheme.SidebarWidth;
 
             _navigation.Font = UiTheme.Font(
-                width < 1080 ? 8.25F : width < 1360 ? 8.6F : 9F);
+                width < 1080 ? 9F : width < 1360 ? 10F : 11F);
 
             _pageTitle.Font = UiTheme.Font(
-                width < 1080 ? 11F : width < 1360 ? 11.5F : 12.5F,
+                width < 1080 ? 12.5F : width < 1360 ? 14F : 16F,
                 FontStyle.Bold);
 
             _contentHost.Padding = width < 1080
-                ? new Padding(6, 6, 6, 6)
+                ? new Padding(UiTheme.PagePaddingCompact)
                 : width < 1360
-                    ? new Padding(8, 7, 8, 7)
-                    : new Padding(10, 8, 10, 8);
+                    ? new Padding(UiTheme.PagePaddingMedium, 9, UiTheme.PagePaddingMedium, 9)
+                    : new Padding(UiTheme.PagePadding, 13, 18, 12);
 
             if (_currentPage != null)
                 UiTheme.ApplyResponsiveDensity(

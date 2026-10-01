@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Win7BookManagement.Forms;
 using Win7BookManagement.Models;
@@ -13,6 +14,19 @@ namespace Win7BookManagement.Infrastructure
 {
     public static class UiSnapshotGenerator
     {
+        private const uint SwpNoZOrder = 0x0004;
+        private const uint SwpNoActivate = 0x0010;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int x,
+            int y,
+            int cx,
+            int cy,
+            uint flags);
+
         public static int Run(string outputDirectory)
         {
             var root = Path.Combine(
@@ -90,6 +104,76 @@ namespace Win7BookManagement.Infrastructure
                     new Size(1800, 900),
                     true,
                     null);
+
+                // Full-shell book-master captures are the visual acceptance
+                // matrix for the approved prototype. MainForm may be hosted
+                // off-screen on CI when the requested canvas exceeds the
+                // runner's physical desktop, but the complete WinForms client
+                // hierarchy is still laid out and rendered at the target size.
+                Capture(
+                    outputDirectory,
+                    "30-book-shell-1366x768.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1366, 768),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "31-book-shell-1600x900.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1600, 900),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "32-book-shell-1920x1080.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1920, 1080),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "33-book-shell-2560x1440.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(2560, 1440),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "34-book-shell-prototype-client-1586x945.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1586, 945),
+                    false,
+                    delegate(Form form) { FilterBookMaster(form, books[5].Title); });
 
                 var firstBook = services.Books.GetById(books[0].Id);
                 Capture(
@@ -414,19 +498,19 @@ namespace Win7BookManagement.Infrastructure
                 },
                 new Book
                 {
-                    SelfCode = "BK-0006",
-                    Isbn = "9780000000106",
-                    Title = "诗歌的声音",
-                    Author = "陈野",
-                    Publisher = "远岸出版社",
-                    Category = "诗歌",
-                    PublicationYear = "2022",
-                    Edition = "1版1印",
-                    Binding = "平装",
-                    ShelfCode = "A-05-2",
-                    ListPriceCent = 4200,
+                    SelfCode = "001",
+                    Isbn = "",
+                    Title = "羸弱的恶",
+                    Author = "多罗",
+                    Publisher = "",
+                    Category = "",
+                    PublicationYear = "",
+                    Edition = "",
+                    Binding = "",
+                    ShelfCode = "",
+                    ListPriceCent = 3600,
                     DefaultPurchasePriceCent = 2200,
-                    SalePriceCent = 3900,
+                    SalePriceCent = 3600,
                     Note = ""
                 },
                 new Book
@@ -469,7 +553,7 @@ namespace Win7BookManagement.Infrastructure
             for (var i = 0; i < samples.Length; i++)
             {
                 var id = services.Books.Insert(samples[i]);
-                services.Inventory.Adjust(id, i == 5 ? 2 : 6 + i, "视觉快照初始库存");
+                services.Inventory.Adjust(id, i == 5 ? 3 : 6 + i, "视觉快照初始库存");
                 stored.Add(services.Books.GetById(id));
             }
 
@@ -616,6 +700,78 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        private static void FilterBookMaster(Form shell, string query)
+        {
+            var page = FindEmbeddedControl<BookListForm>(shell);
+            if (page == null)
+                return;
+
+            var searchField = typeof(BookListForm).GetField(
+                "_search",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var reloadMethod = typeof(BookListForm).GetMethod(
+                "Reload",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var search = searchField == null ? null : searchField.GetValue(page) as Control;
+            if (search == null || reloadMethod == null)
+                return;
+
+            search.Text = query ?? "";
+            reloadMethod.Invoke(page, null);
+        }
+
+        private static T FindEmbeddedControl<T>(Control root) where T : Control
+        {
+            if (root == null)
+                return null;
+
+            var match = root as T;
+            if (match != null)
+                return match;
+
+            foreach (Control child in root.Controls)
+            {
+                var nested = FindEmbeddedControl<T>(child);
+                if (nested != null)
+                    return nested;
+            }
+
+            return null;
+        }
+
+        private static void ForceEmbeddedFormBounds(Control root)
+        {
+            if (root == null)
+                return;
+
+            foreach (Control child in root.Controls)
+            {
+                var embedded = child as Form;
+                if (embedded != null &&
+                    !embedded.TopLevel &&
+                    embedded.Parent != null)
+                {
+                    var bounds = embedded.Parent.DisplayRectangle;
+                    if (bounds.Width > 0 && bounds.Height > 0)
+                    {
+                        embedded.Dock = DockStyle.None;
+                        embedded.Location = bounds.Location;
+                        SetWindowPos(
+                            embedded.Handle,
+                            IntPtr.Zero,
+                            bounds.X,
+                            bounds.Y,
+                            bounds.Width,
+                            bounds.Height,
+                            SwpNoZOrder | SwpNoActivate);
+                        embedded.PerformLayout();
+                    }
+                }
+
+                ForceEmbeddedFormBounds(child);
+            }
+        }
+
         private static void PopulateByIsbn(Form form, IList<Book> books, int count)
         {
             if (form == null || books == null)
@@ -673,12 +829,32 @@ namespace Win7BookManagement.Infrastructure
 
                         form.TopLevel = false;
                         form.FormBorderStyle = FormBorderStyle.None;
-                        form.Dock = DockStyle.Fill;
+                        form.Dock = DockStyle.None;
+                        form.Location = Point.Empty;
                         form.Margin = Padding.Empty;
 
                         host.Controls.Add(form);
                         UiTheme.Apply(form);
                         form.Show();
+                        Application.DoEvents();
+
+                        // Form.SetBoundsCore is constrained by the CI runner's
+                        // MaxWindowTrackSize even after TopLevel=false. Bypass
+                        // that testing-only clamp so responsive snapshots are
+                        // genuinely laid out at the requested desktop size.
+                        SetWindowPos(
+                            form.Handle,
+                            IntPtr.Zero,
+                            0,
+                            0,
+                            size.Width,
+                            size.Height,
+                            SwpNoZOrder | SwpNoActivate);
+                        Application.DoEvents();
+
+                        form.PerformLayout();
+                        host.PerformLayout();
+                        ForceEmbeddedFormBounds(form);
                         Application.DoEvents();
 
                         if (afterShown != null)
@@ -689,6 +865,7 @@ namespace Win7BookManagement.Infrastructure
 
                         form.PerformLayout();
                         host.PerformLayout();
+                        ForceEmbeddedFormBounds(form);
                         Application.DoEvents();
 
                         using (var bitmap = new Bitmap(
