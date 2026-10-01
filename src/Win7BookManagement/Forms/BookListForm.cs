@@ -40,14 +40,14 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
 
-            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", MinWidth = "92" };
-            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "130", MinWidth = "108" };
-            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "100", MinWidth = "72" };
-            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "110", MinWidth = "82" };
-            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "88", MinWidth = "68" };
-            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "82", MinWidth = "74" };
-            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "74", MinWidth = "64" };
-            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "86", MinWidth = "74" };
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", MinWidth = "92", SortOrder = true };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "130", MinWidth = "108", SortOrder = true };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "100", MinWidth = "72", SortOrder = true };
+            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "110", MinWidth = "82", SortOrder = true };
+            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "88", MinWidth = "68", SortOrder = true };
+            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "82", MinWidth = "74", SortOrder = true };
+            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "74", MinWidth = "64", SortOrder = true };
+            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "86", MinWidth = "74", SortOrder = true };
             _activeColumn = new AntdUI.Column("ActiveStatus", "启用") { Width = "98", MinWidth = "88" };
 
             var root = new TableLayoutPanel
@@ -257,15 +257,17 @@ namespace Win7BookManagement.Forms
                 Width = "fill",
                 MinWidth = "160",
                 MaxWidth = "320",
-                Ellipsis = true
+                Ellipsis = true,
+                SortOrder = true
             };
             var priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
             {
                 Width = "96",
                 MinWidth = "86",
-                DisplayFormat = "0.00"
+                DisplayFormat = "0.00",
+                SortOrder = true
             };
-            var stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "72", MinWidth = "64" };
+            var stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "72", MinWidth = "64", SortOrder = true };
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
@@ -479,6 +481,10 @@ namespace Win7BookManagement.Forms
             _activeColumn.Visible = gridWidth >= 900;
             _authorColumn.Visible = gridWidth >= 740;
             _isbnColumn.Visible = gridWidth >= 660;
+
+            _grid.Font = UiTheme.Font(
+                gridWidth < 900 ? 9F : gridWidth < 1180 ? 10F : 11.5F);
+
             _grid.LoadLayout();
         }
 
