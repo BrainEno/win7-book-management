@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Win7BookManagement.Forms;
 using Win7BookManagement.Models;
@@ -13,6 +14,19 @@ namespace Win7BookManagement.Infrastructure
 {
     public static class UiSnapshotGenerator
     {
+        private const uint SwpNoZOrder = 0x0004;
+        private const uint SwpNoActivate = 0x0010;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int x,
+            int y,
+            int cx,
+            int cy,
+            uint flags);
+
         public static int Run(string outputDirectory)
         {
             var root = Path.Combine(
@@ -743,12 +757,27 @@ namespace Win7BookManagement.Infrastructure
 
                         form.TopLevel = false;
                         form.FormBorderStyle = FormBorderStyle.None;
-                        form.Dock = DockStyle.Fill;
+                        form.Dock = DockStyle.None;
+                        form.Location = Point.Empty;
                         form.Margin = Padding.Empty;
 
                         host.Controls.Add(form);
                         UiTheme.Apply(form);
                         form.Show();
+                        Application.DoEvents();
+
+                        // Form.SetBoundsCore is constrained by the CI runner's
+                        // MaxWindowTrackSize even after TopLevel=false. Bypass
+                        // that testing-only clamp so responsive snapshots are
+                        // genuinely laid out at the requested desktop size.
+                        SetWindowPos(
+                            form.Handle,
+                            IntPtr.Zero,
+                            0,
+                            0,
+                            size.Width,
+                            size.Height,
+                            SwpNoZOrder | SwpNoActivate);
                         Application.DoEvents();
 
                         if (afterShown != null)
