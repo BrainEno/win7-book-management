@@ -594,8 +594,6 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            var threshold = _services.Settings.GetLowStockThreshold();
-            var low = book.StockQuantity <= threshold;
             _detailValues["title"].Text = EmptyAsDash(book.Title);
             _detailValues["selfCode"].Text = EmptyAsDash(book.SelfCode);
             _detailValues["isbn"].Text = EmptyAsDash(book.Isbn);
