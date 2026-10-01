@@ -236,7 +236,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(BookDeskUiSpec.Standard.ToolbarPadding),
+                Padding = new Padding(14, 28, 14, 28),
                 Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0)
             };
             _documentSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -787,7 +787,16 @@ namespace Win7BookManagement.Forms
                     compact
                         ? BookDeskUiSpec.PurchaseDocumentCompactHeight
                         : BookDeskUiSpec.PurchaseDocumentStandardHeight);
-                _documentSection.Padding = new Padding(compact ? 10 : 14);
+                var horizontalPadding = compact ? 10 : 14;
+                var targetHeight = compact
+                    ? BookDeskUiSpec.PurchaseDocumentCompactHeight
+                    : BookDeskUiSpec.PurchaseDocumentStandardHeight;
+                var verticalPadding = Math.Max(0, (targetHeight - controlHeight) / 2);
+                _documentSection.Padding = new Padding(
+                    horizontalPadding,
+                    verticalPadding,
+                    horizontalPadding,
+                    verticalPadding);
                 _documentSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
             }
 
@@ -798,7 +807,16 @@ namespace Win7BookManagement.Forms
                     compact
                         ? BookDeskUiSpec.PurchaseScanCompactHeight
                         : BookDeskUiSpec.PurchaseScanStandardHeight);
-                _scanSection.Padding = new Padding(compact ? 8 : 10);
+                var scanHorizontalPadding = compact ? 8 : 10;
+                var scanTargetHeight = compact
+                    ? BookDeskUiSpec.PurchaseScanCompactHeight
+                    : BookDeskUiSpec.PurchaseScanStandardHeight;
+                var scanVerticalPadding = Math.Max(0, (scanTargetHeight - controlHeight) / 2);
+                _scanSection.Padding = new Padding(
+                    scanHorizontalPadding,
+                    scanVerticalPadding,
+                    scanHorizontalPadding,
+                    scanVerticalPadding);
                 _scanSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
             }
 
