@@ -74,6 +74,11 @@ namespace Win7BookManagement.Forms
         private string _currentStatus = PurchaseService.DraftStatus;
         private bool _loadingDocument;
         private bool _dirty;
+        private DateTime _baselinePurchaseDate = DateTime.Today;
+        private string _baselineOrderNo = "";
+        private long? _baselineSupplierId;
+        private string _baselineNote = "";
+        private PurchaseNavigationState _navigationState;
         private UiSpecProfile _profile = BookDeskUiSpec.Standard;
 
         public PurchaseForm(ApplicationServices services)
@@ -81,6 +86,7 @@ namespace Win7BookManagement.Forms
             _services = services;
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
+            KeyPreview = true;
 
             _purchaseDate.Format = "yyyy-MM-dd";
             _purchaseDate.Value = DateTime.Today;
@@ -148,6 +154,7 @@ namespace Win7BookManagement.Forms
             {
                 if (!_loadingDocument) MarkDirty();
             };
+            KeyDown += HandlePurchaseShortcut;
 
             Resize += delegate { ApplyResponsiveColumns(); };
             _grid.SizeChanged += delegate { ApplyResponsiveColumns(); };
@@ -1161,6 +1168,7 @@ namespace Win7BookManagement.Forms
                 _selectedRow = null;
                 if (_supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
                 _isbn.Text = "";
+                CaptureBaseline();
                 _dirty = false;
             }
             finally
@@ -1170,6 +1178,7 @@ namespace Win7BookManagement.Forms
 
             UpdateTotals();
             ApplyReviewState();
+            UpdateNavigationState();
             if (focusSearch) _isbn.Focus();
         }
 
@@ -1193,9 +1202,15 @@ namespace Win7BookManagement.Forms
             }
             if (!EnsureCanChangeDocument()) return;
 
-            var target = _services.Purchases.GetAdjacentDocumentId(_currentDocumentId.Value, next);
+            var state = _navigationState != null &&
+                        _navigationState.CurrentId == _currentDocumentId.Value
+                ? _navigationState
+                : _services.Purchases.GetNavigationState(_currentDocumentId.Value);
+
+            var target = next ? state.NextId : state.PreviousId;
             if (!target.HasValue)
             {
+                UpdateNavigationState();
                 MessageBox.Show(
                     this,
                     next ? "已经是最后一张采购单。" : "已经是第一张采购单。",
@@ -1204,6 +1219,7 @@ namespace Win7BookManagement.Forms
                     MessageBoxIcon.Information);
                 return;
             }
+
             LoadDocument(target.Value);
         }
 
@@ -1245,6 +1261,7 @@ namespace Win7BookManagement.Forms
                 }
                 _selectedRow = _rows.Count > 0 ? _rows[0] : null;
                 if (_selectedRow != null) _grid.SetSelected(_selectedRow, false);
+                CaptureBaseline();
                 _dirty = false;
             }
             finally
@@ -1254,6 +1271,7 @@ namespace Win7BookManagement.Forms
 
             UpdateTotals();
             ApplyReviewState();
+            UpdateNavigationState();
         }
 
         private bool SaveDraftInternal(bool showMessage)
@@ -1506,11 +1524,94 @@ namespace Win7BookManagement.Forms
 
         private bool HasUnsavedWork()
         {
-            if (_dirty) return true;
+            if (IsReviewed) return false;
+            if (_dirty || HeaderDiffersFromBaseline()) return true;
             if (_currentDocumentId.HasValue) return false;
-            return _rows.Count > 0 ||
-                   !string.IsNullOrWhiteSpace(_orderNo.Text) ||
-                   !string.IsNullOrWhiteSpace(_note.Text);
+            return _rows.Count > 0;
+        }
+
+        private bool HeaderDiffersFromBaseline()
+        {
+            return SelectedPurchaseDate != _baselinePurchaseDate ||
+                   SelectedSupplierId != _baselineSupplierId ||
+                   !string.Equals(
+                       (_orderNo.Text ?? "").Trim(),
+                       _baselineOrderNo,
+                       StringComparison.Ordinal) ||
+                   !string.Equals(
+                       (_note.Text ?? "").Trim(),
+                       _baselineNote,
+                       StringComparison.Ordinal);
+        }
+
+        private void CaptureBaseline()
+        {
+            _baselinePurchaseDate = SelectedPurchaseDate;
+            _baselineOrderNo = (_orderNo.Text ?? "").Trim();
+            _baselineSupplierId = SelectedSupplierId;
+            _baselineNote = (_note.Text ?? "").Trim();
+        }
+
+        private void UpdateNavigationState()
+        {
+            _navigationState = null;
+
+            if (!_currentDocumentId.HasValue)
+            {
+                if (_previousButton != null) _previousButton.Enabled = false;
+                if (_nextButton != null) _nextButton.Enabled = false;
+                return;
+            }
+
+            _navigationState = _services.Purchases.GetNavigationState(_currentDocumentId.Value);
+            if (_previousButton != null)
+                _previousButton.Enabled = _navigationState.HasPrevious;
+            if (_nextButton != null)
+                _nextButton.Enabled = _navigationState.HasNext;
+        }
+
+        private void HandlePurchaseShortcut(object sender, KeyEventArgs e)
+        {
+            if (e.Control && e.KeyCode == Keys.S)
+            {
+                SaveDraftInternal(true);
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Control && e.KeyCode == Keys.N)
+            {
+                StartNewOrder();
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Alt && e.KeyCode == Keys.Left)
+            {
+                if (_previousButton == null || _previousButton.Enabled)
+                    NavigateAdjacent(false);
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Alt && e.KeyCode == Keys.Right)
+            {
+                if (_nextButton == null || _nextButton.Enabled)
+                    NavigateAdjacent(true);
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+                return;
+            }
+
+            if (e.KeyCode == Keys.F4)
+            {
+                OpenHistory();
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+            }
         }
 
         private void MarkDirty()
@@ -1556,7 +1657,9 @@ namespace Win7BookManagement.Forms
             }
             else
             {
-                _statusLabel.Text = _dirty ? "草稿 · 未保存" : "草稿";
+                _statusLabel.Text = (_dirty || HeaderDiffersFromBaseline())
+                    ? "草稿 · 未保存"
+                    : "草稿";
                 _statusLabel.ForeColor = UiTheme.TextSecondary;
                 _statusLabel.BackColor = UiTheme.SurfaceMuted;
             }
