@@ -89,7 +89,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 12, 14, 12),
+                Padding = new Padding(24, 17, 16, 16),
                 Margin = Padding.Empty
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -120,7 +120,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 Anchor = AnchorStyles.Left,
                 ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Font = UiTheme.Font(10.5F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 12, 0)
             }, 0, 0);
 
@@ -140,7 +140,8 @@ namespace Win7BookManagement.Forms
             searchRow.Controls.Add(_search, 1, 0);
 
             var searchButton = UiTheme.CreateAntdButton("查询", false);
-            searchButton.Width = 78;
+            searchButton.Width = 86;
+            searchButton.MinimumSize = new Size(86, UiTheme.ButtonHeight);
             searchButton.Anchor = AnchorStyles.Left;
             searchButton.Tag = "toolbar-action";
             searchButton.Margin = new Padding(0, 0, 6, 0);
@@ -149,7 +150,8 @@ namespace Win7BookManagement.Forms
 
             var addButton = UiTheme.CreateAntdButton("新增图书", true);
             addButton.IconSvg = "PlusOutlined";
-            addButton.Width = 110;
+            addButton.Width = 136;
+            addButton.MinimumSize = new Size(136, UiTheme.ButtonHeight);
             addButton.Anchor = AnchorStyles.Left;
             addButton.Tag = "toolbar-action";
             addButton.Margin = new Padding(0, 0, 6, 0);
@@ -158,7 +160,8 @@ namespace Win7BookManagement.Forms
 
             var editButton = UiTheme.CreateAntdButton("编辑资料", false);
             editButton.IconSvg = "EditOutlined";
-            editButton.Width = 104;
+            editButton.Width = 132;
+            editButton.MinimumSize = new Size(132, UiTheme.ButtonHeight);
             editButton.Anchor = AnchorStyles.Left;
             editButton.Tag = "toolbar-action";
             editButton.Margin = new Padding(0, 0, 8, 0);
@@ -179,23 +182,29 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                Margin = new Padding(0, 8, 0, 0),
+                Margin = new Padding(0, 14, 0, 0),
                 Padding = Padding.Empty
             };
 
-            _resultChip.AutoSize = true;
-            _resultChip.Padding = new Padding(8, 3, 8, 3);
-            _resultChip.Margin = new Padding(0, 0, 6, 0);
+            _resultChip.AutoSize = false;
+            _resultChip.Size = new Size(96, 36);
+            _resultChip.MinimumSize = new Size(96, 36);
+            _resultChip.Padding = new Padding(8, 0, 8, 0);
+            _resultChip.Margin = new Padding(0, 0, 12, 0);
             _resultChip.BackColor = UiTheme.AccentSoft;
             _resultChip.ForeColor = UiTheme.Accent;
-            _resultChip.Font = UiTheme.Font(8F, FontStyle.Bold);
+            _resultChip.Font = UiTheme.Font(9.5F, FontStyle.Bold);
+            _resultChip.TextAlign = ContentAlignment.MiddleCenter;
 
-            _lowStockChip.AutoSize = true;
-            _lowStockChip.Padding = new Padding(8, 3, 8, 3);
+            _lowStockChip.AutoSize = false;
+            _lowStockChip.Size = new Size(112, 36);
+            _lowStockChip.MinimumSize = new Size(112, 36);
+            _lowStockChip.Padding = new Padding(8, 0, 8, 0);
             _lowStockChip.Margin = Padding.Empty;
             _lowStockChip.BackColor = Color.FromArgb(255, 247, 230);
             _lowStockChip.ForeColor = UiTheme.Warning;
-            _lowStockChip.Font = UiTheme.Font(8F, FontStyle.Bold);
+            _lowStockChip.Font = UiTheme.Font(9.5F, FontStyle.Bold);
+            _lowStockChip.TextAlign = ContentAlignment.MiddleCenter;
 
             stats.Controls.Add(_resultChip);
             stats.Controls.Add(_lowStockChip);
@@ -235,7 +244,7 @@ namespace Win7BookManagement.Forms
 
             _grid.Bordered = true;
 
-            _grid.Gap = 9;
+            _grid.Gap = 12;
             _grid.RowHeight = UiTheme.TableRowHeight;
             _grid.RowHeightHeader = UiTheme.TableHeaderHeight;
             _grid.EnableHeaderResizing = true;
@@ -523,7 +532,7 @@ namespace Win7BookManagement.Forms
                     new AntdUI.CellTag(
                         source.IsActive ? "● 已启用" : "● 已停用",
                         source.IsActive ? AntdUI.TTypeMini.Success : AntdUI.TTypeMini.Default,
-                        4).SetBorderWidth(0F)
+                        8).SetBorderWidth(0F)
                 };
             }
         }
