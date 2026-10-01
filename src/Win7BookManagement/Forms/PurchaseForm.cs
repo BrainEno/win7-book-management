@@ -22,6 +22,8 @@ namespace Win7BookManagement.Forms
         private readonly Label _total = new Label();
         private readonly Label _emptyState = new Label();
 
+        private TableLayoutPanel _emptySurface;
+        private TableLayoutPanel _emptyHeaderRow;
         private UiSpecSectionPanel _receivingSection;
         private TableLayoutPanel _supplierRow;
         private TableLayoutPanel _scanRow;
@@ -327,15 +329,52 @@ namespace Win7BookManagement.Forms
 
             var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Surface };
 
+            _emptySurface = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            _emptySurface.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _emptySurface.RowStyles.Add(new RowStyle(SizeType.Absolute, BookDeskUiSpec.Standard.TableHeaderHeight));
+            _emptySurface.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            _emptyHeaderRow = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 9,
+                RowCount = 1,
+                BackColor = UiTheme.SurfaceMuted,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            ConfigureEmptyHeaderColumns(BookDeskUiSpec.Standard);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("序号"), 0, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("店内编码"), 1, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("ISBN"), 2, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("书名"), 3, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("作者"), 4, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("出版社"), 5, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("数量"), 6, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("进价（元）"), 7, 0);
+            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("小计（元）"), 8, 0);
+
             _emptyState.Dock = DockStyle.Fill;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
             _emptyState.Text = "当前入库单为空\r\n请扫码、搜索或选择图书";
             _emptyState.ForeColor = UiTheme.TextSecondary;
-            _emptyState.Font = UiTheme.Font(9F);
+            _emptyState.Font = UiTheme.Font(BookDeskUiSpec.Standard.SecondaryFontPoints);
             _emptyState.BackColor = UiTheme.Surface;
 
+            _emptySurface.Controls.Add(_emptyHeaderRow, 0, 0);
+            _emptySurface.Controls.Add(_emptyState, 0, 1);
+
             content.Controls.Add(_grid);
-            _emptyState.Visible = false;
+            content.Controls.Add(_emptySurface);
+            _emptySurface.BringToFront();
 
             _cartHost.Controls.Add(_cartHeader, 0, 0);
             _cartHost.Controls.Add(content, 0, 1);
@@ -579,6 +618,10 @@ namespace Win7BookManagement.Forms
             _grid.RowHeight = profile.TableRowHeight;
             _grid.Font = UiTheme.Font(profile.TableFontPoints);
             ApplyColumnWidths(profile);
+            ConfigureEmptyHeaderColumns(profile);
+            if (_emptySurface != null && _emptySurface.RowStyles.Count > 0)
+                _emptySurface.RowStyles[0].Height = profile.TableHeaderHeight;
+            _emptyState.Font = UiTheme.Font(profile.SecondaryFontPoints);
 
             if (_noteSection != null)
             {
@@ -641,6 +684,42 @@ namespace Win7BookManagement.Forms
 
             _grid.LoadLayout();
             _grid.Refresh();
+        }
+
+        private static Label CreateEmptyHeaderCell(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(10, 0, 6, 0),
+                BackColor = UiTheme.SurfaceMuted,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(BookDeskUiSpec.Standard.TableFontPoints, FontStyle.Bold),
+                Margin = Padding.Empty
+            };
+        }
+
+        private void ConfigureEmptyHeaderColumns(UiSpecProfile profile)
+        {
+            if (_emptyHeaderRow == null)
+                return;
+
+            var compact = profile != null && profile.IsCompact;
+            _emptyHeaderRow.ColumnStyles.Clear();
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 54 : 60));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 90 : 110));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 96 : 118));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 86 : 110));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 86 : 110));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 70 : 82));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 94 : 112));
+            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 94 : 112));
+
+            foreach (Control control in _emptyHeaderRow.Controls)
+                control.Font = UiTheme.Font(profile.TableFontPoints, FontStyle.Bold);
         }
 
         private void ApplyColumnWidths(UiSpecProfile profile)
@@ -842,8 +921,12 @@ namespace Win7BookManagement.Forms
             _quantityTotal.Text = "入库册数  " + quantity;
             _total.Text = "采购金额  ¥" + total.ToString("0.00");
 
-            _emptyState.Visible = false;
-            _grid.BringToFront();
+            if (_emptySurface != null)
+            {
+                _emptySurface.Visible = _rows.Count == 0;
+                if (_rows.Count == 0) _emptySurface.BringToFront();
+                else _grid.BringToFront();
+            }
         }
 
         private void Submit()
