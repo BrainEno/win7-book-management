@@ -1618,6 +1618,22 @@ namespace Win7BookManagement.Forms
 
         private void HandlePurchaseShortcut(object sender, KeyEventArgs e)
         {
+            if (_scannerCaptureEnabled &&
+                _grid != null &&
+                _grid.ContainsFocus &&
+                _scanBuffer.Length > 0 &&
+                (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Tab))
+            {
+                var identifier = _scanBuffer.ToString().Trim();
+                _scanBuffer.Clear();
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+
+                if (identifier.Length > 0)
+                    ProcessScannedIdentifier(identifier);
+                return;
+            }
+
             if (e.Control && e.KeyCode == Keys.S)
             {
                 SaveDraftInternal(true);
