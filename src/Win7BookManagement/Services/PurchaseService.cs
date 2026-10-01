@@ -352,6 +352,85 @@ WHERE id=@id AND status=@reviewed;";
             }
         }
 
+        public string DeleteDraft(long documentId)
+        {
+            using (var connection = _factory.Open())
+            using (var transaction = connection.BeginTransaction())
+            {
+                try
+                {
+                    string orderNo;
+                    string status;
+                    using (var header = connection.CreateCommand())
+                    {
+                        header.Transaction = transaction;
+                        header.CommandText = "SELECT order_no, status FROM purchase_orders WHERE id=@id;";
+                        header.Parameters.AddWithValue("@id", documentId);
+                        using (var reader = header.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                                throw new InvalidOperationException("采购草稿不存在或已经被删除。");
+
+                            orderNo = Convert.ToString(reader["order_no"]);
+                            status = Convert.ToString(reader["status"]);
+                        }
+                    }
+
+                    if (!string.Equals(status, DraftStatus, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("已复核采购单不能删除。需要纠错时请使用退货或反复核流程。");
+
+                    using (var ledger = connection.CreateCommand())
+                    {
+                        ledger.Transaction = transaction;
+                        ledger.CommandText = @"
+SELECT COUNT(1)
+FROM inventory_transactions
+WHERE reference_id=@id
+  AND reference_type IN ('PURCHASE', 'PURCHASE_UNREVIEW');";
+                        ledger.Parameters.AddWithValue("@id", documentId);
+                        if (Convert.ToInt32(ledger.ExecuteScalar()) > 0)
+                            throw new InvalidOperationException(
+                                "这张采购单曾经复核并产生库存流水，即使当前已反复核也必须保留历史，不能删除。");
+                    }
+
+                    using (var returns = connection.CreateCommand())
+                    {
+                        returns.Transaction = transaction;
+                        returns.CommandText = "SELECT COUNT(1) FROM purchase_returns WHERE source_purchase_order_id=@id;";
+                        returns.Parameters.AddWithValue("@id", documentId);
+                        if (Convert.ToInt32(returns.ExecuteScalar()) > 0)
+                            throw new InvalidOperationException("这张采购单已有采购退货记录，不能删除。");
+                    }
+
+                    using (var items = connection.CreateCommand())
+                    {
+                        items.Transaction = transaction;
+                        items.CommandText = "DELETE FROM purchase_order_items WHERE purchase_order_id=@id;";
+                        items.Parameters.AddWithValue("@id", documentId);
+                        items.ExecuteNonQuery();
+                    }
+
+                    using (var order = connection.CreateCommand())
+                    {
+                        order.Transaction = transaction;
+                        order.CommandText = "DELETE FROM purchase_orders WHERE id=@id AND status=@draft;";
+                        order.Parameters.AddWithValue("@id", documentId);
+                        order.Parameters.AddWithValue("@draft", DraftStatus);
+                        if (order.ExecuteNonQuery() != 1)
+                            throw new InvalidOperationException("采购草稿状态已变化，请刷新后重试。");
+                    }
+
+                    transaction.Commit();
+                    return orderNo;
+                }
+                catch
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+            }
+        }
+
         public PurchaseDocument GetDocument(long documentId)
         {
             using (var connection = _factory.Open())
