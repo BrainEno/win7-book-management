@@ -103,6 +103,104 @@ ORDER BY
             return result;
         }
 
+        public Book FindByExactIdentifier(string identifier)
+        {
+            var normalized = (identifier ?? "").Trim();
+            if (normalized.Length == 0) return null;
+
+            using (var connection = _factory.Open())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT " + SelectColumns + @"
+FROM books
+WHERE is_active = 1
+  AND (isbn = @identifier OR self_code = @identifier)
+ORDER BY CASE WHEN isbn = @identifier THEN 0 ELSE 1 END, id
+LIMIT 1;";
+                command.Parameters.AddWithValue("@identifier", normalized);
+                using (var reader = command.ExecuteReader())
+                    return reader.Read() ? ReadBook(reader) : null;
+            }
+        }
+
+        public IList<Book> SearchAdvanced(BookSearchCriteria criteria)
+        {
+            criteria = criteria ?? new BookSearchCriteria();
+
+            var selfCode = (criteria.SelfCode ?? "").Trim();
+            var isbn = (criteria.Isbn ?? "").Trim();
+            var title = (criteria.Title ?? "").Trim();
+            var author = (criteria.Author ?? "").Trim();
+            var publisher = (criteria.Publisher ?? "").Trim();
+            var category = (criteria.Category ?? "").Trim();
+
+            var result = new List<Book>();
+            using (var connection = _factory.Open())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT " + SelectColumns + @"
+FROM books
+WHERE is_active = 1
+  AND (@selfCode = '' OR self_code LIKE @selfCodeLike)
+  AND (@isbn = '' OR isbn LIKE @isbnLike)
+  AND (@title = '' OR title LIKE @titleLike)
+  AND (@author = '' OR author LIKE @authorLike)
+  AND (@publisher = '' OR publisher LIKE @publisherLike)
+  AND (@category = '' OR category = @category)
+ORDER BY
+  CASE WHEN self_code = @selfCode AND @selfCode <> '' THEN 0 ELSE 1 END,
+  CASE WHEN isbn = @isbn AND @isbn <> '' THEN 0 ELSE 1 END,
+  title,
+  id
+LIMIT 500;";
+                command.Parameters.AddWithValue("@selfCode", selfCode);
+                command.Parameters.AddWithValue("@selfCodeLike", "%" + selfCode + "%");
+                command.Parameters.AddWithValue("@isbn", isbn);
+                command.Parameters.AddWithValue("@isbnLike", "%" + isbn + "%");
+                command.Parameters.AddWithValue("@title", title);
+                command.Parameters.AddWithValue("@titleLike", "%" + title + "%");
+                command.Parameters.AddWithValue("@author", author);
+                command.Parameters.AddWithValue("@authorLike", "%" + author + "%");
+                command.Parameters.AddWithValue("@publisher", publisher);
+                command.Parameters.AddWithValue("@publisherLike", "%" + publisher + "%");
+                command.Parameters.AddWithValue("@category", category);
+
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read()) result.Add(ReadBook(reader));
+                }
+            }
+
+            return result;
+        }
+
+        public IList<string> GetActiveCategories()
+        {
+            var result = new List<string>();
+            using (var connection = _factory.Open())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT DISTINCT TRIM(category) AS category
+FROM books
+WHERE is_active = 1
+  AND TRIM(category) <> ''
+ORDER BY category COLLATE NOCASE;";
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var value = Convert.ToString(reader["category"]);
+                        if (!string.IsNullOrWhiteSpace(value))
+                            result.Add(value);
+                    }
+                }
+            }
+            return result;
+        }
+
         public Book GetById(long id)
         {
             using (var connection = _factory.Open())
