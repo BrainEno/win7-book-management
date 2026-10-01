@@ -35,7 +35,7 @@ namespace Win7BookManagement.Forms
         private UiSpecSectionPanel _documentSection;
         private UiSpecSectionPanel _scanSection;
         private FlowLayoutPanel _actionRow;
-        private FlowLayoutPanel _headerFields;
+        private TableLayoutPanel _headerFields;
         private TableLayoutPanel _scanRow;
         private TableLayoutPanel _cartHost;
         private TableLayoutPanel _cartHeader;
@@ -242,24 +242,34 @@ namespace Win7BookManagement.Forms
             _documentSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             _documentSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            _headerFields = new FlowLayoutPanel
+            _headerFields = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                ColumnCount = 4,
+                RowCount = 1,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
+            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             _purchaseDate.Tag = "toolbar-input";
             _orderNo.Tag = "toolbar-input";
             _supplier.DropDownArrow = true;
             _supplier.Tag = "toolbar-input";
-            _headerFields.Controls.Add(CreateField("采购日期", _purchaseDate, 72, 206));
-            _headerFields.Controls.Add(CreateField("采购单号", _orderNo, 72, 258));
-            _headerFields.Controls.Add(CreateField("供应商", _supplier, 62, 320));
+
+            var dateField = CreateField("采购日期", _purchaseDate, 72, 206);
+            var orderField = CreateField("采购单号", _orderNo, 72, 258);
+            var supplierField = CreateField("供应商", _supplier, 62, 320);
+            supplierField.Dock = DockStyle.Fill;
+
+            _headerFields.Controls.Add(dateField, 0, 0);
+            _headerFields.Controls.Add(orderField, 1, 0);
+            _headerFields.Controls.Add(supplierField, 2, 0);
 
             _statusLabel.AutoSize = false;
             _statusLabel.Size = new Size(118, BookDeskUiSpec.Standard.ControlHeight);
@@ -267,7 +277,7 @@ namespace Win7BookManagement.Forms
             _statusLabel.TextAlign = ContentAlignment.MiddleCenter;
             _statusLabel.Font = UiTheme.Font(8.5F, FontStyle.Bold);
             _statusLabel.Margin = Padding.Empty;
-            _headerFields.Controls.Add(_statusLabel);
+            _headerFields.Controls.Add(_statusLabel, 3, 0);
             _documentSection.Controls.Add(_headerFields, 0, 0);
 
             _scanSection = new UiSpecSectionPanel
@@ -769,9 +779,6 @@ namespace Win7BookManagement.Forms
             ResizeFieldHost(_purchaseDate, 72, compact ? 176 : 206, controlHeight);
             ResizeFieldHost(_orderNo, 72, compact ? 210 : 258, controlHeight);
             ResizeFieldHost(_supplier, 62, compact ? 230 : 320, controlHeight);
-
-            if (_headerFields != null)
-                _headerFields.WrapContents = false;
 
             if (_statusLabel != null)
             {
