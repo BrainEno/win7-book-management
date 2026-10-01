@@ -160,6 +160,20 @@ namespace Win7BookManagement.Infrastructure
         public const int PurchaseConfirmWidth = 146;
         public const int PurchaseConfirmHeight = 40;
 
+        public const int InventoryToolbarStandardHeight = 136;
+        public const int InventoryToolbarCompactHeight = 112;
+        public const int InventorySearchLabelWidth = 80;
+        public const int InventorySearchMinimumWidth = 380;
+        public const int InventoryQueryWidth = 72;
+        public const int InventoryAdjustWidth = 118;
+        public const int InventoryLowOnlyWidth = 120;
+        public const int InventoryDetailStandardWidth = 330;
+        public const int InventoryDetailCompactWidth = 286;
+        public const int InventoryDetailMaxWidth = 360;
+        public const int InventorySplitStackThreshold = 1020;
+        public const int InventoryDetailRowHeight = 64;
+        public const int InventoryDetailLabelWidth = 88;
+
         public static readonly UiSpecProfile Compact = new UiSpecProfile(
             "compact",
             208,
