@@ -1,6 +1,6 @@
 {
   "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
-  "specVersion": "1.1.0",
+  "specVersion": "1.1.1",
   "project": {
     "name": "BOOK DESK / 简易图书管理系统",
     "repository": "https://github.com/BrainEno/win7-book-management",
@@ -80,7 +80,9 @@
         "wrong responsive profile",
         "workspace-level horizontal scrollbar at supported sizes",
         "search input and adjacent action button not equal height / baseline",
-        "bottom primary purchase action not visible"
+        "bottom primary purchase action not visible",
+        "purchase header labels or controls clipped vertically",
+        "purchase top toolbar button text clipped or rendered without usable padding"
       ]
     }
   },
@@ -734,67 +736,72 @@
               "type": "button",
               "text": "新入库单",
               "variant": "primary",
-              "width": 112
+              "width": 118
             },
             {
               "type": "button",
               "text": "历史单据",
               "variant": "default",
-              "width": 106
+              "width": 112
             },
             {
               "type": "button",
               "text": "上一张",
               "variant": "default",
-              "width": 92
+              "width": 96
             },
             {
               "type": "button",
               "text": "下一张",
               "variant": "default",
-              "width": 92
+              "width": 96
             },
             {
               "type": "button",
               "text": "导出 Excel",
               "variant": "default",
-              "width": 112
+              "width": 118
             },
             {
               "type": "button",
               "text": "清空明细",
               "variant": "defaultDanger",
-              "width": 112
+              "width": 118
             }
           ],
           "gap": "$profile.controlGap",
-          "heightRule": "All buttons use $profile.controlHeight."
+          "heightRule": "Top toolbar buttons use 42px standard/expanded and 40px compact, with explicit horizontal padding; text clipping is a zero-tolerance failure.",
+          "buttonHeight": 42,
+          "compactButtonHeight": 40,
+          "buttonPaddingX": 12,
+          "compactButtonPaddingX": 10
         },
         "documentCard": {
-          "height": 92,
-          "compactHeight": 80,
+          "height": 100,
+          "compactHeight": 88,
           "padding": 14,
           "compactPadding": 10,
           "row": {
-            "height": "$profile.controlHeight",
+            "height": 44,
             "verticalAlign": "center",
             "items": [
               {
                 "type": "label",
                 "text": "采购日期",
-                "width": 72
+                "width": 82
               },
               {
                 "type": "date",
                 "name": "purchaseDate",
                 "width": 206,
                 "minWidth": 176,
-                "height": "$profile.controlHeight"
+                "height": 44,
+                "compactHeight": 42
               },
               {
                 "type": "label",
                 "text": "采购单号",
-                "width": 72
+                "width": 82
               },
               {
                 "type": "input",
@@ -802,47 +809,58 @@
                 "width": 258,
                 "minWidth": 210,
                 "placeholder": "留空时保存草稿会自动生成…",
-                "height": "$profile.controlHeight"
+                "height": 44,
+                "compactHeight": 42
               },
               {
                 "type": "label",
                 "text": "供应商",
-                "width": 62
+                "width": 70
               },
               {
                 "type": "select",
                 "name": "supplier",
-                "flex": 1,
+                "flex": 0,
                 "minWidth": 230,
                 "preferredWidth": 320,
                 "value": "不区分（默认）",
-                "height": "$profile.controlHeight"
+                "height": 44,
+                "maxWidth": 380,
+                "compactHeight": 42
               },
               {
                 "type": "status",
                 "name": "draftStatus",
                 "text": "草稿",
                 "width": 118,
-                "height": "$profile.controlHeight",
-                "tone": "primarySoft"
+                "height": 44,
+                "tone": "primarySoft",
+                "compactHeight": 42
               }
             ],
-            "gap": "$profile.controlGap"
+            "gap": "$profile.controlGap",
+            "compactHeight": 42,
+            "spacer": {
+              "placement": "between supplier and status",
+              "flex": 1,
+              "minWidth": 12,
+              "purpose": "Keep supplier bounded and push status to the right edge instead of stretching the supplier field."
+            }
           }
         },
         "scanCard": {
-          "height": 64,
-          "compactHeight": 56,
+          "height": 72,
+          "compactHeight": 64,
           "padding": 10,
           "compactPadding": 8,
           "row": {
-            "height": "$profile.controlHeight",
+            "height": 44,
             "verticalAlign": "center",
             "items": [
               {
                 "type": "label",
                 "text": "扫码 / 搜索",
-                "width": 112
+                "width": 124
               },
               {
                 "type": "input",
@@ -850,24 +868,43 @@
                 "flex": 1,
                 "minWidth": 360,
                 "placeholder": "扫码或输入店内编码 / ISBN / 书名 / 作者",
-                "height": "$profile.controlHeight"
+                "height": 44,
+                "preferredWidth": 760,
+                "maxWidth": 880,
+                "compactMaxWidth": 680,
+                "expandedMaxWidth": 960,
+                "compactHeight": 42
               },
               {
                 "type": "button",
                 "text": "加入",
                 "variant": "primary",
                 "width": 104,
-                "height": "$profile.controlHeight"
+                "height": 44,
+                "compactHeight": 42
               },
               {
                 "type": "button",
                 "text": "选择图书",
                 "variant": "default",
                 "width": 118,
-                "height": "$profile.controlHeight"
+                "height": 44,
+                "compactHeight": 42
               }
             ],
-            "gap": "$profile.controlGap"
+            "gap": "$profile.controlGap",
+            "compactHeight": 42,
+            "spacer": {
+              "placement": "between scanSearch and add",
+              "flex": 1,
+              "minWidth": 12,
+              "purpose": "Prevent the search field from becoming visually dominant on wide windows while keeping actions right-aligned."
+            },
+            "alignmentContract": [
+              "scanSearch, 加入 and 选择图书 must have exactly the same height.",
+              "Their vertical centerlines may differ by at most 1 logical px.",
+              "扫码 / 搜索 must remain on one line at every mandatory viewport."
+            ]
           }
         },
         "detailPanel": {
@@ -981,7 +1018,8 @@
           "emptyState": {
             "title": "当前入库单为空",
             "body": "请扫码、搜索或选择图书添加明细"
-          }
+          },
+          "heightPolicy": "The detail region gives up 16 logical px of height to the corrected document/search controls (8px per card) before any note/summary area is reduced. Note and bottom actions remain fixed and fully visible."
         },
         "noteRow": {
           "height": 48,
@@ -997,7 +1035,8 @@
           "height": 68,
           "compactHeight": 58,
           "expandedHeight": 68,
-          "background": "#FFFFFF",          "topBorder": "#E5EAF0",
+          "background": "#FFFFFF",
+          "topBorder": "#E5EAF0",
           "paddingX": 12,
           "compactPaddingX": 8,
           "metricsGroup": {

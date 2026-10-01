@@ -220,13 +220,13 @@ namespace Win7BookManagement.Forms
                 Padding = Padding.Empty
             };
 
-            _newOrderButton = CreateToolbarButton("新入库单", 112, true, delegate { StartNewOrder(); });
+            _newOrderButton = CreateToolbarButton("新入库单", 118, true, delegate { StartNewOrder(); });
             _newOrderButton.IconSvg = "FileAddOutlined";
-            _historyButton = CreateToolbarButton("历史单据", 106, false, delegate { OpenHistory(); });
-            _previousButton = CreateToolbarButton("上一张", 92, false, delegate { NavigateAdjacent(false); });
-            _nextButton = CreateToolbarButton("下一张", 92, false, delegate { NavigateAdjacent(true); });
-            _exportButton = CreateToolbarButton("导出 Excel", 112, false, delegate { ExportCurrent(); });
-            _clearButton = CreateToolbarButton("清空明细", 112, false, delegate { ClearCartWithConfirmation(); });
+            _historyButton = CreateToolbarButton("历史单据", 112, false, delegate { OpenHistory(); });
+            _previousButton = CreateToolbarButton("上一张", 96, false, delegate { NavigateAdjacent(false); });
+            _nextButton = CreateToolbarButton("下一张", 96, false, delegate { NavigateAdjacent(true); });
+            _exportButton = CreateToolbarButton("导出 Excel", 118, false, delegate { ExportCurrent(); });
+            _clearButton = CreateToolbarButton("清空明细", 118, false, delegate { ClearCartWithConfirmation(); });
 
             _actionRow.Controls.Add(_newOrderButton);
             _actionRow.Controls.Add(_historyButton);
@@ -255,11 +255,12 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 4,
+                ColumnCount = 5,
                 RowCount = 1,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
+            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -270,22 +271,33 @@ namespace Win7BookManagement.Forms
             _supplier.DropDownArrow = true;
             _supplier.Tag = "toolbar-input";
 
-            var dateField = CreateField("采购日期", _purchaseDate, 72, 206);
-            var orderField = CreateField("采购单号", _orderNo, 72, 258);
-            var supplierField = CreateField("供应商", _supplier, 62, 320);
-            supplierField.Dock = DockStyle.Fill;
+            var dateField = CreateField(
+                "采购日期",
+                _purchaseDate,
+                BookDeskUiSpec.PurchaseDateLabelWidth,
+                206);
+            var orderField = CreateField(
+                "采购单号",
+                _orderNo,
+                BookDeskUiSpec.PurchaseOrderNoLabelWidth,
+                258);
+            var supplierField = CreateField(
+                "供应商",
+                _supplier,
+                BookDeskUiSpec.PurchaseSupplierLabelWidth,
+                BookDeskUiSpec.PurchaseSupplierStandardWidth);
 
             _headerFields.Controls.Add(dateField, 0, 0);
             _headerFields.Controls.Add(orderField, 1, 0);
             _headerFields.Controls.Add(supplierField, 2, 0);
 
             _statusLabel.AutoSize = false;
-            _statusLabel.Size = new Size(118, BookDeskUiSpec.Standard.ControlHeight);
-            _statusLabel.MinimumSize = new Size(118, BookDeskUiSpec.Standard.ControlHeight);
+            _statusLabel.Size = new Size(118, BookDeskUiSpec.PurchaseFieldStandardHeight);
+            _statusLabel.MinimumSize = new Size(118, BookDeskUiSpec.PurchaseFieldStandardHeight);
             _statusLabel.TextAlign = ContentAlignment.MiddleCenter;
             _statusLabel.Font = UiTheme.Font(8.5F, FontStyle.Bold);
             _statusLabel.Margin = Padding.Empty;
-            _headerFields.Controls.Add(_statusLabel, 3, 0);
+            _headerFields.Controls.Add(_statusLabel, 4, 0);
             _documentSection.Controls.Add(_headerFields, 0, 0);
 
             _scanSection = new UiSpecSectionPanel
@@ -297,7 +309,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(10),
+                Padding = new Padding(10, 14, 10, 14),
                 Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0)
             };
             _scanSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -308,13 +320,16 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, BookDeskUiSpec.Standard.ControlHeight),
-                ColumnCount = 4,
+                MinimumSize = new Size(0, BookDeskUiSpec.PurchaseFieldStandardHeight),
+                ColumnCount = 5,
                 RowCount = 1,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
             _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _scanRow.ColumnStyles.Add(new ColumnStyle(
+                SizeType.Absolute,
+                BookDeskUiSpec.PurchaseSearchStandardMaxWidth));
             _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -324,7 +339,9 @@ namespace Win7BookManagement.Forms
                 Text = "扫码 / 搜索",
                 AutoSize = false,
                 Width = BookDeskUiSpec.PurchaseScanLabelWidth,
-                MinimumSize = new Size(BookDeskUiSpec.PurchaseScanLabelWidth, BookDeskUiSpec.Standard.ControlHeight),
+                MinimumSize = new Size(
+                    BookDeskUiSpec.PurchaseScanLabelWidth,
+                    BookDeskUiSpec.PurchaseFieldStandardHeight),
                 Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextPrimary,
@@ -349,13 +366,13 @@ namespace Win7BookManagement.Forms
             _addButton.Tag = "toolbar-action";
             _addButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
             _addButton.Click += delegate { AddBySearch(); };
-            _scanRow.Controls.Add(_addButton, 2, 0);
+            _scanRow.Controls.Add(_addButton, 3, 0);
 
             _pickButton = UiTheme.CreateAntdButton("选择图书", false);
             _pickButton.Width = 118;
             _pickButton.Tag = "toolbar-action";
             _pickButton.Click += delegate { PickBook(); };
-            _scanRow.Controls.Add(_pickButton, 3, 0);
+            _scanRow.Controls.Add(_pickButton, 4, 0);
 
             _scanSection.Controls.Add(_scanRow, 0, 0);
             _receivingSection.Controls.Add(_actionRow, 0, 0);
@@ -379,7 +396,10 @@ namespace Win7BookManagement.Forms
             var host = new TableLayoutPanel
             {
                 Width = labelWidth + controlWidth,
-                Height = BookDeskUiSpec.Standard.ControlHeight,
+                Height = BookDeskUiSpec.PurchaseFieldStandardHeight,
+                MinimumSize = new Size(
+                    labelWidth + controlWidth,
+                    BookDeskUiSpec.PurchaseFieldStandardHeight),
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 10, 0),
@@ -738,7 +758,14 @@ namespace Win7BookManagement.Forms
         {
             var profile = _profile ?? BookDeskUiSpec.Standard;
             var compact = profile.IsCompact;
-            var controlHeight = profile.ControlHeight;
+            var expanded = string.Equals(profile.Name, "expanded", StringComparison.Ordinal);
+            var profileControlHeight = profile.ControlHeight;
+            var fieldHeight = compact
+                ? BookDeskUiSpec.PurchaseFieldCompactHeight
+                : BookDeskUiSpec.PurchaseFieldStandardHeight;
+            var topButtonHeight = compact
+                ? BookDeskUiSpec.PurchaseTopButtonCompactHeight
+                : BookDeskUiSpec.PurchaseTopButtonStandardHeight;
 
             if (_receivingSection != null)
                 _receivingSection.Padding = Padding.Empty;
@@ -754,29 +781,39 @@ namespace Win7BookManagement.Forms
                 _actionRow.WrapContents = compact;
             }
 
-            SetToolbarButton(_newOrderButton, 112, profile);
-            SetToolbarButton(_historyButton, 106, profile);
-            SetToolbarButton(_previousButton, 92, profile);
-            SetToolbarButton(_nextButton, 92, profile);
-            SetToolbarButton(_exportButton, 112, profile);
-            SetToolbarButton(_clearButton, 112, profile);
-            SetToolbarButton(_addButton, 104, profile);
-            SetToolbarButton(_pickButton, 118, profile);
+            SetTopToolbarButton(_newOrderButton, 118, topButtonHeight, profile);
+            SetTopToolbarButton(_historyButton, 112, topButtonHeight, profile);
+            SetTopToolbarButton(_previousButton, 96, topButtonHeight, profile);
+            SetTopToolbarButton(_nextButton, 96, topButtonHeight, profile);
+            SetTopToolbarButton(_exportButton, 118, topButtonHeight, profile);
+            SetTopToolbarButton(_clearButton, 118, topButtonHeight, profile);
+            SetInlineActionButton(_addButton, 104, fieldHeight, profile);
+            SetInlineActionButton(_pickButton, 118, fieldHeight, profile);
+            if (_pickButton != null) _pickButton.Margin = Padding.Empty;
             SetToolbarButton(_removeButton, 106, profile);
             SetToolbarButton(_saveDraftButton, compact ? 96 : 104, profile);
             SetToolbarButton(_unreviewButton, compact ? 80 : 88, profile);
             SetToolbarButton(_reviewButton, compact ? 104 : 112, profile);
 
-            _purchaseDate.Height = controlHeight;
-            _purchaseDate.MinimumSize = new Size(0, controlHeight);
-            _orderNo.Height = controlHeight;
-            _orderNo.MinimumSize = new Size(0, controlHeight);
-            _supplier.Height = controlHeight;
-            _supplier.MinimumSize = new Size(0, controlHeight);
-            _isbn.Height = controlHeight;
-            _isbn.MinimumSize = new Size(BookDeskUiSpec.PurchaseSearchCompactMinimumWidth, controlHeight);
-            _note.Height = controlHeight;
-            _note.MinimumSize = new Size(0, controlHeight);
+            _purchaseDate.Height = fieldHeight;
+            _purchaseDate.MinimumSize = new Size(0, fieldHeight);
+            _orderNo.Height = fieldHeight;
+            _orderNo.MinimumSize = new Size(0, fieldHeight);
+            _supplier.Height = fieldHeight;
+            _supplier.MinimumSize = new Size(0, fieldHeight);
+            _isbn.Height = fieldHeight;
+            _isbn.MinimumSize = new Size(
+                BookDeskUiSpec.PurchaseSearchCompactMinimumWidth,
+                fieldHeight);
+            _isbn.MaximumSize = new Size(
+                expanded
+                    ? BookDeskUiSpec.PurchaseSearchExpandedMaxWidth
+                    : compact
+                        ? BookDeskUiSpec.PurchaseSearchCompactMaxWidth
+                        : BookDeskUiSpec.PurchaseSearchStandardMaxWidth,
+                fieldHeight);
+            _note.Height = profileControlHeight;
+            _note.MinimumSize = new Size(0, profileControlHeight);
 
             _purchaseDate.Font = UiTheme.Font(profile.BodyFontPoints);
             _orderNo.Font = UiTheme.Font(profile.BodyFontPoints);
@@ -784,14 +821,30 @@ namespace Win7BookManagement.Forms
             _isbn.Font = UiTheme.Font(profile.BodyFontPoints);
             _note.Font = UiTheme.Font(profile.BodyFontPoints);
 
-            ResizeFieldHost(_purchaseDate, 72, compact ? 176 : 206, controlHeight);
-            ResizeFieldHost(_orderNo, 72, compact ? 210 : 258, controlHeight);
-            ResizeFieldHost(_supplier, 62, compact ? 230 : 320, controlHeight);
+            ResizeFieldHost(
+                _purchaseDate,
+                BookDeskUiSpec.PurchaseDateLabelWidth,
+                compact ? 176 : 206,
+                fieldHeight);
+            ResizeFieldHost(
+                _orderNo,
+                BookDeskUiSpec.PurchaseOrderNoLabelWidth,
+                compact ? 210 : 258,
+                fieldHeight);
+            ResizeFieldHost(
+                _supplier,
+                BookDeskUiSpec.PurchaseSupplierLabelWidth,
+                compact
+                    ? BookDeskUiSpec.PurchaseSupplierCompactWidth
+                    : expanded
+                        ? BookDeskUiSpec.PurchaseSupplierExpandedWidth
+                        : BookDeskUiSpec.PurchaseSupplierStandardWidth,
+                fieldHeight);
 
             if (_statusLabel != null)
             {
-                _statusLabel.Size = new Size(118, controlHeight);
-                _statusLabel.MinimumSize = new Size(118, controlHeight);
+                _statusLabel.Size = new Size(118, fieldHeight);
+                _statusLabel.MinimumSize = new Size(118, fieldHeight);
                 _statusLabel.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
             }
 
@@ -806,7 +859,7 @@ namespace Win7BookManagement.Forms
                 var targetHeight = compact
                     ? BookDeskUiSpec.PurchaseDocumentCompactHeight
                     : BookDeskUiSpec.PurchaseDocumentStandardHeight;
-                var verticalPadding = Math.Max(0, (targetHeight - controlHeight) / 2);
+                var verticalPadding = Math.Max(0, (targetHeight - fieldHeight) / 2);
                 _documentSection.Padding = new Padding(
                     horizontalPadding,
                     verticalPadding,
@@ -826,7 +879,7 @@ namespace Win7BookManagement.Forms
                 var scanTargetHeight = compact
                     ? BookDeskUiSpec.PurchaseScanCompactHeight
                     : BookDeskUiSpec.PurchaseScanStandardHeight;
-                var scanVerticalPadding = Math.Max(0, (scanTargetHeight - controlHeight) / 2);
+                var scanVerticalPadding = Math.Max(0, (scanTargetHeight - fieldHeight) / 2);
                 _scanSection.Padding = new Padding(
                     scanHorizontalPadding,
                     scanVerticalPadding,
@@ -837,15 +890,25 @@ namespace Win7BookManagement.Forms
 
             if (_scanRow != null)
             {
-                _scanRow.MinimumSize = new Size(0, controlHeight);
+                _scanRow.MinimumSize = new Size(0, fieldHeight);
                 _scanRow.Margin = Padding.Empty;
+                if (_scanRow.ColumnStyles.Count >= 5)
+                {
+                    _scanRow.ColumnStyles[1].SizeType = SizeType.Absolute;
+                    _scanRow.ColumnStyles[1].Width = ResolvePurchaseSearchWidth(
+                        compact,
+                        expanded,
+                        profile.ControlGap);
+                }
                 foreach (Control child in _scanRow.Controls)
                 {
                     var label = child as Label;
                     if (label != null && string.Equals(label.Text, "扫码 / 搜索", StringComparison.Ordinal))
                     {
                         label.Width = BookDeskUiSpec.PurchaseScanLabelWidth;
-                        label.MinimumSize = new Size(BookDeskUiSpec.PurchaseScanLabelWidth, controlHeight);
+                        label.MinimumSize = new Size(
+                            BookDeskUiSpec.PurchaseScanLabelWidth,
+                            fieldHeight);
                         label.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
                     }
                 }
@@ -948,6 +1011,77 @@ namespace Win7BookManagement.Forms
                 host.ColumnStyles[0].SizeType = SizeType.Absolute;
                 host.ColumnStyles[0].Width = labelWidth;
             }
+        }
+
+        private int ResolvePurchaseSearchWidth(bool compact, bool expanded, int gap)
+        {
+            var maxWidth = expanded
+                ? BookDeskUiSpec.PurchaseSearchExpandedMaxWidth
+                : compact
+                    ? BookDeskUiSpec.PurchaseSearchCompactMaxWidth
+                    : BookDeskUiSpec.PurchaseSearchStandardMaxWidth;
+
+            if (_scanSection == null || _scanSection.ClientSize.Width <= 0)
+                return maxWidth;
+
+            var innerWidth = Math.Max(
+                0,
+                _scanSection.ClientSize.Width - _scanSection.Padding.Horizontal);
+            var reservedWidth =
+                BookDeskUiSpec.PurchaseScanLabelWidth +
+                104 +
+                118 +
+                (gap * 3) +
+                12;
+            var availableForSearch = innerWidth - reservedWidth;
+
+            return Math.Max(
+                BookDeskUiSpec.PurchaseSearchMinimumWidth,
+                Math.Min(maxWidth, availableForSearch));
+        }
+
+        private static void SetTopToolbarButton(
+            AntdUI.Button button,
+            int width,
+            int height,
+            UiSpecProfile profile)
+        {
+            if (button == null) return;
+
+            var toolbarHeight = profile.IsCompact
+                ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight
+                : BookDeskUiSpec.PurchaseTopToolbarStandardHeight;
+            var verticalMargin = Math.Max(0, (toolbarHeight - height) / 2);
+            var horizontalPadding = profile.IsCompact
+                ? BookDeskUiSpec.PurchaseTopButtonCompactPaddingX
+                : BookDeskUiSpec.PurchaseTopButtonStandardPaddingX;
+
+            button.Width = width;
+            button.Height = height;
+            button.MinimumSize = new Size(width, height);
+            button.Padding = new Padding(horizontalPadding, 0, horizontalPadding, 0);
+            button.Font = UiTheme.Font(profile.BodyFontPoints);
+            button.Margin = new Padding(0, verticalMargin, profile.ControlGap, verticalMargin);
+        }
+
+        private static void SetInlineActionButton(
+            AntdUI.Button button,
+            int width,
+            int height,
+            UiSpecProfile profile)
+        {
+            if (button == null) return;
+
+            button.Width = width;
+            button.Height = height;
+            button.MinimumSize = new Size(width, height);
+            button.Padding = new Padding(
+                profile.ButtonHorizontalPadding,
+                0,
+                profile.ButtonHorizontalPadding,
+                0);
+            button.Font = UiTheme.Font(profile.BodyFontPoints);
+            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
         }
 
         private static void SetToolbarButton(AntdUI.Button button, int width, UiSpecProfile profile)

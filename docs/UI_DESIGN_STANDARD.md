@@ -72,6 +72,7 @@
 ### 控件高度与字体度量
 
 - 已迁移到 `docs/ui-spec.json` / `BookDeskUiSpec` 的页面，以 36 logical px 作为 96 DPI Standard / Expanded 的 Input / Button 高度；1366×768 的 Compact 档使用 34px。所有相邻输入框、下拉框、日期框和动作按钮必须同高同基线。
+- 采购入库属于已验证的 AntdUI 页面级例外：采购日期/单号/供应商与扫码搜索行使用 44px（Standard/Expanded）/42px（Compact）安全高度，扫码行相邻按钮必须严格同高；顶部单据工具栏按钮为 42px/40px，并保留显式水平 padding。该例外只由 `ui-spec.json` v1.1.1 定义，不得扩散为全局放大。
 - 单行 TextBox 不再强制 AutoSize=false 或硬拉到 38px。原生 WinForms 单行 TextBox 必须保留系统文本基线，外层布局负责提供足够的上下空间。
 - ComboBox / NumericUpDown / DateTimePicker 使用内容驱动的最小高度，不能依靠过小的固定 TableLayout 行。
 - AntdUI Table 行与表头的最小高度根据实际字体度量计算；38 / 40px 只作为 96 DPI 下的最低基线。
