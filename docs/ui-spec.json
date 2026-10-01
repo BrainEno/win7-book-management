@@ -31,7 +31,7 @@
     "calibration": {
       "status": "raster-verified",
       "reference": "approved 1586x992 prototype set",
-      "note": "Shared control/table/shell metrics were recalibrated after pixel comparison against CI WinForms screenshots. These values supersede the initial screenshot estimate. Shell status height and inventory toolbar height were also corrected from direct raster boundary measurement."
+      "note": "Shared control/table/shell metrics were recalibrated after pixel comparison against CI WinForms screenshots. These values supersede the initial screenshot estimate. Shell status height and inventory toolbar height were also corrected from direct raster boundary measurement. Document Center filter/card/table values are aligned to the same raster-calibrated 44/48px control and 48/52px table profiles."
     }
   },
   "measurement": {
@@ -981,17 +981,17 @@
         "gap": 12,
         "filterCard": {
           "height": 236,
-          "compactHeight": 184,
+          "compactHeight": 210,
           "padding": 14,
           "compactPadding": 10,
           "topAction": {
             "text": "从选中单据发起退货",
-            "width": 184,
-            "height": 36,
+            "width": 200,
+            "height": 48,
             "align": "right"
           },
           "filterRow": {
-            "height": 58,
+            "height": 75,
             "items": [
               {
                 "type": "field",
@@ -1146,11 +1146,11 @@
       },
       "responsive": {
         "compact": [
-          "Filter controls become two rows instead of reducing date/input heights below compact control height.",
-          "Row 1: 类型 / 从 / 到 / 查询.",
-          "Row 2: 关键词 input fills available width; return action remains top-right or moves to row 2 far-right if necessary.",
-          "Helper text becomes a single-line ellipsis or hides if vertical space is constrained.",
-          "Bill list and bill detail both remain visible; allocate vertical space approximately 58% / 42% after filters."
+          "1366×768 uses the shared compact profile: 44px controls and 48px table rows/headers.",
+          "Keep the filter controls on one row at 1366px when space permits by using compact field widths (160 / 170 / 170 / flexible keyword / 78 query).",
+          "If the page becomes narrower than the supported 1280px client minimum, allow the keyword field to wrap only after reducing gaps and padding.",
+          "Keep both bill list and bill detail visible; allocate about 57% / 43% of the post-filter workspace.",
+          "Do not hide the prototype columns at 1366×768 or above."
         ]
       }
     }
