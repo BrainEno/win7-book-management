@@ -173,7 +173,7 @@ namespace Win7BookManagement.Infrastructure
                     },
                     new Size(1586, 945),
                     false,
-                    delegate(Form form) { FilterBookMaster(form, books[5].SelfCode); });
+                    delegate(Form form) { FilterBookMaster(form, books[5].Title); });
 
                 var firstBook = services.Books.GetById(books[0].Id);
                 Capture(
@@ -751,18 +751,18 @@ namespace Win7BookManagement.Infrastructure
                     !embedded.TopLevel &&
                     embedded.Parent != null)
                 {
-                    var client = embedded.Parent.ClientSize;
-                    if (client.Width > 0 && client.Height > 0)
+                    var bounds = embedded.Parent.DisplayRectangle;
+                    if (bounds.Width > 0 && bounds.Height > 0)
                     {
                         embedded.Dock = DockStyle.None;
-                        embedded.Location = Point.Empty;
+                        embedded.Location = bounds.Location;
                         SetWindowPos(
                             embedded.Handle,
                             IntPtr.Zero,
-                            0,
-                            0,
-                            client.Width,
-                            client.Height,
+                            bounds.X,
+                            bounds.Y,
+                            bounds.Width,
+                            bounds.Height,
                             SwpNoZOrder | SwpNoActivate);
                         embedded.PerformLayout();
                     }
