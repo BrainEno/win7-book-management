@@ -486,7 +486,6 @@ namespace Win7BookManagement.Infrastructure
                     antdInput.Height + "px < " + expectedInputHeight + "px。");
             }
 
-            var expectedInputHeight = UiTheme.ResponsiveInputHeight(viewportWidth);
             var antdSelect = control as AntdUI.Select;
             if (antdSelect != null && antdSelect.Visible &&
                 antdSelect.Height > 0 && antdSelect.Height < expectedInputHeight)
