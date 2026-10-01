@@ -148,6 +148,28 @@ namespace Win7BookManagement.Infrastructure
                 if (services.Books.GetById(bookId).StockQuantity != 9)
                     throw new InvalidOperationException("采购复核没有正确增加库存。");
 
+                var purchaseHistoryByTitle = services.Purchases.SearchHistory(
+                    "自检图书",
+                    PurchaseService.ReviewedStatus,
+                    50);
+                if (purchaseHistoryByTitle.Count != 1 ||
+                    purchaseHistoryByTitle[0].Id != purchaseDraft.Id)
+                    throw new InvalidOperationException("采购历史 ISBN / 书名 / 状态筛选自检失败。");
+
+                var copiedPurchaseDraft = services.Purchases.CopyToNewDraft(
+                    purchaseDraft.Id,
+                    DateTime.Today);
+                if (copiedPurchaseDraft.IsReviewed ||
+                    copiedPurchaseDraft.Id == purchaseDraft.Id ||
+                    copiedPurchaseDraft.SupplierId != purchaseDraft.SupplierId ||
+                    copiedPurchaseDraft.Lines.Count != 1 ||
+                    copiedPurchaseDraft.Lines[0].BookId != bookId ||
+                    copiedPurchaseDraft.Lines[0].Quantity != 4 ||
+                    copiedPurchaseDraft.Lines[0].UnitCostCent != 1000 ||
+                    services.Books.GetById(bookId).StockQuantity != 9)
+                    throw new InvalidOperationException("采购单复制为新草稿自检失败。");
+                services.Purchases.DeleteDraft(copiedPurchaseDraft.Id);
+
                 services.Purchases.Unreview(purchaseDraft.Id);
                 if (services.Books.GetById(bookId).StockQuantity != 5 ||
                     services.Purchases.GetDocument(purchaseDraft.Id).IsReviewed)
