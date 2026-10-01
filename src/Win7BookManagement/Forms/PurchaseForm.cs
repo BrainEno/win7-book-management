@@ -248,7 +248,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
+                WrapContents = false,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
@@ -769,6 +769,9 @@ namespace Win7BookManagement.Forms
             ResizeFieldHost(_purchaseDate, 72, compact ? 176 : 206, controlHeight);
             ResizeFieldHost(_orderNo, 72, compact ? 210 : 258, controlHeight);
             ResizeFieldHost(_supplier, 62, compact ? 230 : 320, controlHeight);
+
+            if (_headerFields != null)
+                _headerFields.WrapContents = false;
 
             if (_statusLabel != null)
             {
