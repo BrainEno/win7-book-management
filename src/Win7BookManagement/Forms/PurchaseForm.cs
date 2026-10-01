@@ -396,7 +396,7 @@ namespace Win7BookManagement.Forms
 
             _cartHeader.Controls.Add(new Label
             {
-                Text = "草稿状态下可直接编辑数量和进价",
+                Text = "点击明细表后可直接扫码；未匹配会自动打开高级查找",
                 AutoSize = true,
                 Anchor = AnchorStyles.Right,
                 ForeColor = UiTheme.TextSecondary,
@@ -419,12 +419,13 @@ namespace Win7BookManagement.Forms
 
             _emptyState.Dock = DockStyle.None;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "当前入库单为空\r\n请扫码、搜索或选择图书";
+            _emptyState.Text = "当前入库单为空\r\n点击明细表后可直接扫码；也可点击上方“查找图书”";
             _emptyState.ForeColor = UiTheme.TextSecondary;
             _emptyState.BackColor = UiTheme.Surface;
             _emptyState.Font = UiTheme.Font(BookDeskUiSpec.Standard.SecondaryFontPoints);
             _emptyState.Margin = Padding.Empty;
             _emptyState.Padding = Padding.Empty;
+            _emptyState.Enabled = false;
 
             content.Controls.Add(_grid);
             _grid.Controls.Add(_emptyState);
@@ -445,7 +446,7 @@ namespace Win7BookManagement.Forms
             _grid.ColumnDragSort = false;
             _grid.EditMode = AntdUI.TEditMode.Click;
             _grid.ShowTip = true;
-            _grid.EmptyText = "当前入库单为空\r\n请扫码、搜索或选择图书";
+            _grid.EmptyText = "当前入库单为空\r\n点击表格后可直接扫码；未匹配时打开高级查找";
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
@@ -461,9 +462,30 @@ namespace Win7BookManagement.Forms
             };
             _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v5");
 
+            _grid.MouseDown += delegate
+            {
+                if (!IsReviewed)
+                {
+                    _scannerCaptureEnabled = true;
+                    _scanBuffer.Clear();
+                    _grid.Focus();
+                }
+            };
+            _grid.Enter += delegate
+            {
+                if (!IsReviewed)
+                    _scannerCaptureEnabled = true;
+            };
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
                 _selectedRow = e.Record as PurchaseCartRow;
+
+                var key = e.Column == null ? "" : e.Column.Key;
+                _scannerCaptureEnabled =
+                    !string.Equals(key, "Quantity", StringComparison.Ordinal) &&
+                    !string.Equals(key, "UnitCostYuan", StringComparison.Ordinal);
+                if (!_scannerCaptureEnabled)
+                    _scanBuffer.Clear();
             };
             _grid.CellEndEdit += HandleCellEndEdit;
         }
@@ -499,6 +521,8 @@ namespace Win7BookManagement.Forms
             MarkDirty();
             _grid.Refresh();
             UpdateTotals();
+            _scannerCaptureEnabled = true;
+            _scanBuffer.Clear();
             return true;
         }
 
@@ -933,26 +957,6 @@ namespace Win7BookManagement.Forms
             button.Margin = new Padding(0, verticalMargin, profile.ControlGap, verticalMargin);
         }
 
-        private static void SetInlineActionButton(
-            AntdUI.Button button,
-            int width,
-            int height,
-            UiSpecProfile profile)
-        {
-            if (button == null) return;
-
-            button.Width = width;
-            button.Height = height;
-            button.MinimumSize = new Size(width, height);
-            button.Padding = new Padding(
-                profile.ButtonHorizontalPadding,
-                0,
-                profile.ButtonHorizontalPadding,
-                0);
-            button.Font = UiTheme.Font(profile.BodyFontPoints);
-            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
-        }
-
         private static void SetToolbarButton(AntdUI.Button button, int width, UiSpecProfile profile)
         {
             if (button == null) return;
@@ -1011,65 +1015,52 @@ namespace Win7BookManagement.Forms
                 Math.Max(0, _grid.ClientSize.Height - headerHeight));
         }
 
-        private void AddBySearch()
+        private void HandleScannerKeyPress(object sender, KeyPressEventArgs e)
         {
-            if (IsReviewed)
+            if (IsReviewed ||
+                !_scannerCaptureEnabled ||
+                _grid == null ||
+                !_grid.ContainsFocus)
+                return;
+
+            if (e.KeyChar == '\r')
             {
-                ShowReviewedReadOnlyHint();
+                if (_scanBuffer.Length == 0)
+                    return;
+
+                var identifier = _scanBuffer.ToString().Trim();
+                _scanBuffer.Clear();
+                e.Handled = true;
+
+                if (identifier.Length > 0)
+                    ProcessScannedIdentifier(identifier);
                 return;
             }
 
-            var text = (_isbn.Text ?? "").Trim();
-            if (text.Length == 0)
+            if (e.KeyChar == '\b')
             {
-                MessageBox.Show(this, "请先扫描 ISBN，或输入店内编码 / ISBN / 书名关键词。", "还没有图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                _isbn.Focus();
+                if (_scanBuffer.Length > 0)
+                    _scanBuffer.Length -= 1;
+                e.Handled = true;
                 return;
             }
 
-            var exactBook = _services.Books.FindByExactIsbn(text);
-            if (exactBook != null)
-            {
-                AddBook(exactBook);
-                _isbn.Text = "";
-                _isbn.Focus();
+            if (char.IsControl(e.KeyChar))
                 return;
+
+            var now = DateTime.UtcNow;
+            if (_lastScanCharAt != DateTime.MinValue &&
+                (now - _lastScanCharAt).TotalMilliseconds > 900)
+            {
+                _scanBuffer.Clear();
             }
 
-            var matches = _services.Books.SearchActiveByIsbnOrTitle(text);
-            if (matches.Count == 0)
-            {
-                MessageBox.Show(
-                    this,
-                    "没有找到匹配的启用图书。可以点击“选择图书”，再在弹窗底部选择“新增资料”。",
-                    "未找到图书",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                _isbn.SelectAll();
-                _isbn.Focus();
-                return;
-            }
-
-            if (matches.Count == 1)
-            {
-                AddBook(matches[0]);
-                _isbn.Text = "";
-                _isbn.Focus();
-                return;
-            }
-
-            using (var dialog = new BookLookupDialog(_services, text, true))
-            {
-                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
-                {
-                    AddBook(dialog.SelectedBook);
-                    _isbn.Text = "";
-                }
-            }
-            _isbn.Focus();
+            _lastScanCharAt = now;
+            _scanBuffer.Append(e.KeyChar);
+            e.Handled = true;
         }
 
-        private void PickBook()
+        private void ProcessScannedIdentifier(string identifier)
         {
             if (IsReviewed)
             {
@@ -1077,11 +1068,49 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            using (var dialog = new BookLookupDialog(_services))
+            var book = _services.Books.FindByExactIdentifier(identifier);
+            if (book != null)
             {
-                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
-                    AddBook(dialog.SelectedBook);
+                AddBook(book);
+                FocusGridForScanner();
+                return;
             }
+
+            OpenAdvancedBookLookup(identifier);
+        }
+
+        private void OpenAdvancedBookLookup(string initialIdentifier)
+        {
+            if (IsReviewed)
+            {
+                ShowReviewedReadOnlyHint();
+                return;
+            }
+
+            _scannerCaptureEnabled = false;
+            _scanBuffer.Clear();
+
+            using (var dialog = new AdvancedBookLookupDialog(
+                _services,
+                initialIdentifier,
+                delegate(Book book) { AddBook(book); }))
+            {
+                if (dialog.ShowDialog(this) == DialogResult.OK &&
+                    dialog.SelectedBook != null)
+                {
+                    AddBook(dialog.SelectedBook);
+                }
+            }
+
+            FocusGridForScanner();
+        }
+
+        private void FocusGridForScanner()
+        {
+            _scanBuffer.Clear();
+            _scannerCaptureEnabled = !IsReviewed;
+            if (_grid != null && _grid.CanFocus)
+                _grid.Focus();
         }
 
         private void AddBook(Book book)
@@ -1171,7 +1200,7 @@ namespace Win7BookManagement.Forms
                 _rows.Clear();
                 _selectedRow = null;
                 if (_supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
-                _isbn.Text = "";
+                _scanBuffer.Clear();
                 CaptureBaseline();
                 _dirty = false;
             }
@@ -1183,7 +1212,7 @@ namespace Win7BookManagement.Forms
             UpdateTotals();
             ApplyReviewState();
             UpdateNavigationState();
-            if (focusSearch) _isbn.Focus();
+            if (focusSearch) FocusGridForScanner();
         }
 
         private void OpenHistory()
@@ -1649,6 +1678,14 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
+            if (e.KeyCode == Keys.F3)
+            {
+                OpenAdvancedBookLookup("");
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+                return;
+            }
+
             if (e.KeyCode == Keys.F4)
             {
                 OpenHistory();
@@ -1671,10 +1708,8 @@ namespace Win7BookManagement.Forms
             _purchaseDate.Enabled = editable;
             _orderNo.Enabled = editable;
             _supplier.Enabled = editable;
-            _isbn.Enabled = editable;
             _note.Enabled = editable;
-            _addButton.Enabled = editable;
-            _pickButton.Enabled = editable;
+            _lookupButton.Enabled = editable;
             _clearButton.Enabled = editable;
             _removeButton.Enabled = editable;
             _saveDraftButton.Enabled = editable;
@@ -1684,6 +1719,8 @@ namespace Win7BookManagement.Forms
             _quantityColumn.ReadOnly = !editable;
             _unitCostColumn.ReadOnly = !editable;
             _grid.Refresh();
+            _scannerCaptureEnabled = editable;
+            if (!editable) _scanBuffer.Clear();
 
             UpdateStatusLabel();
         }
