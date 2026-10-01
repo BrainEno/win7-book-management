@@ -705,7 +705,7 @@ namespace Win7BookManagement.Forms
                     compact
                         ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight
                         : BookDeskUiSpec.PurchaseTopToolbarStandardHeight);
-                _actionRow.WrapContents = compact;
+                _actionRow.WrapContents = false;
             }
 
             SetTopToolbarButton(_newOrderButton, 118, topButtonHeight, profile);
@@ -713,10 +713,10 @@ namespace Win7BookManagement.Forms
             SetTopToolbarButton(_previousButton, 96, topButtonHeight, profile);
             SetTopToolbarButton(_nextButton, 96, topButtonHeight, profile);
             SetTopToolbarButton(_exportButton, 118, topButtonHeight, profile);
+            SetTopToolbarButton(_lookupButton, 112, topButtonHeight, profile);
             SetTopToolbarButton(_clearButton, 118, topButtonHeight, profile);
-            SetInlineActionButton(_addButton, 104, fieldHeight, profile);
-            SetInlineActionButton(_pickButton, 118, fieldHeight, profile);
-            if (_pickButton != null) _pickButton.Margin = Padding.Empty;
+            if (_clearButton != null) _clearButton.Margin = Padding.Empty;
+
             SetToolbarButton(_removeButton, 106, profile);
             SetToolbarButton(_saveDraftButton, compact ? 96 : 104, profile);
             SetToolbarButton(_unreviewButton, compact ? 80 : 88, profile);
@@ -728,24 +728,12 @@ namespace Win7BookManagement.Forms
             _orderNo.MinimumSize = new Size(0, fieldHeight);
             _supplier.Height = fieldHeight;
             _supplier.MinimumSize = new Size(0, fieldHeight);
-            _isbn.Height = fieldHeight;
-            _isbn.MinimumSize = new Size(
-                BookDeskUiSpec.PurchaseSearchCompactMinimumWidth,
-                fieldHeight);
-            _isbn.MaximumSize = new Size(
-                expanded
-                    ? BookDeskUiSpec.PurchaseSearchExpandedMaxWidth
-                    : compact
-                        ? BookDeskUiSpec.PurchaseSearchCompactMaxWidth
-                        : BookDeskUiSpec.PurchaseSearchStandardMaxWidth,
-                fieldHeight);
             _note.Height = profileControlHeight;
             _note.MinimumSize = new Size(0, profileControlHeight);
 
             _purchaseDate.Font = UiTheme.Font(profile.BodyFontPoints);
             _orderNo.Font = UiTheme.Font(profile.BodyFontPoints);
             _supplier.Font = UiTheme.Font(profile.BodyFontPoints);
-            _isbn.Font = UiTheme.Font(profile.BodyFontPoints);
             _note.Font = UiTheme.Font(profile.BodyFontPoints);
 
             ResizeFieldHost(
@@ -793,52 +781,6 @@ namespace Win7BookManagement.Forms
                     horizontalPadding,
                     verticalPadding);
                 _documentSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            }
-
-            if (_scanSection != null)
-            {
-                _scanSection.MinimumSize = new Size(
-                    0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseScanCompactHeight
-                        : BookDeskUiSpec.PurchaseScanStandardHeight);
-                var scanHorizontalPadding = compact ? 8 : 10;
-                var scanTargetHeight = compact
-                    ? BookDeskUiSpec.PurchaseScanCompactHeight
-                    : BookDeskUiSpec.PurchaseScanStandardHeight;
-                var scanVerticalPadding = Math.Max(0, (scanTargetHeight - fieldHeight) / 2);
-                _scanSection.Padding = new Padding(
-                    scanHorizontalPadding,
-                    scanVerticalPadding,
-                    scanHorizontalPadding,
-                    scanVerticalPadding);
-                _scanSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            }
-
-            if (_scanRow != null)
-            {
-                _scanRow.MinimumSize = new Size(0, fieldHeight);
-                _scanRow.Margin = Padding.Empty;
-                if (_scanRow.ColumnStyles.Count >= 5)
-                {
-                    _scanRow.ColumnStyles[1].SizeType = SizeType.Absolute;
-                    _scanRow.ColumnStyles[1].Width = ResolvePurchaseSearchWidth(
-                        compact,
-                        expanded,
-                        profile.ControlGap);
-                }
-                foreach (Control child in _scanRow.Controls)
-                {
-                    var label = child as Label;
-                    if (label != null && string.Equals(label.Text, "扫码 / 搜索", StringComparison.Ordinal))
-                    {
-                        label.Width = BookDeskUiSpec.PurchaseScanLabelWidth;
-                        label.MinimumSize = new Size(
-                            BookDeskUiSpec.PurchaseScanLabelWidth,
-                            fieldHeight);
-                        label.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
-                    }
-                }
             }
 
             if (_cartHost != null)
