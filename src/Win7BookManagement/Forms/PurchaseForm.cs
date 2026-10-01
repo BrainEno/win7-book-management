@@ -425,7 +425,8 @@ namespace Win7BookManagement.Forms
             _emptyState.Font = UiTheme.Font(BookDeskUiSpec.Standard.SecondaryFontPoints);
             _emptyState.Margin = Padding.Empty;
             _emptyState.Padding = Padding.Empty;
-            _emptyState.Enabled = false;
+            _emptyState.Cursor = Cursors.IBeam;
+            _emptyState.MouseDown += delegate { FocusGridForScanner(); };
 
             content.Controls.Add(_grid);
             _grid.Controls.Add(_emptyState);
