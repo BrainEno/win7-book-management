@@ -22,6 +22,7 @@ namespace Win7BookManagement.Forms
 
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _summary = new Label();
+        private IList<Book> _results = new List<Book>();
 
         private Book _selected;
 
@@ -386,14 +387,14 @@ namespace Win7BookManagement.Forms
 
         private void Reload()
         {
-            var result = _services.Books.SearchAdvanced(BuildCriteria());
-            _selected = result.Count > 0 ? result[0] : null;
-            _grid.DataSource = result;
+            _results = _services.Books.SearchAdvanced(BuildCriteria());
+            _selected = _results.Count > 0 ? _results[0] : null;
+            _grid.DataSource = _results;
 
             if (_selected != null)
                 _grid.SetSelected(_selected, false);
 
-            _summary.Tag = result.Count;
+            _summary.Tag = _results.Count;
             UpdateSummary();
         }
 
@@ -449,7 +450,7 @@ namespace Win7BookManagement.Forms
                 _category.SelectedIndex = 0;
                 Reload();
 
-                foreach (var book in _services.Books.SearchAdvanced(BuildCriteria()))
+                foreach (var book in _results)
                 {
                     if (book.Id != saved.Id) continue;
                     _selected = book;
