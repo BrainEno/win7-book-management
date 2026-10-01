@@ -8,7 +8,7 @@ using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Forms
 {
-    public sealed class BookListForm : Form
+    public sealed class BookListForm : Form, IUiSpecPage
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("输入店内编码、ISBN、书名、作者或出版社");
