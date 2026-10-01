@@ -1,16 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
+using Win7BookManagement.Services;
 
 namespace Win7BookManagement.Forms
 {
     public sealed class PurchaseForm : Form, INavigationGuard, IUiSpecPage
     {
         private readonly ApplicationServices _services;
+
+        private readonly AntdUI.DatePicker _purchaseDate = new AntdUI.DatePicker();
+        private readonly AntdUI.Input _orderNo = UiTheme.CreateAntdInput("留空时保存草稿会自动生成");
         private readonly AntdUI.Select _supplier = new AntdUI.Select();
         private readonly AntdUI.Input _isbn = UiTheme.CreateAntdInput("扫码或输入店内编码 / ISBN / 书名 / 作者");
         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写到货批次、物流或其他备注");
@@ -21,24 +27,33 @@ namespace Win7BookManagement.Forms
         private readonly Label _quantityTotal = new Label();
         private readonly Label _total = new Label();
         private readonly Label _emptyState = new Label();
+        private readonly Label _statusLabel = new Label();
         private readonly List<PurchaseCartRow> _emptyDisplayRows =
             new List<PurchaseCartRow> { new PurchaseCartRow() };
-        private Panel _cartContent;
+
         private UiSpecSectionPanel _receivingSection;
-        private TableLayoutPanel _supplierRow;
+        private FlowLayoutPanel _actionRow;
+        private FlowLayoutPanel _headerFields;
         private TableLayoutPanel _scanRow;
         private TableLayoutPanel _cartHost;
         private TableLayoutPanel _cartHeader;
         private TableLayoutPanel _noteSection;
         private TableLayoutPanel _totalsSection;
         private FlowLayoutPanel _metrics;
+        private FlowLayoutPanel _bottomActions;
+
         private AntdUI.Button _newOrderButton;
+        private AntdUI.Button _historyButton;
+        private AntdUI.Button _previousButton;
+        private AntdUI.Button _nextButton;
+        private AntdUI.Button _exportButton;
         private AntdUI.Button _clearButton;
         private AntdUI.Button _addButton;
         private AntdUI.Button _pickButton;
         private AntdUI.Button _removeButton;
-        private AntdUI.Button _submitButton;
-        private UiSpecProfile _profile = BookDeskUiSpec.Standard;
+        private AntdUI.Button _saveDraftButton;
+        private AntdUI.Button _reviewButton;
+        private AntdUI.Button _unreviewButton;
 
         private readonly AntdUI.Column _indexColumn;
         private readonly AntdUI.Column _selfCodeColumn;
@@ -53,12 +68,20 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Column _lineTotalColumn;
 
         private PurchaseCartRow _selectedRow;
+        private long? _currentDocumentId;
+        private string _currentStatus = PurchaseService.DraftStatus;
+        private bool _loadingDocument;
+        private bool _dirty;
+        private UiSpecProfile _profile = BookDeskUiSpec.Standard;
 
         public PurchaseForm(ApplicationServices services)
         {
             _services = services;
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
+
+            _purchaseDate.Format = "yyyy-MM-dd";
+            _purchaseDate.Value = DateTime.Today;
 
             _indexColumn = new AntdUI.Column("Index", "序号") { Width = "60", MinWidth = "54", ReadOnly = true };
             _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "110", MinWidth = "90", ReadOnly = true };
@@ -83,7 +106,13 @@ namespace Win7BookManagement.Forms
                 DisplayFormat = "0.00",
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
-            _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计（元）") { Width = "112", MinWidth = "94", ReadOnly = true, DisplayFormat = "0.00" };
+            _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计（元）")
+            {
+                Width = "112",
+                MinWidth = "94",
+                ReadOnly = true,
+                DisplayFormat = "0.00"
+            };
 
             var root = new TableLayoutPanel
             {
@@ -108,16 +137,23 @@ namespace Win7BookManagement.Forms
 
             _rows.ListChanged += delegate
             {
-                _grid.DataSource = _rows;
                 UpdateTotals();
+                if (!_loadingDocument) MarkDirty();
             };
+            _orderNo.TextChanged += delegate { if (!_loadingDocument) MarkDirty(); };
+            _note.TextChanged += delegate { if (!_loadingDocument) MarkDirty(); };
+            _supplier.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e)
+            {
+                if (!_loadingDocument) MarkDirty();
+            };
+
             Resize += delegate { ApplyResponsiveColumns(); };
             _grid.SizeChanged += delegate { ApplyResponsiveColumns(); };
 
             Shown += delegate
             {
                 ReloadSuppliers();
-                _grid.DataSource = _rows;
+                ResetOrder(false);
                 UpdateTotals();
                 ApplyResponsiveColumns();
                 _isbn.Focus();
@@ -129,13 +165,18 @@ namespace Win7BookManagement.Forms
 
         public bool CanNavigateAway(IWin32Window owner)
         {
-            if (_rows.Count == 0) return true;
-            return MessageBox.Show(
+            if (!HasUnsavedWork()) return true;
+
+            var result = MessageBox.Show(
                 owner,
-                "当前采购入库单还有 " + _rows.Count + " 项未提交。离开页面会丢弃这些内容，确定离开吗？",
-                "未完成的采购单",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning) == DialogResult.Yes;
+                "当前采购单有尚未保存的修改。\r\n\r\n选择“是”保存为草稿后离开；选择“否”放弃这些修改；选择“取消”继续编辑。",
+                "采购单尚未保存",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Cancel) return false;
+            if (result == DialogResult.No) return true;
+            return SaveDraftInternal(false);
         }
 
         private Control CreateReceivingSection()
@@ -145,9 +186,8 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, BookDeskUiSpec.PurchaseToolbarStandardHeight),
                 ColumnCount = 1,
-                RowCount = 2,
+                RowCount = 3,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(BookDeskUiSpec.Standard.ToolbarPadding),
                 Margin = Padding.Empty
@@ -155,58 +195,62 @@ namespace Win7BookManagement.Forms
             _receivingSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             _receivingSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _receivingSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _receivingSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            _supplierRow = new TableLayoutPanel
+            _actionRow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, BookDeskUiSpec.Standard.ControlHeight),
-                ColumnCount = 5,
-                RowCount = 1,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
-            _supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, BookDeskUiSpec.PurchaseSupplierStandardWidth));
-            _supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _supplierRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            _supplierRow.Controls.Add(new Label
+            _newOrderButton = CreateToolbarButton("新入库单", 102, delegate { StartNewOrder(); });
+            _historyButton = CreateToolbarButton("历史单据", 102, delegate { OpenHistory(); });
+            _previousButton = CreateToolbarButton("上一张", 88, delegate { NavigateAdjacent(false); });
+            _nextButton = CreateToolbarButton("下一张", 88, delegate { NavigateAdjacent(true); });
+            _exportButton = CreateToolbarButton("导出 Excel", 108, delegate { ExportCurrent(); });
+            _clearButton = CreateToolbarButton("清空明细", 96, delegate { ClearCartWithConfirmation(); });
+
+            _actionRow.Controls.Add(_newOrderButton);
+            _actionRow.Controls.Add(_historyButton);
+            _actionRow.Controls.Add(_previousButton);
+            _actionRow.Controls.Add(_nextButton);
+            _actionRow.Controls.Add(_exportButton);
+            _actionRow.Controls.Add(_clearButton);
+
+            _headerFields = new FlowLayoutPanel
             {
-                Text = "供应商",
-                AutoSize = false,
-                Width = BookDeskUiSpec.PurchaseSupplierLabelWidth,
-                MinimumSize = new Size(BookDeskUiSpec.PurchaseSupplierLabelWidth, BookDeskUiSpec.Standard.ControlHeight),
-                Anchor = AnchorStyles.Left,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(BookDeskUiSpec.Standard.BodyFontPoints, FontStyle.Bold),
-                Margin = Padding.Empty
-            }, 0, 0);
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                Margin = new Padding(0, 10, 0, 0),
+                Padding = Padding.Empty
+            };
 
-            _supplier.Dock = DockStyle.None;
-            _supplier.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            _supplier.Tag = "toolbar-input";
-            _supplier.Margin = new Padding(0, 0, 10, 0);
+            _purchaseDate.Width = 150;
+            _purchaseDate.Tag = "toolbar-input";
+            _orderNo.Width = 210;
+            _orderNo.Tag = "toolbar-input";
+            _supplier.Width = 220;
             _supplier.DropDownArrow = true;
-            _supplierRow.Controls.Add(_supplier, 1, 0);
+            _supplier.Tag = "toolbar-input";
 
-            _newOrderButton = UiTheme.CreateAntdButton("新入库单", false);
-            _newOrderButton.Width = 112;
-            _newOrderButton.Anchor = AnchorStyles.Left;
-            _newOrderButton.Tag = "toolbar-action";
-            _newOrderButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
-            _newOrderButton.Click += delegate { StartNewOrder(); };
-            _supplierRow.Controls.Add(_newOrderButton, 3, 0);
+            _headerFields.Controls.Add(CreateField("采购日期", _purchaseDate, 210));
+            _headerFields.Controls.Add(CreateField("采购单号", _orderNo, 284));
+            _headerFields.Controls.Add(CreateField("供应商", _supplier, 286));
 
-            _clearButton = UiTheme.CreateAntdButton("清空", false);
-            _clearButton.Width = 78;
-            _clearButton.Anchor = AnchorStyles.Left;
-            _clearButton.Tag = "toolbar-action";
-            _clearButton.Click += delegate { ClearCartWithConfirmation(); };
-            _supplierRow.Controls.Add(_clearButton, 4, 0);
+            _statusLabel.AutoSize = false;
+            _statusLabel.Size = new Size(108, BookDeskUiSpec.Standard.ControlHeight);
+            _statusLabel.TextAlign = ContentAlignment.MiddleCenter;
+            _statusLabel.Font = UiTheme.Font(8.5F, FontStyle.Bold);
+            _statusLabel.Margin = new Padding(2, 0, 0, 0);
+            _headerFields.Controls.Add(_statusLabel);
 
             _scanRow = new TableLayoutPanel
             {
@@ -216,7 +260,7 @@ namespace Win7BookManagement.Forms
                 MinimumSize = new Size(0, BookDeskUiSpec.Standard.ControlHeight),
                 ColumnCount = 4,
                 RowCount = 1,
-                Margin = new Padding(0, 12, 0, 0),
+                Margin = new Padding(0, 10, 0, 0),
                 Padding = Padding.Empty
             };
             _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -243,32 +287,71 @@ namespace Win7BookManagement.Forms
             _isbn.Margin = new Padding(0, 0, 8, 0);
             _isbn.KeyDown += delegate(object sender, KeyEventArgs e)
             {
-                if (e.KeyCode == Keys.Enter)
-                {
-                    AddByIsbn();
-                    e.SuppressKeyPress = true;
-                }
+                if (e.KeyCode != Keys.Enter) return;
+                AddBySearch();
+                e.SuppressKeyPress = true;
             };
             _scanRow.Controls.Add(_isbn, 1, 0);
 
             _addButton = UiTheme.CreateAntdButton("加入", true);
-            _addButton.Width = 108;
-            _addButton.Anchor = AnchorStyles.Left;
+            _addButton.Width = 92;
             _addButton.Tag = "toolbar-action";
             _addButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
-            _addButton.Click += delegate { AddByIsbn(); };
+            _addButton.Click += delegate { AddBySearch(); };
             _scanRow.Controls.Add(_addButton, 2, 0);
 
             _pickButton = UiTheme.CreateAntdButton("选择图书", false);
-            _pickButton.Width = 118;
-            _pickButton.Anchor = AnchorStyles.Left;
+            _pickButton.Width = 108;
             _pickButton.Tag = "toolbar-action";
             _pickButton.Click += delegate { PickBook(); };
             _scanRow.Controls.Add(_pickButton, 3, 0);
 
-            _receivingSection.Controls.Add(_supplierRow, 0, 0);
-            _receivingSection.Controls.Add(_scanRow, 0, 1);
+            _receivingSection.Controls.Add(_actionRow, 0, 0);
+            _receivingSection.Controls.Add(_headerFields, 0, 1);
+            _receivingSection.Controls.Add(_scanRow, 0, 2);
             return _receivingSection;
+        }
+
+        private AntdUI.Button CreateToolbarButton(string text, int width, Action action)
+        {
+            var button = UiTheme.CreateAntdButton(text, false);
+            button.Width = width;
+            button.Tag = "toolbar-action";
+            button.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
+            button.Click += delegate { action(); };
+            return button;
+        }
+
+        private static Control CreateField(string labelText, Control control, int width)
+        {
+            var host = new TableLayoutPanel
+            {
+                Width = width,
+                Height = BookDeskUiSpec.Standard.ControlHeight,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = new Padding(0, 0, 10, 0),
+                Padding = Padding.Empty
+            };
+            host.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            host.Controls.Add(new Label
+            {
+                Text = labelText,
+                AutoSize = false,
+                Width = 64,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.4F, FontStyle.Bold),
+                Margin = Padding.Empty
+            }, 0, 0);
+
+            control.Dock = DockStyle.Fill;
+            control.Margin = Padding.Empty;
+            host.Controls.Add(control, 1, 0);
+            return host;
         }
 
         private Control CreateCartSection()
@@ -314,7 +397,7 @@ namespace Win7BookManagement.Forms
 
             _cartHeader.Controls.Add(new Label
             {
-                Text = "数量和进价可直接编辑",
+                Text = "草稿状态下可直接编辑数量和进价",
                 AutoSize = true,
                 Anchor = AnchorStyles.Right,
                 ForeColor = UiTheme.TextSecondary,
@@ -323,11 +406,11 @@ namespace Win7BookManagement.Forms
             }, 1, 0);
 
             _removeButton = UiTheme.CreateAntdButton("移除选中", false);
-            _removeButton.Width = 110;
+            _removeButton.Width = 106;
             _removeButton.Click += delegate { RemoveSelected(); };
             _cartHeader.Controls.Add(_removeButton, 2, 0);
 
-            _cartContent = new Panel
+            var content = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.Surface,
@@ -344,20 +427,19 @@ namespace Win7BookManagement.Forms
             _emptyState.Margin = Padding.Empty;
             _emptyState.Padding = Padding.Empty;
 
-            _cartContent.Controls.Add(_grid);
+            content.Controls.Add(_grid);
             _grid.Controls.Add(_emptyState);
             _emptyState.BringToFront();
             _grid.Resize += delegate { LayoutEmptyCartSurface(); };
 
             _cartHost.Controls.Add(_cartHeader, 0, 0);
-            _cartHost.Controls.Add(_cartContent, 0, 1);
+            _cartHost.Controls.Add(content, 0, 1);
             return _cartHost;
         }
 
         private void ConfigureGrid()
         {
             _grid.Dock = DockStyle.Fill;
-
             _grid.RowHeight = BookDeskUiSpec.Standard.TableRowHeight;
             _grid.RowHeightHeader = BookDeskUiSpec.Standard.TableHeaderHeight;
             _grid.EnableHeaderResizing = true;
@@ -380,7 +462,7 @@ namespace Win7BookManagement.Forms
                 _shelfColumn,
                 _stockColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v3");
+            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v4");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -391,6 +473,8 @@ namespace Win7BookManagement.Forms
 
         private bool HandleCellEndEdit(object sender, AntdUI.TableEndEditEventArgs e)
         {
+            if (IsReviewed) return false;
+
             var row = e.Record as PurchaseCartRow;
             if (row == null || e.Column == null) return false;
 
@@ -415,6 +499,7 @@ namespace Win7BookManagement.Forms
                 row.UnitCostYuan = price;
             }
 
+            MarkDirty();
             _grid.Refresh();
             UpdateTotals();
             return true;
@@ -485,15 +570,33 @@ namespace Win7BookManagement.Forms
             _metrics.Controls.Add(_quantityTotal);
             _metrics.Controls.Add(_total);
 
-            _submitButton = UiTheme.CreateAntdButton("确认入库", true);
-            _submitButton.Width = BookDeskUiSpec.PurchaseConfirmWidth;
-            _submitButton.Height = BookDeskUiSpec.PurchaseConfirmHeight;
-            _submitButton.MinimumSize = new Size(BookDeskUiSpec.PurchaseConfirmWidth, BookDeskUiSpec.PurchaseConfirmHeight);
-            _submitButton.Margin = new Padding(10, 0, 0, 0);
-            _submitButton.Click += delegate { Submit(); };
+            _bottomActions = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = Padding.Empty
+            };
+
+            _saveDraftButton = UiTheme.CreateAntdButton("保存草稿", false);
+            _saveDraftButton.Width = 104;
+            _saveDraftButton.Click += delegate { SaveDraftInternal(true); };
+
+            _unreviewButton = UiTheme.CreateAntdButton("反复核", false);
+            _unreviewButton.Width = 92;
+            _unreviewButton.Click += delegate { UnreviewCurrent(); };
+
+            _reviewButton = UiTheme.CreateAntdButton("复核入库", true);
+            _reviewButton.Width = 112;
+            _reviewButton.Click += delegate { ReviewCurrent(); };
+
+            _bottomActions.Controls.Add(_saveDraftButton);
+            _bottomActions.Controls.Add(_unreviewButton);
+            _bottomActions.Controls.Add(_reviewButton);
 
             _totalsSection.Controls.Add(_metrics, 0, 0);
-            _totalsSection.Controls.Add(_submitButton, 1, 0);
+            _totalsSection.Controls.Add(_bottomActions, 1, 0);
             return _totalsSection;
         }
 
@@ -507,17 +610,72 @@ namespace Win7BookManagement.Forms
             label.Margin = new Padding(0, 0, 8, 0);
         }
 
+        private bool IsReviewed
+        {
+            get { return string.Equals(_currentStatus, PurchaseService.ReviewedStatus, StringComparison.OrdinalIgnoreCase); }
+        }
+
+        private DateTime SelectedPurchaseDate
+        {
+            get { return (_purchaseDate.Value ?? DateTime.Today).Date; }
+        }
+
+        private long? SelectedSupplierId
+        {
+            get
+            {
+                var index = _supplier.SelectedIndex;
+                if (index < 0 || index >= _supplierOptions.Count) return null;
+                var selected = _supplierOptions[index];
+                return selected.Id > 0 ? (long?)selected.Id : null;
+            }
+        }
+
         private void ReloadSuppliers()
         {
-            _supplierOptions.Clear();
-            _supplier.Items.Clear();
+            _loadingDocument = true;
+            try
+            {
+                _supplierOptions.Clear();
+                _supplier.Items.Clear();
+                _supplierOptions.Add(new Supplier { Id = 0, Name = "不区分（默认）", IsActive = true });
 
-            _supplierOptions.Add(new Supplier { Id = 0, Name = "不区分（默认）", IsActive = true });
-            var suppliers = _services.Suppliers.GetAll(false);
-            foreach (var supplier in suppliers) _supplierOptions.Add(supplier);
+                var suppliers = _services.Suppliers.GetAll(false);
+                foreach (var supplier in suppliers) _supplierOptions.Add(supplier);
+                foreach (var supplier in _supplierOptions) _supplier.Items.Add(supplier.Name);
 
-            foreach (var supplier in _supplierOptions) _supplier.Items.Add(supplier.Name);
-            if (_supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
+                if (_supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
+            }
+            finally
+            {
+                _loadingDocument = false;
+            }
+        }
+
+        private void SelectSupplier(long? supplierId, string snapshotName)
+        {
+            if (!supplierId.HasValue)
+            {
+                _supplier.SelectedIndex = 0;
+                return;
+            }
+
+            for (var i = 0; i < _supplierOptions.Count; i++)
+            {
+                if (_supplierOptions[i].Id != supplierId.Value) continue;
+                _supplier.SelectedIndex = i;
+                return;
+            }
+
+            var historical = new Supplier
+            {
+                Id = supplierId.Value,
+                Name = string.IsNullOrWhiteSpace(snapshotName) ? "历史供应商" : snapshotName,
+                IsActive = false
+            };
+            _supplierOptions.Add(historical);
+            _supplier.Items.Add(historical.Name + "（已停用）");
+            _supplier.SelectedIndex = _supplierOptions.Count - 1;
         }
 
         public void ApplyUiSpecProfile(UiSpecProfile profile)
@@ -533,59 +691,42 @@ namespace Win7BookManagement.Forms
             var controlHeight = profile.ControlHeight;
 
             if (_receivingSection != null)
-            {
                 _receivingSection.Padding = new Padding(profile.ToolbarPadding);
-                _receivingSection.MinimumSize = new Size(
-                    0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseToolbarCompactHeight
-                        : BookDeskUiSpec.PurchaseToolbarStandardHeight);
-            }
 
-            if (_supplierRow != null)
-            {
-                _supplierRow.MinimumSize = new Size(0, controlHeight);
-                if (_supplierRow.ColumnStyles.Count > 1)
-                    _supplierRow.ColumnStyles[1].Width = compact
-                        ? BookDeskUiSpec.PurchaseSupplierCompactWidth
-                        : BookDeskUiSpec.PurchaseSupplierStandardWidth;
-            }
+            if (_actionRow != null)
+                _actionRow.Margin = Padding.Empty;
 
+            SetToolbarButton(_newOrderButton, compact ? 94 : 102, profile);
+            SetToolbarButton(_historyButton, compact ? 94 : 102, profile);
+            SetToolbarButton(_previousButton, compact ? 80 : 88, profile);
+            SetToolbarButton(_nextButton, compact ? 80 : 88, profile);
+            SetToolbarButton(_exportButton, compact ? 100 : 108, profile);
+            SetToolbarButton(_clearButton, compact ? 88 : 96, profile);
+            SetToolbarButton(_addButton, compact ? 84 : 92, profile);
+            SetToolbarButton(_pickButton, compact ? 100 : 108, profile);
+            SetToolbarButton(_removeButton, compact ? 98 : 106, profile);
+            SetToolbarButton(_saveDraftButton, compact ? 96 : 104, profile);
+            SetToolbarButton(_unreviewButton, compact ? 84 : 92, profile);
+            SetToolbarButton(_reviewButton, compact ? 104 : 112, profile);
+
+            _purchaseDate.Height = controlHeight;
+            _orderNo.Height = controlHeight;
             _supplier.Height = controlHeight;
-            _supplier.MinimumSize = new Size(
-                compact
-                    ? BookDeskUiSpec.PurchaseSupplierCompactWidth
-                    : BookDeskUiSpec.PurchaseSupplierStandardWidth,
-                controlHeight);
+            _isbn.Height = controlHeight;
+            _purchaseDate.Font = UiTheme.Font(profile.BodyFontPoints);
+            _orderNo.Font = UiTheme.Font(profile.BodyFontPoints);
             _supplier.Font = UiTheme.Font(profile.BodyFontPoints);
-            _supplier.Margin = new Padding(0, 0, profile.ControlGap, 0);
-
-            SetToolbarButton(_newOrderButton, compact ? 100 : 112, profile);
-            SetToolbarButton(_clearButton, compact ? 68 : 78, profile);
+            _isbn.Font = UiTheme.Font(profile.BodyFontPoints);
+            _note.Font = UiTheme.Font(profile.BodyFontPoints);
 
             if (_scanRow != null)
             {
                 _scanRow.MinimumSize = new Size(0, controlHeight);
-                _scanRow.Margin = new Padding(0, compact ? 8 : 12, 0, 0);
+                _scanRow.Margin = new Padding(0, compact ? 8 : 10, 0, 0);
             }
-
-            _isbn.Height = controlHeight;
-            _isbn.MinimumSize = new Size(
-                compact
-                    ? BookDeskUiSpec.PurchaseSearchCompactMinimumWidth
-                    : BookDeskUiSpec.PurchaseSearchMinimumWidth,
-                controlHeight);
-            _isbn.Font = UiTheme.Font(profile.BodyFontPoints);
-            _isbn.Margin = new Padding(0, 0, profile.ControlGap, 0);
-
-            SetToolbarButton(_addButton, compact ? 96 : 108, profile);
-            SetToolbarButton(_pickButton, compact ? 106 : 118, profile);
-            SetToolbarButton(_removeButton, compact ? 102 : 110, profile);
 
             if (_cartHost != null)
                 _cartHost.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            if (_cartHeader != null)
-                _cartHeader.MinimumSize = new Size(0, BookDeskUiSpec.PurchaseCartHeaderHeight);
 
             _grid.RowHeightHeader = profile.TableHeaderHeight;
             _grid.RowHeight = profile.TableRowHeight;
@@ -598,26 +739,19 @@ namespace Win7BookManagement.Forms
             {
                 _noteSection.MinimumSize = new Size(
                     0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseNoteCompactHeight
-                        : BookDeskUiSpec.PurchaseNoteStandardHeight);
+                    compact ? BookDeskUiSpec.PurchaseNoteCompactHeight : BookDeskUiSpec.PurchaseNoteStandardHeight);
                 _noteSection.Padding = compact
                     ? new Padding(10, 4, 10, 4)
                     : new Padding(14, 6, 14, 6);
                 _noteSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
             }
-
             _note.Height = controlHeight;
-            _note.MinimumSize = new Size(0, controlHeight);
-            _note.Font = UiTheme.Font(profile.BodyFontPoints);
 
             if (_totalsSection != null)
             {
                 _totalsSection.MinimumSize = new Size(
                     0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseSummaryCompactHeight
-                        : BookDeskUiSpec.PurchaseSummaryStandardHeight);
+                    compact ? BookDeskUiSpec.PurchaseSummaryCompactHeight : BookDeskUiSpec.PurchaseSummaryStandardHeight);
                 _totalsSection.Padding = compact
                     ? new Padding(10, 7, 10, 7)
                     : new Padding(14, 9, 14, 9);
@@ -628,19 +762,6 @@ namespace Win7BookManagement.Forms
             ResizeSummaryLabel(_quantityTotal, 126, compact ? 38 : 44, profile, false);
             ResizeSummaryLabel(_total, 214, compact ? 38 : 44, profile, true);
 
-            if (_submitButton != null)
-            {
-                _submitButton.Width = BookDeskUiSpec.PurchaseConfirmWidth;
-                _submitButton.Height = BookDeskUiSpec.PurchaseConfirmHeight;
-                _submitButton.MinimumSize = new Size(
-                    BookDeskUiSpec.PurchaseConfirmWidth,
-                    BookDeskUiSpec.PurchaseConfirmHeight);
-                _submitButton.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
-            }
-
-            // Prototype columns stay visible throughout the required 1366+ matrix.
-            // Existing shelf/current-stock reference fields return only in the
-            // expanded profile so no business information is removed.
             _indexColumn.Visible = true;
             _selfCodeColumn.Visible = true;
             _isbnColumn.Visible = true;
@@ -655,7 +776,6 @@ namespace Win7BookManagement.Forms
 
             _grid.LoadLayout();
             _grid.Refresh();
-
             if (_rows.Count == 0)
             {
                 LayoutEmptyCartSurface();
@@ -663,27 +783,37 @@ namespace Win7BookManagement.Forms
             }
         }
 
-        private void LayoutEmptyCartSurface()
+        private static void SetToolbarButton(AntdUI.Button button, int width, UiSpecProfile profile)
         {
-            if (_grid == null)
-                return;
+            if (button == null) return;
+            button.Width = width;
+            button.Height = profile.ControlHeight;
+            button.MinimumSize = new Size(width, profile.ControlHeight);
+            button.Font = UiTheme.Font(profile.BodyFontPoints);
+            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
+        }
 
-            var profile = _profile ?? BookDeskUiSpec.Standard;
-            var headerHeight = Math.Min(
-                profile.TableHeaderHeight,
-                Math.Max(0, _grid.ClientSize.Height));
-
-            _emptyState.SetBounds(
-                0,
-                headerHeight,
-                Math.Max(0, _grid.ClientSize.Width),
-                Math.Max(0, _grid.ClientSize.Height - headerHeight));
+        private static void ResizeSummaryLabel(
+            Label label,
+            int width,
+            int height,
+            UiSpecProfile profile,
+            bool primary)
+        {
+            if (label == null) return;
+            label.AutoSize = false;
+            label.Size = new Size(width, height);
+            label.MinimumSize = new Size(width, height);
+            label.TextAlign = ContentAlignment.MiddleCenter;
+            label.Padding = new Padding(8, 0, 8, 0);
+            label.Font = UiTheme.Font(
+                primary ? BookDeskUiSpec.PixelFontToPoints(15) : profile.BodyFontPoints,
+                FontStyle.Bold);
         }
 
         private void ApplyColumnWidths(UiSpecProfile profile)
         {
             var compact = profile != null && profile.IsCompact;
-
             _indexColumn.Width = compact ? "54" : "60";
             _selfCodeColumn.Width = compact ? "90" : "110";
             _isbnColumn.Width = compact ? "96" : "118";
@@ -699,45 +829,26 @@ namespace Win7BookManagement.Forms
             _stockColumn.Width = compact ? "92" : "104";
         }
 
-        private static void SetToolbarButton(
-            AntdUI.Button button,
-            int width,
-            UiSpecProfile profile)
+        private void LayoutEmptyCartSurface()
         {
-            if (button == null)
-                return;
-
-            button.Width = width;
-            button.Height = profile.ControlHeight;
-            button.MinimumSize = new Size(width, profile.ControlHeight);
-            button.Font = UiTheme.Font(profile.BodyFontPoints);
-            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
+            if (_grid == null) return;
+            var profile = _profile ?? BookDeskUiSpec.Standard;
+            var headerHeight = Math.Min(profile.TableHeaderHeight, Math.Max(0, _grid.ClientSize.Height));
+            _emptyState.SetBounds(
+                0,
+                headerHeight,
+                Math.Max(0, _grid.ClientSize.Width),
+                Math.Max(0, _grid.ClientSize.Height - headerHeight));
         }
 
-        private static void ResizeSummaryLabel(
-            Label label,
-            int width,
-            int height,
-            UiSpecProfile profile,
-            bool primary)
+        private void AddBySearch()
         {
-            if (label == null)
+            if (IsReviewed)
+            {
+                ShowReviewedReadOnlyHint();
                 return;
+            }
 
-            label.AutoSize = false;
-            label.Size = new Size(width, height);
-            label.MinimumSize = new Size(width, height);
-            label.TextAlign = ContentAlignment.MiddleCenter;
-            label.Padding = new Padding(8, 0, 8, 0);
-            label.Font = UiTheme.Font(
-                primary
-                    ? BookDeskUiSpec.PixelFontToPoints(15)
-                    : profile.BodyFontPoints,
-                FontStyle.Bold);
-        }
-
-        private void AddByIsbn()
-        {
             var text = (_isbn.Text ?? "").Trim();
             if (text.Length == 0)
             {
@@ -758,7 +869,12 @@ namespace Win7BookManagement.Forms
             var matches = _services.Books.SearchActiveByIsbnOrTitle(text);
             if (matches.Count == 0)
             {
-                MessageBox.Show(this, "没有找到匹配的启用图书。可以输入店内编码、ISBN、书名或作者。", "未找到图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    this,
+                    "没有找到匹配的启用图书。可以点击“选择图书”，再在弹窗底部选择“新增资料”。",
+                    "未找到图书",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
                 _isbn.SelectAll();
                 _isbn.Focus();
                 return;
@@ -785,6 +901,12 @@ namespace Win7BookManagement.Forms
 
         private void PickBook()
         {
+            if (IsReviewed)
+            {
+                ShowReviewedReadOnlyHint();
+                return;
+            }
+
             using (var dialog = new BookLookupDialog(_services))
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
@@ -796,14 +918,13 @@ namespace Win7BookManagement.Forms
         {
             foreach (var row in _rows)
             {
-                if (row.BookId == book.Id)
-                {
-                    row.Quantity += 1;
-                    _selectedRow = row;
-                    _grid.Refresh();
-                    UpdateTotals();
-                    return;
-                }
+                if (row.BookId != book.Id) continue;
+                row.Quantity += 1;
+                _selectedRow = row;
+                MarkDirty();
+                _grid.Refresh();
+                UpdateTotals();
+                return;
             }
 
             var added = new PurchaseCartRow
@@ -826,6 +947,11 @@ namespace Win7BookManagement.Forms
 
         private void RemoveSelected()
         {
+            if (IsReviewed)
+            {
+                ShowReviewedReadOnlyHint();
+                return;
+            }
             if (_selectedRow == null)
             {
                 MessageBox.Show(this, "请先在入库明细中选择一行。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -837,30 +963,454 @@ namespace Win7BookManagement.Forms
 
         private void StartNewOrder()
         {
-            if (_rows.Count > 0)
-            {
-                var result = MessageBox.Show(this, "当前入库单还有图书。新建空白入库单会清空这些内容，是否继续？", "新建入库单", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                if (result != DialogResult.Yes) return;
-            }
+            if (!EnsureCanChangeDocument()) return;
             ResetOrder(true);
         }
 
         private void ClearCartWithConfirmation()
         {
+            if (IsReviewed)
+            {
+                ShowReviewedReadOnlyHint();
+                return;
+            }
             if (_rows.Count == 0) return;
-            if (MessageBox.Show(this, "确定清空当前入库单中的全部图书吗？", "清空当前单", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
-                ResetOrder(false);
-        }
+            if (MessageBox.Show(
+                    this,
+                    "确定清空当前采购单中的全部明细吗？采购日期、单号、供应商和备注会保留。",
+                    "清空明细",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
 
-        private void ResetOrder(bool resetSupplier)
-        {
             _rows.Clear();
             _selectedRow = null;
-            _note.Text = "";
-            _isbn.Text = "";
-            if (resetSupplier && _supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
-            _isbn.Focus();
+            MarkDirty();
+        }
+
+        private void ResetOrder(bool focusSearch)
+        {
+            _loadingDocument = true;
+            try
+            {
+                _currentDocumentId = null;
+                _currentStatus = PurchaseService.DraftStatus;
+                _orderNo.Text = "";
+                _purchaseDate.Value = DateTime.Today;
+                _note.Text = "";
+                _rows.Clear();
+                _selectedRow = null;
+                if (_supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
+                _isbn.Text = "";
+                _dirty = false;
+            }
+            finally
+            {
+                _loadingDocument = false;
+            }
+
             UpdateTotals();
+            ApplyReviewState();
+            if (focusSearch) _isbn.Focus();
+        }
+
+        private void OpenHistory()
+        {
+            if (!EnsureCanChangeDocument()) return;
+
+            using (var dialog = new PurchaseHistoryDialog(_services, _currentDocumentId))
+            {
+                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedDocumentId.HasValue)
+                    LoadDocument(dialog.SelectedDocumentId.Value);
+            }
+        }
+
+        private void NavigateAdjacent(bool next)
+        {
+            if (!_currentDocumentId.HasValue)
+            {
+                OpenHistory();
+                return;
+            }
+            if (!EnsureCanChangeDocument()) return;
+
+            var target = _services.Purchases.GetAdjacentDocumentId(_currentDocumentId.Value, next);
+            if (!target.HasValue)
+            {
+                MessageBox.Show(
+                    this,
+                    next ? "已经是最后一张采购单。" : "已经是第一张采购单。",
+                    "没有更多单据",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+            LoadDocument(target.Value);
+        }
+
+        private void LoadDocument(long id)
+        {
+            var document = _services.Purchases.GetDocument(id);
+            if (document == null)
+            {
+                MessageBox.Show(this, "采购单不存在或已被移除。", "无法打开", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            _loadingDocument = true;
+            try
+            {
+                _currentDocumentId = document.Id;
+                _currentStatus = document.Status;
+                _orderNo.Text = document.OrderNo;
+                _purchaseDate.Value = document.PurchasedAt.Date;
+                _note.Text = document.Note;
+                SelectSupplier(document.SupplierId, document.SupplierName);
+
+                _rows.Clear();
+                foreach (var line in document.Lines)
+                {
+                    _rows.Add(new PurchaseCartRow
+                    {
+                        BookId = line.BookId,
+                        SelfCode = line.SelfCode,
+                        Isbn = line.Isbn,
+                        Title = line.Title,
+                        Author = line.Author,
+                        Publisher = line.Publisher,
+                        ShelfCode = line.ShelfCode,
+                        CurrentStock = line.CurrentStock,
+                        Quantity = line.Quantity,
+                        UnitCostYuan = Money.ToYuan(line.UnitCostCent)
+                    });
+                }
+                _selectedRow = _rows.Count > 0 ? _rows[0] : null;
+                if (_selectedRow != null) _grid.SetSelected(_selectedRow, false);
+                _dirty = false;
+            }
+            finally
+            {
+                _loadingDocument = false;
+            }
+
+            UpdateTotals();
+            ApplyReviewState();
+        }
+
+        private bool SaveDraftInternal(bool showMessage)
+        {
+            if (IsReviewed)
+            {
+                MessageBox.Show(this, "已复核采购单不能直接保存修改。请先点击“反复核”。", "单据已复核", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
+
+            try
+            {
+                var document = _services.Purchases.SaveDraft(
+                    _currentDocumentId,
+                    _orderNo.Text,
+                    SelectedPurchaseDate,
+                    SelectedSupplierId,
+                    BuildLineInputs(),
+                    _note.Text);
+
+                LoadDocument(document.Id);
+                if (showMessage)
+                {
+                    MessageBox.Show(
+                        this,
+                        "草稿已保存。\r\n采购单号：" + document.OrderNo + "\r\n库存尚未变化，复核后才会正式入库。",
+                        "草稿已保存",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "保存草稿失败：\r\n" + ex.Message, "请检查采购单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+        }
+
+        private void ReviewCurrent()
+        {
+            if (IsReviewed)
+            {
+                MessageBox.Show(this, "当前采购单已经复核。", "无需重复复核", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (_rows.Count == 0)
+            {
+                MessageBox.Show(this, "采购单至少需要一项图书才能复核入库。", "无法复核", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (!SaveDraftInternal(false)) return;
+            if (!_currentDocumentId.HasValue) return;
+
+            var quantity = 0;
+            foreach (var row in _rows) quantity += row.Quantity;
+            if (MessageBox.Show(
+                    this,
+                    "复核后，本单 " + quantity + " 册图书会正式增加库存并写入库存流水。\r\n\r\n确定复核入库吗？",
+                    "复核采购单",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+
+            try
+            {
+                var orderNo = _services.Purchases.Review(_currentDocumentId.Value);
+                LoadDocument(_currentDocumentId.Value);
+                MessageBox.Show(
+                    this,
+                    "复核完成。\r\n采购单号：" + orderNo + "\r\n库存已正式增加。",
+                    "采购已入库",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "复核失败：\r\n" + ex.Message, "采购未入库", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void UnreviewCurrent()
+        {
+            if (!_currentDocumentId.HasValue || !IsReviewed)
+            {
+                MessageBox.Show(this, "当前采购单尚未复核。", "无需反复核", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (MessageBox.Show(
+                    this,
+                    "反复核会撤销本单对库存造成的增加，并写入一条反向库存流水。\r\n如果这些库存已经被后续销售或退货占用，系统会拒绝反复核。\r\n\r\n确定继续吗？",
+                    "反复核采购单",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+
+            try
+            {
+                _services.Purchases.Unreview(_currentDocumentId.Value);
+                LoadDocument(_currentDocumentId.Value);
+                MessageBox.Show(
+                    this,
+                    "反复核完成。当前单据已恢复为草稿，可以继续修改后再次复核。",
+                    "已取消复核",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "反复核失败：\r\n" + ex.Message, "无法取消复核", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void ExportCurrent()
+        {
+            if (!_currentDocumentId.HasValue || HasUnsavedWork())
+            {
+                if (IsReviewed)
+                {
+                    MessageBox.Show(this, "请先重新打开当前已复核单据后再导出。", "无法导出", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var save = MessageBox.Show(
+                    this,
+                    "导出前需要先保存当前采购草稿，是否继续？",
+                    "保存并导出",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                if (save != DialogResult.Yes || !SaveDraftInternal(false)) return;
+            }
+
+            var document = _currentDocumentId.HasValue
+                ? _services.Purchases.GetDocument(_currentDocumentId.Value)
+                : null;
+            if (document == null) return;
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Title = "导出采购单";
+                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                dialog.FileName = "采购单-" + SanitizeFileName(document.OrderNo) + ".xlsx";
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                try
+                {
+                    _services.Excel.Export(BuildExportTable(document), dialog.FileName, "采购单");
+                    MessageBox.Show(this, "采购单已导出：\r\n" + dialog.FileName, "导出完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, "导出失败：\r\n" + ex.Message, "无法导出", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+        }
+
+        private static DataTable BuildExportTable(PurchaseDocument document)
+        {
+            var table = new DataTable();
+            table.Columns.Add("采购单号", typeof(string));
+            table.Columns.Add("采购日期", typeof(string));
+            table.Columns.Add("状态", typeof(string));
+            table.Columns.Add("供应商", typeof(string));
+            table.Columns.Add("店内编码", typeof(string));
+            table.Columns.Add("ISBN", typeof(string));
+            table.Columns.Add("书名", typeof(string));
+            table.Columns.Add("作者", typeof(string));
+            table.Columns.Add("出版社", typeof(string));
+            table.Columns.Add("数量", typeof(int));
+            table.Columns.Add("进价（元）", typeof(decimal));
+            table.Columns.Add("小计（元）", typeof(decimal));
+            table.Columns.Add("备注", typeof(string));
+
+            if (document.Lines.Count == 0)
+            {
+                table.Rows.Add(
+                    document.OrderNo,
+                    document.PurchasedAt.ToString("yyyy-MM-dd"),
+                    document.StatusText,
+                    document.SupplierName,
+                    "", "", "", "", "", 0, 0m, 0m, document.Note);
+                return table;
+            }
+
+            foreach (var line in document.Lines)
+            {
+                table.Rows.Add(
+                    document.OrderNo,
+                    document.PurchasedAt.ToString("yyyy-MM-dd"),
+                    document.StatusText,
+                    document.SupplierName,
+                    line.SelfCode,
+                    line.Isbn,
+                    line.Title,
+                    line.Author,
+                    line.Publisher,
+                    line.Quantity,
+                    Money.ToYuan(line.UnitCostCent),
+                    Money.ToYuan(line.LineTotalCent),
+                    document.Note);
+            }
+            return table;
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            var result = string.IsNullOrWhiteSpace(value) ? "采购单" : value.Trim();
+            foreach (var invalid in Path.GetInvalidFileNameChars())
+                result = result.Replace(invalid, '_');
+            return result;
+        }
+
+        private IList<TransactionLineInput> BuildLineInputs()
+        {
+            var result = new List<TransactionLineInput>();
+            foreach (var row in _rows)
+            {
+                if (row.Quantity <= 0)
+                    throw new InvalidOperationException("《" + row.Title + "》的入库数量必须大于 0。");
+                if (row.UnitCostYuan < 0)
+                    throw new InvalidOperationException("《" + row.Title + "》的进价不能为负数。");
+
+                result.Add(new TransactionLineInput
+                {
+                    BookId = row.BookId,
+                    Quantity = row.Quantity,
+                    UnitPriceCent = Money.FromYuan(row.UnitCostYuan)
+                });
+            }
+            return result;
+        }
+
+        private bool EnsureCanChangeDocument()
+        {
+            if (!HasUnsavedWork()) return true;
+
+            var result = MessageBox.Show(
+                this,
+                "当前采购单有尚未保存的修改。\r\n\r\n选择“是”先保存草稿；选择“否”放弃修改并继续；选择“取消”留在当前单据。",
+                "切换采购单",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Cancel) return false;
+            if (result == DialogResult.No) return true;
+            return SaveDraftInternal(false);
+        }
+
+        private bool HasUnsavedWork()
+        {
+            if (_dirty) return true;
+            if (_currentDocumentId.HasValue) return false;
+            return _rows.Count > 0 ||
+                   !string.IsNullOrWhiteSpace(_orderNo.Text) ||
+                   !string.IsNullOrWhiteSpace(_note.Text);
+        }
+
+        private void MarkDirty()
+        {
+            if (_loadingDocument || IsReviewed) return;
+            _dirty = true;
+            UpdateStatusLabel();
+        }
+
+        private void ApplyReviewState()
+        {
+            var editable = !IsReviewed;
+
+            _purchaseDate.Enabled = editable;
+            _orderNo.Enabled = editable;
+            _supplier.Enabled = editable;
+            _isbn.Enabled = editable;
+            _note.Enabled = editable;
+            _addButton.Enabled = editable;
+            _pickButton.Enabled = editable;
+            _clearButton.Enabled = editable;
+            _removeButton.Enabled = editable;
+            _saveDraftButton.Enabled = editable;
+            _reviewButton.Enabled = editable;
+            _unreviewButton.Enabled = IsReviewed;
+
+            _quantityColumn.ReadOnly = !editable;
+            _unitCostColumn.ReadOnly = !editable;
+            _grid.Refresh();
+
+            UpdateStatusLabel();
+        }
+
+        private void UpdateStatusLabel()
+        {
+            if (_statusLabel == null) return;
+
+            if (IsReviewed)
+            {
+                _statusLabel.Text = "已复核";
+                _statusLabel.ForeColor = Color.FromArgb(39, 126, 71);
+                _statusLabel.BackColor = Color.FromArgb(237, 248, 240);
+            }
+            else
+            {
+                _statusLabel.Text = _dirty ? "草稿 · 未保存" : "草稿";
+                _statusLabel.ForeColor = UiTheme.TextSecondary;
+                _statusLabel.BackColor = UiTheme.SurfaceMuted;
+            }
+        }
+
+        private void ShowReviewedReadOnlyHint()
+        {
+            MessageBox.Show(
+                this,
+                "已复核采购单为只读状态。需要修改时，请先点击底部“反复核”。",
+                "单据已复核",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         private void UpdateTotals()
@@ -883,10 +1433,6 @@ namespace Win7BookManagement.Forms
             _emptyState.Visible = empty;
             if (empty)
             {
-                // AntdUI only paints its column header once it has at least one
-                // data record. Feed it a blank display-only row so the native
-                // header remains visible, then cover the body below the header
-                // with the prototype empty state. Business data stays in _rows.
                 _grid.DataSource = _emptyDisplayRows;
                 LayoutEmptyCartSurface();
                 _emptyState.BringToFront();
@@ -895,45 +1441,8 @@ namespace Win7BookManagement.Forms
             {
                 _grid.DataSource = _rows;
             }
-        }
 
-        private void Submit()
-        {
-            if (_rows.Count == 0)
-            {
-                MessageBox.Show(this, "当前入库单还没有图书。请先扫码或搜索添加图书。", "无法入库", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                _isbn.Focus();
-                return;
-            }
-
-            try
-            {
-                var lines = new List<TransactionLineInput>();
-                foreach (var row in _rows)
-                {
-                    if (row.Quantity <= 0) throw new InvalidOperationException("《" + row.Title + "》的入库数量必须大于 0。");
-                    if (row.UnitCostYuan < 0) throw new InvalidOperationException("《" + row.Title + "》的进价不能为负数。");
-
-                    lines.Add(new TransactionLineInput
-                    {
-                        BookId = row.BookId,
-                        Quantity = row.Quantity,
-                        UnitPriceCent = Money.FromYuan(row.UnitCostYuan)
-                    });
-                }
-
-                var index = _supplier.SelectedIndex;
-                var selected = index >= 0 && index < _supplierOptions.Count ? _supplierOptions[index] : null;
-                long? supplierId = selected != null && selected.Id > 0 ? (long?)selected.Id : null;
-
-                var orderNo = _services.Purchases.Receive(supplierId, lines, _note.Text);
-                MessageBox.Show(this, "入库完成。\r\n单号：" + orderNo + "\r\n库存已同步增加并写入库存流水。", "入库成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                ResetOrder(true);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, "入库失败：\r\n" + ex.Message, "请检查入库单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+            UpdateStatusLabel();
         }
 
         private sealed class PurchaseCartRow

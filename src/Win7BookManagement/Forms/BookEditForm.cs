@@ -11,6 +11,8 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly Book _book;
 
+        public Book SavedBook { get; private set; }
+
         private readonly AntdUI.Input _selfCode = new AntdUI.Input();
         private readonly AntdUI.Input _isbn = new AntdUI.Input();
         private readonly AntdUI.Input _title = new AntdUI.Input();
@@ -498,10 +500,11 @@ namespace Win7BookManagement.Forms
                 target.IsActive = _active.Checked;
 
                 if (_book == null)
-                    _services.Books.Insert(target);
+                    target.Id = _services.Books.Insert(target);
                 else
                     _services.Books.Update(target);
 
+                SavedBook = _services.Books.GetById(target.Id) ?? target;
                 DialogResult = DialogResult.OK;
                 Close();
             }

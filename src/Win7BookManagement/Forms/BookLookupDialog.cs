@@ -252,11 +252,16 @@ namespace Win7BookManagement.Forms
                 Close();
             };
 
+            var create = UiTheme.CreateAntdButton("新增资料", false);
+            create.Width = 104;
+            create.Click += delegate { CreateNewBook(); };
+
             var select = UiTheme.CreateAntdButton("选择图书", true);
             select.Width = 108;
             select.Click += delegate { Choose(); };
 
             buttons.Controls.Add(cancel);
+            buttons.Controls.Add(create);
             buttons.Controls.Add(select);
             footer.Controls.Add(buttons, 1, 0);
             return footer;
@@ -283,6 +288,29 @@ namespace Win7BookManagement.Forms
             _priceColumn.Visible = width >= 650;
             _isbnColumn.Visible = width >= 580;
             _grid.LoadLayout();
+        }
+
+        private void CreateNewBook()
+        {
+            using (var editor = new BookEditForm(_services, null))
+            {
+                if (editor.ShowDialog(this) != DialogResult.OK || editor.SavedBook == null)
+                    return;
+
+                var saved = editor.SavedBook;
+                _search.Text = saved.SelfCode;
+                Reload();
+
+                var matches = _services.Books.Search(saved.SelfCode, false);
+                foreach (var book in matches)
+                {
+                    if (book.Id != saved.Id) continue;
+                    _selected = book;
+                    _grid.SetSelected(book, false);
+                    _summary.Text = "已新建《" + book.Title + "》，已自动选中；点击“选择图书”即可加入采购明细。";
+                    break;
+                }
+            }
         }
 
         private void Choose()

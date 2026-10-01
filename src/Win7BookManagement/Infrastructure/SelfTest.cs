@@ -94,13 +94,32 @@ namespace Win7BookManagement.Infrastructure
                     throw new InvalidOperationException("采购入库 ISBN / 书名模糊搜索自检失败。");
 
                 services.Inventory.Adjust(bookId, 5, "opening");
-                services.Purchases.Receive(
+
+                var purchaseDraft = services.Purchases.SaveDraft(
+                    null,
+                    "",
+                    DateTime.Today,
                     supplierId,
                     new List<TransactionLineInput>
                     {
                         new TransactionLineInput { BookId = bookId, Quantity = 4, UnitPriceCent = 1000 }
                     },
                     "purchase");
+                if (services.Books.GetById(bookId).StockQuantity != 5 ||
+                    purchaseDraft.IsReviewed ||
+                    !purchaseDraft.OrderNo.StartsWith(DateTime.Today.ToString("yyyyMMdd"), StringComparison.Ordinal))
+                    throw new InvalidOperationException("采购草稿保存或自动单号自检失败。");
+
+                services.Purchases.Review(purchaseDraft.Id);
+                if (services.Books.GetById(bookId).StockQuantity != 9)
+                    throw new InvalidOperationException("采购复核没有正确增加库存。");
+
+                services.Purchases.Unreview(purchaseDraft.Id);
+                if (services.Books.GetById(bookId).StockQuantity != 5 ||
+                    services.Purchases.GetDocument(purchaseDraft.Id).IsReviewed)
+                    throw new InvalidOperationException("采购反复核没有正确撤销库存。");
+
+                services.Purchases.Review(purchaseDraft.Id);
 
                 services.Sales.Checkout(
                     new List<TransactionLineInput>
