@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
@@ -30,21 +31,24 @@ namespace Win7BookManagement.Forms
 
         private Book _selectedBook;
 
+        public event EventHandler ResultCountChanged;
+        public int ResultCount { get; private set; }
+
         public BookListForm(ApplicationServices services)
         {
             _services = services;
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
 
-            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "120", MinWidth = "96" };
-            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "150", MinWidth = "116" };
-            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "120", MinWidth = "76" };
-            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "128", MinWidth = "88" };
-            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "96", MinWidth = "72" };
-            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "96", MinWidth = "82" };
-            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "80", MinWidth = "68" };
-            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "96", MinWidth = "82" };
-            _activeColumn = new AntdUI.Column("IsActive", "启用") { Width = "72", MinWidth = "68" };
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", MinWidth = "92" };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "130", MinWidth = "108" };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "100", MinWidth = "72" };
+            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "110", MinWidth = "82" };
+            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "88", MinWidth = "68" };
+            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "82", MinWidth = "74" };
+            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "74", MinWidth = "64" };
+            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "86", MinWidth = "74" };
+            _activeColumn = new AntdUI.Column("ActiveStatus", "启用") { Width = "98", MinWidth = "88" };
 
             var root = new TableLayoutPanel
             {
@@ -77,7 +81,7 @@ namespace Win7BookManagement.Forms
 
         private Control CreateSearchSection()
         {
-            var section = new TableLayoutPanel
+            var section = new PrototypeSectionPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
@@ -85,7 +89,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(14, 10, 14, 10),
+                Padding = new Padding(14, 12, 14, 12),
                 Margin = Padding.Empty
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -115,7 +119,7 @@ namespace Win7BookManagement.Forms
                 Text = "搜索",
                 AutoSize = true,
                 Anchor = AnchorStyles.Left,
-                ForeColor = UiTheme.TextSecondary,
+                ForeColor = UiTheme.TextPrimary,
                 Font = UiTheme.Font(8.6F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 12, 0)
             }, 0, 0);
@@ -123,6 +127,7 @@ namespace Win7BookManagement.Forms
             _search.Dock = DockStyle.None;
             _search.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             _search.Tag = "toolbar-input";
+            _search.PrefixSvg = "SearchOutlined";
             _search.Margin = new Padding(0, 0, 8, 0);
             _search.KeyDown += delegate(object sender, KeyEventArgs e)
             {
@@ -143,7 +148,8 @@ namespace Win7BookManagement.Forms
             searchRow.Controls.Add(searchButton, 2, 0);
 
             var addButton = UiTheme.CreateAntdButton("新增图书", true);
-            addButton.Width = 96;
+            addButton.IconSvg = "PlusOutlined";
+            addButton.Width = 110;
             addButton.Anchor = AnchorStyles.Left;
             addButton.Tag = "toolbar-action";
             addButton.Margin = new Padding(0, 0, 6, 0);
@@ -151,7 +157,8 @@ namespace Win7BookManagement.Forms
             searchRow.Controls.Add(addButton, 3, 0);
 
             var editButton = UiTheme.CreateAntdButton("编辑资料", false);
-            editButton.Width = 92;
+            editButton.IconSvg = "EditOutlined";
+            editButton.Width = 104;
             editButton.Anchor = AnchorStyles.Left;
             editButton.Tag = "toolbar-action";
             editButton.Margin = new Padding(0, 0, 8, 0);
@@ -172,7 +179,7 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                Margin = new Padding(44, 6, 0, 0),
+                Margin = new Padding(0, 8, 0, 0),
                 Padding = Padding.Empty
             };
 
@@ -205,7 +212,7 @@ namespace Win7BookManagement.Forms
             _split.FixedPanel = FixedPanel.Panel2;
             _split.SplitterWidth = 8;
             _split.BackColor = UiTheme.Background;
-            _split.Margin = new Padding(0, 8, 0, 0);
+            _split.Margin = new Padding(0, UiTheme.SectionGap, 0, 0);
 
             ConfigureGrid();
 
@@ -226,11 +233,11 @@ namespace Win7BookManagement.Forms
             _grid.Dock = DockStyle.Fill;
             _grid.Margin = Padding.Empty;
 
-            _grid.Bordered = false;
+            _grid.Bordered = true;
 
-            _grid.Gap = 8;
-            _grid.RowHeight = 42;
-            _grid.RowHeightHeader = 42;
+            _grid.Gap = 9;
+            _grid.RowHeight = UiTheme.TableRowHeight;
+            _grid.RowHeightHeader = UiTheme.TableHeaderHeight;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = false;
             _grid.ShowTip = true;
@@ -239,17 +246,17 @@ namespace Win7BookManagement.Forms
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
                 Width = "fill",
-                MinWidth = "180",
-                MaxWidth = "360",
+                MinWidth = "160",
+                MaxWidth = "320",
                 Ellipsis = true
             };
             var priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
             {
-                Width = "104",
-                MinWidth = "92",
+                Width = "96",
+                MinWidth = "86",
                 DisplayFormat = "0.00"
             };
-            var stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "78", MinWidth = "68" };
+            var stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "72", MinWidth = "64" };
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
@@ -266,16 +273,18 @@ namespace Win7BookManagement.Forms
                 stockColumn,
                 _activeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-v2");
+            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-prototype-v3");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
-                _selectedBook = e.Record as Book;
+                var row = e.Record as BookRow;
+                _selectedBook = row == null ? e.Record as Book : row.Source;
                 ShowSelectedDetails();
             };
             _grid.CellDoubleClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
-                _selectedBook = e.Record as Book;
+                var row = e.Record as BookRow;
+                _selectedBook = row == null ? e.Record as Book : row.Source;
                 EditSelected();
             };
         }
@@ -404,7 +413,16 @@ namespace Win7BookManagement.Forms
         {
             var books = _services.Books.Search(_search.Text, _includeInactive.Checked);
             _selectedBook = null;
-            _grid.DataSource = books;
+
+            var rows = new List<BookRow>();
+            foreach (var book in books)
+                rows.Add(new BookRow(book));
+            _grid.DataSource = rows;
+
+            ResultCount = books.Count;
+            var countChanged = ResultCountChanged;
+            if (countChanged != null)
+                countChanged(this, EventArgs.Empty);
 
             var threshold = _services.Settings.GetLowStockThreshold();
             var lowStockCount = 0;
@@ -423,7 +441,10 @@ namespace Win7BookManagement.Forms
         {
             if (_split.Width <= 0) return;
 
-            var showDetails = ClientSize.Width >= 1900;
+            // The approved prototype is table-first through the requested
+            // 2560-wide validation range.  Preserve the existing detail pane
+            // only for genuinely ultra-wide workspaces.
+            var showDetails = ClientSize.Width >= 2500;
             _split.Panel2Collapsed = !showDetails;
 
             if (showDetails)
@@ -440,15 +461,15 @@ namespace Win7BookManagement.Forms
             var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
             // The compact view keeps the fields most useful for finding and selling a book.
             // Administrative metadata is progressively restored on larger windows.
-            _selfCodeColumn.Visible = gridWidth >= 1000;
-            _publisherColumn.Visible = gridWidth >= 1450;
-            _categoryColumn.Visible = gridWidth >= 900;
-            _publicationColumn.Visible = gridWidth >= 1250;
-            _bindingColumn.Visible = gridWidth >= 1500;
-            _shelfColumn.Visible = gridWidth >= 900;
-            _activeColumn.Visible = gridWidth >= 1100;
-            _authorColumn.Visible = gridWidth >= 760;
-            _isbnColumn.Visible = gridWidth >= 650;
+            _selfCodeColumn.Visible = gridWidth >= 960;
+            _publisherColumn.Visible = gridWidth >= 1160;
+            _categoryColumn.Visible = gridWidth >= 880;
+            _publicationColumn.Visible = gridWidth >= 1080;
+            _bindingColumn.Visible = gridWidth >= 1220;
+            _shelfColumn.Visible = gridWidth >= 920;
+            _activeColumn.Visible = gridWidth >= 900;
+            _authorColumn.Visible = gridWidth >= 740;
+            _isbnColumn.Visible = gridWidth >= 660;
             _grid.LoadLayout();
         }
 
@@ -476,6 +497,76 @@ namespace Win7BookManagement.Forms
             _detailValues["stock"].Text = book.StockQuantity + " 册";
             _detailValues["status"].Text = book.IsActive ? "启用" : "停用";
             _detailValues["note"].Text = EmptyAsDash(book.Note);
+        }
+
+        private sealed class BookRow
+        {
+            public Book Source { get; private set; }
+            public string SelfCode { get { return Source.SelfCode; } }
+            public string Isbn { get { return Source.Isbn; } }
+            public string Title { get { return Source.Title; } }
+            public string Author { get { return Source.Author; } }
+            public string Publisher { get { return Source.Publisher; } }
+            public string Category { get { return Source.Category; } }
+            public string PublicationYear { get { return Source.PublicationYear; } }
+            public string Binding { get { return Source.Binding; } }
+            public string ShelfCode { get { return Source.ShelfCode; } }
+            public decimal SalePriceYuan { get { return Source.SalePriceYuan; } }
+            public int StockQuantity { get { return Source.StockQuantity; } }
+            public AntdUI.CellTag[] ActiveStatus { get; private set; }
+
+            public BookRow(Book source)
+            {
+                Source = source;
+                ActiveStatus = new[]
+                {
+                    new AntdUI.CellTag(
+                        source.IsActive ? "● 已启用" : "● 已停用",
+                        source.IsActive ? AntdUI.TTypeMini.Success : AntdUI.TTypeMini.Default,
+                        4).SetBorderWidth(0F)
+                };
+            }
+        }
+
+        private sealed class PrototypeSectionPanel : TableLayoutPanel
+        {
+            public PrototypeSectionPanel()
+            {
+                DoubleBuffered = true;
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                base.OnPaint(e);
+
+                var scale = DeviceDpi > 0 ? DeviceDpi / 96F : 1F;
+                var radius = Math.Max(2F, UiTheme.SectionRadius * scale);
+                var inset = Math.Max(0.5F, UiTheme.SectionBorderWidth * scale / 2F);
+                var rect = new RectangleF(
+                    inset,
+                    inset,
+                    Math.Max(1F, ClientSize.Width - inset * 2F - 1F),
+                    Math.Max(1F, ClientSize.Height - inset * 2F - 1F));
+
+                using (var path = CreateRoundedRectangle(rect, radius))
+                using (var pen = new Pen(UiTheme.Border, UiTheme.SectionBorderWidth * scale))
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    e.Graphics.DrawPath(pen, path);
+                }
+            }
+
+            private static GraphicsPath CreateRoundedRectangle(RectangleF rect, float radius)
+            {
+                var diameter = radius * 2F;
+                var path = new GraphicsPath();
+                path.AddArc(rect.Left, rect.Top, diameter, diameter, 180F, 90F);
+                path.AddArc(rect.Right - diameter, rect.Top, diameter, diameter, 270F, 90F);
+                path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0F, 90F);
+                path.AddArc(rect.Left, rect.Bottom - diameter, diameter, diameter, 90F, 90F);
+                path.CloseFigure();
+                return path;
+            }
         }
 
         private static string EmptyAsDash(string text)
