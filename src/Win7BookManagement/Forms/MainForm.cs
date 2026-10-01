@@ -423,9 +423,9 @@ namespace Win7BookManagement.Forms
             child.Show();
 
             var profile = BookDeskUiSpec.Resolve(ClientSize.Width, ClientSize.Height);
-            var bookSpecPage = child as BookListForm;
-            if (bookSpecPage != null)
-                bookSpecPage.ApplyUiSpecProfile(profile);
+            var specPage = child as IUiSpecPage;
+            if (specPage != null)
+                specPage.ApplyUiSpecProfile(profile);
             else
                 UiTheme.ApplyResponsiveDensity(child, Math.Max(1, _contentHost.ClientSize.Width));
         }
@@ -624,10 +624,10 @@ namespace Win7BookManagement.Forms
             if (_currentPage == null)
                 return;
 
-            var bookSpecPage = _currentPage as BookListForm;
-            if (bookSpecPage != null)
+            var specPage = _currentPage as IUiSpecPage;
+            if (specPage != null)
             {
-                bookSpecPage.ApplyUiSpecProfile(profile);
+                specPage.ApplyUiSpecProfile(profile);
                 return;
             }
 

@@ -1,7 +1,15 @@
 using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
 
 namespace Win7BookManagement.Infrastructure
 {
+    public interface IUiSpecPage
+    {
+        void ApplyUiSpecProfile(UiSpecProfile profile);
+    }
+
     /// <summary>
     /// Machine-readable layout metrics derived from docs/ui-spec.json.
     ///
@@ -73,6 +81,50 @@ namespace Win7BookManagement.Infrastructure
         }
     }
 
+
+    public sealed class UiSpecSectionPanel : TableLayoutPanel
+    {
+        public UiSpecSectionPanel()
+        {
+            DoubleBuffered = true;
+            BackColor = UiTheme.Surface;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+
+            var scale = DeviceDpi > 0 ? DeviceDpi / 96F : 1F;
+            var radius = Math.Max(2F, 8F * scale);
+            var borderWidth = Math.Max(1F, scale);
+            var inset = borderWidth / 2F;
+            var rect = new RectangleF(
+                inset,
+                inset,
+                Math.Max(1F, ClientSize.Width - borderWidth - 1F),
+                Math.Max(1F, ClientSize.Height - borderWidth - 1F));
+
+            using (var path = CreateRoundedRectangle(rect, radius))
+            using (var pen = new Pen(UiTheme.Border, borderWidth))
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.DrawPath(pen, path);
+            }
+        }
+
+        private static GraphicsPath CreateRoundedRectangle(RectangleF rect, float radius)
+        {
+            var diameter = radius * 2F;
+            var path = new GraphicsPath();
+            path.AddArc(rect.Left, rect.Top, diameter, diameter, 180F, 90F);
+            path.AddArc(rect.Right - diameter, rect.Top, diameter, diameter, 270F, 90F);
+            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0F, 90F);
+            path.AddArc(rect.Left, rect.Bottom - diameter, diameter, diameter, 90F, 90F);
+            path.CloseFigure();
+            return path;
+        }
+    }
+
     public static class BookDeskUiSpec
     {
         public const int ReferenceRasterWidth = 1586;
@@ -91,6 +143,22 @@ namespace Win7BookManagement.Infrastructure
         public const int BookToolbarCompactHeight = 116;
         public const int BookSearchLabelWidth = 56;
         public const int BookSearchMinimumWidth = 360;
+
+        public const int PurchaseToolbarStandardHeight = 148;
+        public const int PurchaseToolbarCompactHeight = 126;
+        public const int PurchaseSupplierLabelWidth = 72;
+        public const int PurchaseSupplierStandardWidth = 304;
+        public const int PurchaseSupplierCompactWidth = 240;
+        public const int PurchaseScanLabelWidth = 94;
+        public const int PurchaseSearchMinimumWidth = 400;
+        public const int PurchaseSearchCompactMinimumWidth = 360;
+        public const int PurchaseCartHeaderHeight = 52;
+        public const int PurchaseNoteStandardHeight = 48;
+        public const int PurchaseNoteCompactHeight = 42;
+        public const int PurchaseSummaryStandardHeight = 72;
+        public const int PurchaseSummaryCompactHeight = 62;
+        public const int PurchaseConfirmWidth = 146;
+        public const int PurchaseConfirmHeight = 40;
 
         public static readonly UiSpecProfile Compact = new UiSpecProfile(
             "compact",
