@@ -10,13 +10,15 @@ namespace Win7BookManagement.Infrastructure
         // Keep native WinForms surfaces aligned with Ant Design's built-in
         // light palette. AntdUI controls themselves intentionally keep their
         // own default appearance and state colors.
-        public static readonly Color Background = Color.FromArgb(245, 245, 245);
+        // Prototype-derived neutral surfaces.  Keep these values centralized:
+        // pages may change layout, but they must not invent their own shell colors.
+        public static readonly Color Background = Color.FromArgb(244, 246, 249);
         public static readonly Color Surface = Color.White;
-        public static readonly Color SurfaceMuted = Color.FromArgb(250, 250, 250);
+        public static readonly Color SurfaceMuted = Color.FromArgb(249, 251, 253);
 
-        public static readonly Color NavigationSurface = Color.White;
-        public static readonly Color NavigationHover = Color.FromArgb(245, 245, 245);
-        public static readonly Color NavigationSelected = Color.FromArgb(230, 244, 255);
+        public static readonly Color NavigationSurface = Color.FromArgb(249, 250, 252);
+        public static readonly Color NavigationHover = Color.FromArgb(244, 247, 250);
+        public static readonly Color NavigationSelected = Color.FromArgb(230, 242, 254);
         public static readonly Color NavigationText = Color.FromArgb(31, 31, 31);
 
         public static readonly Color Sidebar = NavigationSurface;
@@ -36,6 +38,25 @@ namespace Win7BookManagement.Infrastructure
         // the Form because every primary Form uses AutoScaleMode.Dpi.
         public const int InputHeight = 38;
         public const int ButtonHeight = 38;
+
+        // 96-DPI shell/page metrics reverse-engineered from the approved
+        // desktop prototype.  They are logical pixels and therefore still
+        // participate in WinForms DPI scaling.
+        public const int SidebarWidth = 232;
+        public const int SidebarMediumWidth = 204;
+        public const int SidebarCompactWidth = 178;
+        public const int ShellHeaderHeight = 66;
+        public const int ShellStatusHeight = 34;
+        public const int PagePadding = 14;
+        public const int PagePaddingMedium = 10;
+        public const int PagePaddingCompact = 7;
+        public const int SectionGap = 12;
+        public const int SectionRadius = 7;
+        public const int SectionBorderWidth = 1;
+        public const int TableHeaderHeight = 42;
+        public const int TableRowHeight = 42;
+        public const int ToolbarHorizontalGap = 8;
+
         public const int CompactBreakpoint = 980;
         public const int WideBreakpoint = 1180;
 
