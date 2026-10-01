@@ -272,7 +272,7 @@ namespace Win7BookManagement.Forms
         {
             ConfigureGrid();
 
-            _cartHost = new TableLayoutPanel
+            _cartHost = new UiSpecSectionPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
