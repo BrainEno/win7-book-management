@@ -53,8 +53,10 @@
 
   <ItemGroup>
     <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
+    <Compile Include="Models\PurchaseDocument.cs" />
+    <Compile Include="Forms\PurchaseHistoryDialog.cs" />
     <Compile Include="**\*.cs"
-             Exclude="bin\**\*;obj\**\*;packages\**\*;Infrastructure\BookDeskUiSpec.cs" />
+             Exclude="bin\**\*;obj\**\*;packages\**\*;Infrastructure\BookDeskUiSpec.cs;Models\PurchaseDocument.cs;Forms\PurchaseHistoryDialog.cs" />
     <None Include="App.config" />
     <None Include="app.manifest" />
   </ItemGroup>
