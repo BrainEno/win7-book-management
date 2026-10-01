@@ -478,7 +478,7 @@ LIMIT 500;";
             return result;
         }
 
-        public long? GetAdjacentDocumentId(long currentId, bool next)
+        public PurchaseNavigationState GetNavigationState(long currentId)
         {
             using (var connection = _factory.Open())
             {
@@ -490,36 +490,73 @@ LIMIT 500;";
                     current.Parameters.AddWithValue("@id", currentId);
                     using (var reader = current.ExecuteReader())
                     {
-                        if (!reader.Read()) return null;
+                        if (!reader.Read())
+                            return new PurchaseNavigationState { CurrentId = currentId };
+
                         id = Convert.ToInt64(reader["id"]);
                         purchasedAt = Convert.ToString(reader["purchased_at"]);
                     }
                 }
 
-                using (var command = connection.CreateCommand())
+                var state = new PurchaseNavigationState { CurrentId = id };
+
+                using (var count = connection.CreateCommand())
                 {
-                    if (next)
-                    {
-                        command.CommandText = @"
-SELECT id FROM purchase_orders
-WHERE purchased_at>@at OR (purchased_at=@at AND id>@id)
-ORDER BY purchased_at ASC, id ASC
-LIMIT 1;";
-                    }
-                    else
-                    {
-                        command.CommandText = @"
-SELECT id FROM purchase_orders
+                    count.CommandText = "SELECT COUNT(1) FROM purchase_orders;";
+                    state.TotalCount = Convert.ToInt32(count.ExecuteScalar());
+                }
+
+                using (var position = connection.CreateCommand())
+                {
+                    position.CommandText = @"
+SELECT COUNT(1)
+FROM purchase_orders
+WHERE purchased_at<@at OR (purchased_at=@at AND id<=@id);";
+                    position.Parameters.AddWithValue("@at", purchasedAt);
+                    position.Parameters.AddWithValue("@id", id);
+                    state.Position = Convert.ToInt32(position.ExecuteScalar());
+                }
+
+                using (var previous = connection.CreateCommand())
+                {
+                    previous.CommandText = @"
+SELECT id
+FROM purchase_orders
 WHERE purchased_at<@at OR (purchased_at=@at AND id<@id)
 ORDER BY purchased_at DESC, id DESC
 LIMIT 1;";
-                    }
-                    command.Parameters.AddWithValue("@at", purchasedAt);
-                    command.Parameters.AddWithValue("@id", id);
-                    var value = command.ExecuteScalar();
-                    return value == null || value == DBNull.Value ? (long?)null : Convert.ToInt64(value);
+                    previous.Parameters.AddWithValue("@at", purchasedAt);
+                    previous.Parameters.AddWithValue("@id", id);
+                    var value = previous.ExecuteScalar();
+                    state.PreviousId = value == null || value == DBNull.Value
+                        ? (long?)null
+                        : Convert.ToInt64(value);
                 }
+
+                using (var next = connection.CreateCommand())
+                {
+                    next.CommandText = @"
+SELECT id
+FROM purchase_orders
+WHERE purchased_at>@at OR (purchased_at=@at AND id>@id)
+ORDER BY purchased_at ASC, id ASC
+LIMIT 1;";
+                    next.Parameters.AddWithValue("@at", purchasedAt);
+                    next.Parameters.AddWithValue("@id", id);
+                    var value = next.ExecuteScalar();
+                    state.NextId = value == null || value == DBNull.Value
+                        ? (long?)null
+                        : Convert.ToInt64(value);
+                }
+
+                return state;
             }
+        }
+
+        public long? GetAdjacentDocumentId(long currentId, bool next)
+        {
+            var state = GetNavigationState(currentId);
+            return next ? state.NextId : state.PreviousId;
         }
 
         private static void ValidateDraftLines(IList<TransactionLineInput> lines)
