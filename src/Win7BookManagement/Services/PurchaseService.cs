@@ -352,6 +352,85 @@ WHERE id=@id AND status=@reviewed;";
             }
         }
 
+        public string DeleteDraft(long documentId)
+        {
+            using (var connection = _factory.Open())
+            using (var transaction = connection.BeginTransaction())
+            {
+                try
+                {
+                    string orderNo;
+                    string status;
+                    using (var header = connection.CreateCommand())
+                    {
+                        header.Transaction = transaction;
+                        header.CommandText = "SELECT order_no, status FROM purchase_orders WHERE id=@id;";
+                        header.Parameters.AddWithValue("@id", documentId);
+                        using (var reader = header.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                                throw new InvalidOperationException("采购草稿不存在或已经被删除。");
+
+                            orderNo = Convert.ToString(reader["order_no"]);
+                            status = Convert.ToString(reader["status"]);
+                        }
+                    }
+
+                    if (!string.Equals(status, DraftStatus, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("已复核采购单不能删除。需要纠错时请使用退货或反复核流程。");
+
+                    using (var ledger = connection.CreateCommand())
+                    {
+                        ledger.Transaction = transaction;
+                        ledger.CommandText = @"
+SELECT COUNT(1)
+FROM inventory_transactions
+WHERE reference_id=@id
+  AND reference_type IN ('PURCHASE', 'PURCHASE_UNREVIEW');";
+                        ledger.Parameters.AddWithValue("@id", documentId);
+                        if (Convert.ToInt32(ledger.ExecuteScalar()) > 0)
+                            throw new InvalidOperationException(
+                                "这张采购单曾经复核并产生库存流水，即使当前已反复核也必须保留历史，不能删除。");
+                    }
+
+                    using (var returns = connection.CreateCommand())
+                    {
+                        returns.Transaction = transaction;
+                        returns.CommandText = "SELECT COUNT(1) FROM purchase_returns WHERE source_purchase_order_id=@id;";
+                        returns.Parameters.AddWithValue("@id", documentId);
+                        if (Convert.ToInt32(returns.ExecuteScalar()) > 0)
+                            throw new InvalidOperationException("这张采购单已有采购退货记录，不能删除。");
+                    }
+
+                    using (var items = connection.CreateCommand())
+                    {
+                        items.Transaction = transaction;
+                        items.CommandText = "DELETE FROM purchase_order_items WHERE purchase_order_id=@id;";
+                        items.Parameters.AddWithValue("@id", documentId);
+                        items.ExecuteNonQuery();
+                    }
+
+                    using (var order = connection.CreateCommand())
+                    {
+                        order.Transaction = transaction;
+                        order.CommandText = "DELETE FROM purchase_orders WHERE id=@id AND status=@draft;";
+                        order.Parameters.AddWithValue("@id", documentId);
+                        order.Parameters.AddWithValue("@draft", DraftStatus);
+                        if (order.ExecuteNonQuery() != 1)
+                            throw new InvalidOperationException("采购草稿状态已变化，请刷新后重试。");
+                    }
+
+                    transaction.Commit();
+                    return orderNo;
+                }
+                catch
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+            }
+        }
+
         public PurchaseDocument GetDocument(long documentId)
         {
             using (var connection = _factory.Open())
@@ -478,7 +557,7 @@ LIMIT 500;";
             return result;
         }
 
-        public long? GetAdjacentDocumentId(long currentId, bool next)
+        public PurchaseNavigationState GetNavigationState(long currentId)
         {
             using (var connection = _factory.Open())
             {
@@ -490,36 +569,73 @@ LIMIT 500;";
                     current.Parameters.AddWithValue("@id", currentId);
                     using (var reader = current.ExecuteReader())
                     {
-                        if (!reader.Read()) return null;
+                        if (!reader.Read())
+                            return new PurchaseNavigationState { CurrentId = currentId };
+
                         id = Convert.ToInt64(reader["id"]);
                         purchasedAt = Convert.ToString(reader["purchased_at"]);
                     }
                 }
 
-                using (var command = connection.CreateCommand())
+                var state = new PurchaseNavigationState { CurrentId = id };
+
+                using (var count = connection.CreateCommand())
                 {
-                    if (next)
-                    {
-                        command.CommandText = @"
-SELECT id FROM purchase_orders
-WHERE purchased_at>@at OR (purchased_at=@at AND id>@id)
-ORDER BY purchased_at ASC, id ASC
-LIMIT 1;";
-                    }
-                    else
-                    {
-                        command.CommandText = @"
-SELECT id FROM purchase_orders
+                    count.CommandText = "SELECT COUNT(1) FROM purchase_orders;";
+                    state.TotalCount = Convert.ToInt32(count.ExecuteScalar());
+                }
+
+                using (var position = connection.CreateCommand())
+                {
+                    position.CommandText = @"
+SELECT COUNT(1)
+FROM purchase_orders
+WHERE purchased_at<@at OR (purchased_at=@at AND id<=@id);";
+                    position.Parameters.AddWithValue("@at", purchasedAt);
+                    position.Parameters.AddWithValue("@id", id);
+                    state.Position = Convert.ToInt32(position.ExecuteScalar());
+                }
+
+                using (var previous = connection.CreateCommand())
+                {
+                    previous.CommandText = @"
+SELECT id
+FROM purchase_orders
 WHERE purchased_at<@at OR (purchased_at=@at AND id<@id)
 ORDER BY purchased_at DESC, id DESC
 LIMIT 1;";
-                    }
-                    command.Parameters.AddWithValue("@at", purchasedAt);
-                    command.Parameters.AddWithValue("@id", id);
-                    var value = command.ExecuteScalar();
-                    return value == null || value == DBNull.Value ? (long?)null : Convert.ToInt64(value);
+                    previous.Parameters.AddWithValue("@at", purchasedAt);
+                    previous.Parameters.AddWithValue("@id", id);
+                    var value = previous.ExecuteScalar();
+                    state.PreviousId = value == null || value == DBNull.Value
+                        ? (long?)null
+                        : Convert.ToInt64(value);
                 }
+
+                using (var next = connection.CreateCommand())
+                {
+                    next.CommandText = @"
+SELECT id
+FROM purchase_orders
+WHERE purchased_at>@at OR (purchased_at=@at AND id>@id)
+ORDER BY purchased_at ASC, id ASC
+LIMIT 1;";
+                    next.Parameters.AddWithValue("@at", purchasedAt);
+                    next.Parameters.AddWithValue("@id", id);
+                    var value = next.ExecuteScalar();
+                    state.NextId = value == null || value == DBNull.Value
+                        ? (long?)null
+                        : Convert.ToInt64(value);
+                }
+
+                return state;
             }
+        }
+
+        public long? GetAdjacentDocumentId(long currentId, bool next)
+        {
+            var state = GetNavigationState(currentId);
+            return next ? state.NextId : state.PreviousId;
         }
 
         private static void ValidateDraftLines(IList<TransactionLineInput> lines)

@@ -110,6 +110,40 @@ namespace Win7BookManagement.Infrastructure
                     !purchaseDraft.OrderNo.StartsWith(DateTime.Today.ToString("yyyyMMdd"), StringComparison.Ordinal))
                     throw new InvalidOperationException("采购草稿保存或自动单号自检失败。");
 
+                var olderPurchaseDraft = services.Purchases.SaveDraft(
+                    null,
+                    "",
+                    DateTime.Today.AddDays(-1),
+                    null,
+                    new List<TransactionLineInput>(),
+                    "navigation older");
+                var newerPurchaseDraft = services.Purchases.SaveDraft(
+                    null,
+                    "",
+                    DateTime.Today.AddDays(1),
+                    null,
+                    new List<TransactionLineInput>(),
+                    "navigation newer");
+                var navigation = services.Purchases.GetNavigationState(purchaseDraft.Id);
+                if (navigation.TotalCount != 3 ||
+                    navigation.Position != 2 ||
+                    navigation.PreviousId != olderPurchaseDraft.Id ||
+                    navigation.NextId != newerPurchaseDraft.Id ||
+                    services.Purchases.GetAdjacentDocumentId(purchaseDraft.Id, false) != olderPurchaseDraft.Id ||
+                    services.Purchases.GetAdjacentDocumentId(purchaseDraft.Id, true) != newerPurchaseDraft.Id)
+                    throw new InvalidOperationException("采购单上一张 / 下一张导航顺序自检失败。");
+
+                services.Purchases.DeleteDraft(olderPurchaseDraft.Id);
+                services.Purchases.DeleteDraft(newerPurchaseDraft.Id);
+                var singleNavigation = services.Purchases.GetNavigationState(purchaseDraft.Id);
+                if (singleNavigation.TotalCount != 1 ||
+                    singleNavigation.Position != 1 ||
+                    singleNavigation.HasPrevious ||
+                    singleNavigation.HasNext ||
+                    services.Purchases.GetDocument(olderPurchaseDraft.Id) != null ||
+                    services.Purchases.GetDocument(newerPurchaseDraft.Id) != null)
+                    throw new InvalidOperationException("采购草稿删除或导航边界自检失败。");
+
                 services.Purchases.Review(purchaseDraft.Id);
                 if (services.Books.GetById(bookId).StockQuantity != 9)
                     throw new InvalidOperationException("采购复核没有正确增加库存。");
@@ -118,6 +152,19 @@ namespace Win7BookManagement.Infrastructure
                 if (services.Books.GetById(bookId).StockQuantity != 5 ||
                     services.Purchases.GetDocument(purchaseDraft.Id).IsReviewed)
                     throw new InvalidOperationException("采购反复核没有正确撤销库存。");
+
+                var historicalDraftDeleteRejected = false;
+                try
+                {
+                    services.Purchases.DeleteDraft(purchaseDraft.Id);
+                }
+                catch (InvalidOperationException)
+                {
+                    historicalDraftDeleteRejected = true;
+                }
+                if (!historicalDraftDeleteRejected ||
+                    services.Purchases.GetDocument(purchaseDraft.Id) == null)
+                    throw new InvalidOperationException("曾产生库存流水的采购单不应允许删除。");
 
                 services.Purchases.Review(purchaseDraft.Id);
 
