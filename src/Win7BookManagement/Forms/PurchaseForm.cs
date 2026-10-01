@@ -335,8 +335,7 @@ namespace Win7BookManagement.Forms
             _emptyState.BackColor = UiTheme.Surface;
 
             content.Controls.Add(_grid);
-            content.Controls.Add(_emptyState);
-            _emptyState.BringToFront();
+            _emptyState.Visible = false;
 
             _cartHost.Controls.Add(_cartHeader, 0, 0);
             _cartHost.Controls.Add(content, 0, 1);
@@ -353,7 +352,7 @@ namespace Win7BookManagement.Forms
             _grid.ColumnDragSort = false;
             _grid.EditMode = AntdUI.TEditMode.Click;
             _grid.ShowTip = true;
-            _grid.EmptyText = "当前入库单还没有图书";
+            _grid.EmptyText = "当前入库单为空\r\n请扫码、搜索或选择图书";
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
@@ -843,9 +842,8 @@ namespace Win7BookManagement.Forms
             _quantityTotal.Text = "入库册数  " + quantity;
             _total.Text = "采购金额  ¥" + total.ToString("0.00");
 
-            _emptyState.Visible = _rows.Count == 0;
-            if (_rows.Count == 0) _emptyState.BringToFront();
-            else _grid.BringToFront();
+            _emptyState.Visible = false;
+            _grid.BringToFront();
         }
 
         private void Submit()
