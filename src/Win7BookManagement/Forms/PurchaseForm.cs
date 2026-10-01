@@ -20,10 +20,7 @@ namespace Win7BookManagement.Forms
         private readonly Label _lineCount = new Label();
         private readonly Label _quantityTotal = new Label();
         private readonly Label _total = new Label();
-        private readonly Label _emptyState = new Label();
-
-        private TableLayoutPanel _emptySurface;
-        private TableLayoutPanel _emptyHeaderRow;
+        private PurchaseEmptySurface _emptySurface;
         private UiSpecSectionPanel _receivingSection;
         private TableLayoutPanel _supplierRow;
         private TableLayoutPanel _scanRow;
@@ -329,51 +326,12 @@ namespace Win7BookManagement.Forms
 
             var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Surface };
 
-            _emptySurface = new TableLayoutPanel
+            _emptySurface = new PurchaseEmptySurface
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
+                Profile = BookDeskUiSpec.Standard
             };
-            _emptySurface.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _emptySurface.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _emptySurface.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            _emptyHeaderRow = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = false,
-                Height = BookDeskUiSpec.Standard.TableHeaderHeight,
-                MinimumSize = new Size(0, BookDeskUiSpec.Standard.TableHeaderHeight),
-                ColumnCount = 9,
-                RowCount = 1,
-                BackColor = UiTheme.SurfaceMuted,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
-            };
-            ConfigureEmptyHeaderColumns(BookDeskUiSpec.Standard);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("序号"), 0, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("店内编码"), 1, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("ISBN"), 2, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("书名"), 3, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("作者"), 4, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("出版社"), 5, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("数量"), 6, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("进价（元）"), 7, 0);
-            _emptyHeaderRow.Controls.Add(CreateEmptyHeaderCell("小计（元）"), 8, 0);
-
-            _emptyState.Dock = DockStyle.Fill;
-            _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "当前入库单为空\r\n请扫码、搜索或选择图书";
-            _emptyState.ForeColor = UiTheme.TextSecondary;
-            _emptyState.Font = UiTheme.Font(BookDeskUiSpec.Standard.SecondaryFontPoints);
-            _emptyState.BackColor = UiTheme.Surface;
-
-            _emptySurface.Controls.Add(_emptyHeaderRow, 0, 0);
-            _emptySurface.Controls.Add(_emptyState, 0, 1);
 
             content.Controls.Add(_grid);
             content.Controls.Add(_emptySurface);
@@ -621,13 +579,8 @@ namespace Win7BookManagement.Forms
             _grid.RowHeight = profile.TableRowHeight;
             _grid.Font = UiTheme.Font(profile.TableFontPoints);
             ApplyColumnWidths(profile);
-            ConfigureEmptyHeaderColumns(profile);
-            if (_emptyHeaderRow != null)
-            {
-                _emptyHeaderRow.Height = profile.TableHeaderHeight;
-                _emptyHeaderRow.MinimumSize = new Size(0, profile.TableHeaderHeight);
-            }
-            _emptyState.Font = UiTheme.Font(profile.SecondaryFontPoints);
+            if (_emptySurface != null)
+                _emptySurface.Profile = profile;
 
             if (_noteSection != null)
             {
@@ -690,42 +643,6 @@ namespace Win7BookManagement.Forms
 
             _grid.LoadLayout();
             _grid.Refresh();
-        }
-
-        private static Label CreateEmptyHeaderCell(string text)
-        {
-            return new Label
-            {
-                Text = text,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(10, 0, 6, 0),
-                BackColor = UiTheme.SurfaceMuted,
-                ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(BookDeskUiSpec.Standard.TableFontPoints, FontStyle.Bold),
-                Margin = Padding.Empty
-            };
-        }
-
-        private void ConfigureEmptyHeaderColumns(UiSpecProfile profile)
-        {
-            if (_emptyHeaderRow == null)
-                return;
-
-            var compact = profile != null && profile.IsCompact;
-            _emptyHeaderRow.ColumnStyles.Clear();
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 54 : 60));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 90 : 110));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 96 : 118));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 86 : 110));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 86 : 110));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 70 : 82));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 94 : 112));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 94 : 112));
-
-            foreach (Control control in _emptyHeaderRow.Controls)
-                control.Font = UiTheme.Font(profile.TableFontPoints, FontStyle.Bold);
         }
 
         private void ApplyColumnWidths(UiSpecProfile profile)
@@ -971,6 +888,110 @@ namespace Win7BookManagement.Forms
             catch (Exception ex)
             {
                 MessageBox.Show(this, "入库失败：\r\n" + ex.Message, "请检查入库单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private sealed class PurchaseEmptySurface : Panel
+        {
+            private UiSpecProfile _profile = BookDeskUiSpec.Standard;
+
+            public UiSpecProfile Profile
+            {
+                get { return _profile; }
+                set
+                {
+                    _profile = value ?? BookDeskUiSpec.Standard;
+                    Invalidate();
+                }
+            }
+
+            public PurchaseEmptySurface()
+            {
+                DoubleBuffered = true;
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                base.OnPaint(e);
+
+                var profile = _profile ?? BookDeskUiSpec.Standard;
+                var compact = profile.IsCompact;
+                var headerHeight = profile.TableHeaderHeight;
+                var fixedWidths = new[]
+                {
+                    compact ? 54 : 60,
+                    compact ? 90 : 110,
+                    compact ? 96 : 118,
+                    compact ? 86 : 110,
+                    compact ? 86 : 110,
+                    compact ? 70 : 82,
+                    compact ? 94 : 112,
+                    compact ? 94 : 112
+                };
+                var labels = new[] { "序号", "店内编码", "ISBN", "书名", "作者", "出版社", "数量", "进价（元）", "小计（元）" };
+
+                var fixedTotal = 0;
+                foreach (var width in fixedWidths) fixedTotal += width;
+                var titleWidth = Math.Max(130, ClientSize.Width - fixedTotal);
+                var widths = new[]
+                {
+                    fixedWidths[0],
+                    fixedWidths[1],
+                    fixedWidths[2],
+                    titleWidth,
+                    fixedWidths[3],
+                    fixedWidths[4],
+                    fixedWidths[5],
+                    fixedWidths[6],
+                    fixedWidths[7]
+                };
+
+                using (var headerBrush = new SolidBrush(UiTheme.SurfaceMuted))
+                    e.Graphics.FillRectangle(headerBrush, 0, 0, ClientSize.Width, headerHeight);
+
+                using (var borderPen = new Pen(UiTheme.Border))
+                {
+                    e.Graphics.DrawLine(borderPen, 0, headerHeight - 1, ClientSize.Width, headerHeight - 1);
+                    var x = 0;
+                    for (var i = 0; i < widths.Length - 1; i++)
+                    {
+                        x += widths[i];
+                        e.Graphics.DrawLine(borderPen, x, 0, x, headerHeight);
+                    }
+                }
+
+                using (var headerFont = UiTheme.Font(profile.TableFontPoints, FontStyle.Bold))
+                {
+                    var x = 0;
+                    for (var i = 0; i < labels.Length; i++)
+                    {
+                        var rect = new Rectangle(x + 10, 0, Math.Max(1, widths[i] - 14), headerHeight);
+                        TextRenderer.DrawText(
+                            e.Graphics,
+                            labels[i],
+                            headerFont,
+                            rect,
+                            UiTheme.TextPrimary,
+                            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                        x += widths[i];
+                    }
+                }
+
+                using (var bodyFont = UiTheme.Font(profile.SecondaryFontPoints))
+                {
+                    var body = new Rectangle(
+                        0,
+                        headerHeight,
+                        ClientSize.Width,
+                        Math.Max(0, ClientSize.Height - headerHeight));
+                    TextRenderer.DrawText(
+                        e.Graphics,
+                        "当前入库单为空\r\n请扫码、搜索或选择图书",
+                        bodyFont,
+                        body,
+                        UiTheme.TextSecondary,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                }
             }
         }
 
