@@ -433,7 +433,7 @@ namespace Win7BookManagement.Forms
 
         private void Reload()
         {
-            var books = _services.Books.Search(_search.Text, false);
+            var books = _services.Books.Search(_search.Text, true);
             _selectedBook = null;
 
             var rows = new List<BookRow>();
