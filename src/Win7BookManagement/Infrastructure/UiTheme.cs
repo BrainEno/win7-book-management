@@ -141,8 +141,13 @@ namespace Win7BookManagement.Infrastructure
                         Size.Empty,
                         TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
                     var horizontalPadding = availableWidth < 900 ? 22 : availableWidth < 1180 ? 26 : 30;
+                    var iconAllowance = antdButton.HasIcon
+                        ? (availableWidth < 900 ? 18 : availableWidth < 1180 ? 20 : 22)
+                        : 0;
                     var minimumWidth = availableWidth < 900 ? 58 : availableWidth < 1180 ? 64 : 72;
-                    antdButton.Width = Math.Max(minimumWidth, measured.Width + horizontalPadding);
+                    antdButton.Width = Math.Max(
+                        minimumWidth,
+                        measured.Width + horizontalPadding + iconAllowance);
                 }
                 else
                 {
