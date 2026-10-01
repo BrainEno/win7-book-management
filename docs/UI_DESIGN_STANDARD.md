@@ -148,10 +148,12 @@
 - Standard 96 DPI 基线：Sidebar 230px、Shell Header 68px、Shell Status 58px；Compact 为 218 / 64 / 58px，Expanded Sidebar 为 232px。
 - Standard 页边距 12px；Compact 为左右 10 / 上下 8px；Expanded 为左右 16 / 上下 14px；查询区与表格间隔分别为 12 / 8 / 12px。
 - Input / Button：Standard / Expanded 48px，Compact 44px；统计 chip：36 / 34px；Table Header / Row：Standard 52 / 52px，Compact 48 / 48px。
-- 页面标题 Standard / Expanded 20px、Compact 18px；标题仅用于导航确认，不做 Banner。
-- 查询区圆角 8px、1px 边框，不使用大阴影；查询按钮与 Search Input 必须同高且几何中线对齐。
+- 页面标题 Standard / Expanded 20px、Compact 18px；标题仅用于导航确认，不做 Banner；页头右侧不再重复显示“本机离线”，离线状态保留在侧栏底部与底部状态栏。
+- 查询区圆角 8px、1px 边框，不使用大阴影；Search Input 与查询 / 新增 / 编辑按钮必须同高且几何中线对齐，按钮宽度需为中文文本与图标保留正常水平 padding。
+- “新增图书”使用 AntdUI Primary；“查询”“编辑资料”使用 AntdUI 内置 Info 变体，避免白底按钮与普通文字混淆，不手绘页面私有颜色。
+- 图书列表不再提供“包含停用”复选框；停用图书始终保留在查询结果中，并通过“启用”状态列区分，确保仍可进入编辑并重新启用。
 - 标准与大窗口以单一高密度主表格为视觉主区域；早期详情面板能力只保留在 3000px 以上的异常超宽工作区，不进入 1366×768 至 2560×1440 验收矩阵。
-- 1366×768 起要求 12 个图书列表字段全部可见；只有低于支持范围的工作区才允许逐步隐藏出版社、出版年、装帧等次要字段。
+- 列优先级为店内编码 / ISBN / 书名 / 作者 / 销售价格 / 库存优先，出版社、分类、出版年、装帧、货架位后置；1366×768 起仍要求 12 个图书列表字段全部可见，只有低于支持范围的工作区才允许逐步隐藏次要字段。
 - 编辑 Dialog 仍按“基础信息 / 分类与出版 / 价格信息 / 经营备注”组织，业务能力不随列表页视觉还原而改变。
 
 ## 9. 验收矩阵
