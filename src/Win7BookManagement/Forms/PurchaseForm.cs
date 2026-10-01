@@ -31,7 +31,9 @@ namespace Win7BookManagement.Forms
         private readonly List<PurchaseCartRow> _emptyDisplayRows =
             new List<PurchaseCartRow> { new PurchaseCartRow() };
 
-        private UiSpecSectionPanel _receivingSection;
+        private TableLayoutPanel _receivingSection;
+        private UiSpecSectionPanel _documentSection;
+        private UiSpecSectionPanel _scanSection;
         private FlowLayoutPanel _actionRow;
         private FlowLayoutPanel _headerFields;
         private TableLayoutPanel _scanRow;
@@ -83,12 +85,12 @@ namespace Win7BookManagement.Forms
             _purchaseDate.Format = "yyyy-MM-dd";
             _purchaseDate.Value = DateTime.Today;
 
-            _indexColumn = new AntdUI.Column("Index", "序号") { Width = "60", MinWidth = "54", ReadOnly = true };
-            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "110", MinWidth = "90", ReadOnly = true };
-            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "118", MinWidth = "96", ReadOnly = true };
-            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "fill", MinWidth = "130", MaxWidth = "300", Ellipsis = true, ReadOnly = true };
-            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "110", MinWidth = "86", Ellipsis = true, ReadOnly = true };
-            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "110", MinWidth = "86", Ellipsis = true, ReadOnly = true };
+            _indexColumn = new AntdUI.Column("Index", "序号") { Width = "58", MinWidth = "52", ReadOnly = true };
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", MinWidth = "86", ReadOnly = true };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "122", MinWidth = "94", ReadOnly = true };
+            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "fill", MinWidth = "150", MaxWidth = "420", Ellipsis = true, ReadOnly = true };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "118", MinWidth = "84", Ellipsis = true, ReadOnly = true };
+            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "118", MinWidth = "84", Ellipsis = true, ReadOnly = true };
             _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "96", MinWidth = "82", ReadOnly = true };
             _stockColumn = new AntdUI.Column("CurrentStock", "当前库存") { Width = "104", MinWidth = "92", ReadOnly = true };
             _quantityColumn = new AntdUI.Column("Quantity", "数量")
@@ -100,15 +102,15 @@ namespace Win7BookManagement.Forms
             };
             _unitCostColumn = new AntdUI.Column("UnitCostYuan", "进价（元）")
             {
-                Width = "112",
-                MinWidth = "94",
+                Width = "108",
+                MinWidth = "92",
                 ReadOnly = false,
                 DisplayFormat = "0.00",
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
             _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计（元）")
             {
-                Width = "112",
+                Width = "110",
                 MinWidth = "94",
                 ReadOnly = true,
                 DisplayFormat = "0.00"
@@ -181,15 +183,15 @@ namespace Win7BookManagement.Forms
 
         private Control CreateReceivingSection()
         {
-            _receivingSection = new UiSpecSectionPanel
+            _receivingSection = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
                 RowCount = 3,
-                BackColor = UiTheme.Surface,
-                Padding = new Padding(BookDeskUiSpec.Standard.ToolbarPadding),
+                BackColor = UiTheme.Background,
+                Padding = Padding.Empty,
                 Margin = Padding.Empty
             };
             _receivingSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -202,18 +204,21 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, BookDeskUiSpec.PurchaseTopToolbarStandardHeight),
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
+                BackColor = UiTheme.Background,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
 
-            _newOrderButton = CreateToolbarButton("新入库单", 102, delegate { StartNewOrder(); });
-            _historyButton = CreateToolbarButton("历史单据", 102, delegate { OpenHistory(); });
-            _previousButton = CreateToolbarButton("上一张", 88, delegate { NavigateAdjacent(false); });
-            _nextButton = CreateToolbarButton("下一张", 88, delegate { NavigateAdjacent(true); });
-            _exportButton = CreateToolbarButton("导出 Excel", 108, delegate { ExportCurrent(); });
-            _clearButton = CreateToolbarButton("清空明细", 96, delegate { ClearCartWithConfirmation(); });
+            _newOrderButton = CreateToolbarButton("新入库单", 112, true, delegate { StartNewOrder(); });
+            _newOrderButton.IconSvg = "FileAddOutlined";
+            _historyButton = CreateToolbarButton("历史单据", 106, false, delegate { OpenHistory(); });
+            _previousButton = CreateToolbarButton("上一张", 92, false, delegate { NavigateAdjacent(false); });
+            _nextButton = CreateToolbarButton("下一张", 92, false, delegate { NavigateAdjacent(true); });
+            _exportButton = CreateToolbarButton("导出 Excel", 112, false, delegate { ExportCurrent(); });
+            _clearButton = CreateToolbarButton("清空明细", 112, false, delegate { ClearCartWithConfirmation(); });
 
             _actionRow.Controls.Add(_newOrderButton);
             _actionRow.Controls.Add(_historyButton);
@@ -222,6 +227,21 @@ namespace Win7BookManagement.Forms
             _actionRow.Controls.Add(_exportButton);
             _actionRow.Controls.Add(_clearButton);
 
+            _documentSection = new UiSpecSectionPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, BookDeskUiSpec.PurchaseDocumentStandardHeight),
+                ColumnCount = 1,
+                RowCount = 1,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(BookDeskUiSpec.Standard.ToolbarPadding),
+                Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0)
+            };
+            _documentSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _documentSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
             _headerFields = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -229,28 +249,41 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
-                Margin = new Padding(0, 10, 0, 0),
+                Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
 
-            _purchaseDate.Width = 150;
             _purchaseDate.Tag = "toolbar-input";
-            _orderNo.Width = 210;
             _orderNo.Tag = "toolbar-input";
-            _supplier.Width = 220;
             _supplier.DropDownArrow = true;
             _supplier.Tag = "toolbar-input";
-
-            _headerFields.Controls.Add(CreateField("采购日期", _purchaseDate, 210));
-            _headerFields.Controls.Add(CreateField("采购单号", _orderNo, 284));
-            _headerFields.Controls.Add(CreateField("供应商", _supplier, 286));
+            _headerFields.Controls.Add(CreateField("采购日期", _purchaseDate, 72, 206));
+            _headerFields.Controls.Add(CreateField("采购单号", _orderNo, 72, 258));
+            _headerFields.Controls.Add(CreateField("供应商", _supplier, 62, 320));
 
             _statusLabel.AutoSize = false;
-            _statusLabel.Size = new Size(108, BookDeskUiSpec.Standard.ControlHeight);
+            _statusLabel.Size = new Size(118, BookDeskUiSpec.Standard.ControlHeight);
+            _statusLabel.MinimumSize = new Size(118, BookDeskUiSpec.Standard.ControlHeight);
             _statusLabel.TextAlign = ContentAlignment.MiddleCenter;
             _statusLabel.Font = UiTheme.Font(8.5F, FontStyle.Bold);
-            _statusLabel.Margin = new Padding(2, 0, 0, 0);
+            _statusLabel.Margin = Padding.Empty;
             _headerFields.Controls.Add(_statusLabel);
+            _documentSection.Controls.Add(_headerFields, 0, 0);
+
+            _scanSection = new UiSpecSectionPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, BookDeskUiSpec.PurchaseScanStandardHeight),
+                ColumnCount = 1,
+                RowCount = 1,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(10),
+                Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0)
+            };
+            _scanSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _scanSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             _scanRow = new TableLayoutPanel
             {
@@ -260,7 +293,7 @@ namespace Win7BookManagement.Forms
                 MinimumSize = new Size(0, BookDeskUiSpec.Standard.ControlHeight),
                 ColumnCount = 4,
                 RowCount = 1,
-                Margin = new Padding(0, 10, 0, 0),
+                Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
             _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -284,7 +317,7 @@ namespace Win7BookManagement.Forms
             _isbn.Dock = DockStyle.None;
             _isbn.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             _isbn.Tag = "toolbar-input";
-            _isbn.Margin = new Padding(0, 0, 8, 0);
+            _isbn.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
             _isbn.KeyDown += delegate(object sender, KeyEventArgs e)
             {
                 if (e.KeyCode != Keys.Enter) return;
@@ -294,27 +327,28 @@ namespace Win7BookManagement.Forms
             _scanRow.Controls.Add(_isbn, 1, 0);
 
             _addButton = UiTheme.CreateAntdButton("加入", true);
-            _addButton.Width = 92;
+            _addButton.Width = 104;
             _addButton.Tag = "toolbar-action";
             _addButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
             _addButton.Click += delegate { AddBySearch(); };
             _scanRow.Controls.Add(_addButton, 2, 0);
 
             _pickButton = UiTheme.CreateAntdButton("选择图书", false);
-            _pickButton.Width = 108;
+            _pickButton.Width = 118;
             _pickButton.Tag = "toolbar-action";
             _pickButton.Click += delegate { PickBook(); };
             _scanRow.Controls.Add(_pickButton, 3, 0);
 
+            _scanSection.Controls.Add(_scanRow, 0, 0);
             _receivingSection.Controls.Add(_actionRow, 0, 0);
-            _receivingSection.Controls.Add(_headerFields, 0, 1);
-            _receivingSection.Controls.Add(_scanRow, 0, 2);
+            _receivingSection.Controls.Add(_documentSection, 0, 1);
+            _receivingSection.Controls.Add(_scanSection, 0, 2);
             return _receivingSection;
         }
 
-        private AntdUI.Button CreateToolbarButton(string text, int width, Action action)
+        private AntdUI.Button CreateToolbarButton(string text, int width, bool primary, Action action)
         {
-            var button = UiTheme.CreateAntdButton(text, false);
+            var button = UiTheme.CreateAntdButton(text, primary);
             button.Width = width;
             button.Tag = "toolbar-action";
             button.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
@@ -322,25 +356,25 @@ namespace Win7BookManagement.Forms
             return button;
         }
 
-        private static Control CreateField(string labelText, Control control, int width)
+        private static Control CreateField(string labelText, Control control, int labelWidth, int controlWidth)
         {
             var host = new TableLayoutPanel
             {
-                Width = width,
+                Width = labelWidth + controlWidth,
                 Height = BookDeskUiSpec.Standard.ControlHeight,
                 ColumnCount = 2,
                 RowCount = 1,
                 Margin = new Padding(0, 0, 10, 0),
                 Padding = Padding.Empty
             };
-            host.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            host.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, labelWidth));
             host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             host.Controls.Add(new Label
             {
                 Text = labelText,
                 AutoSize = false,
-                Width = 64,
+                Width = labelWidth,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextSecondary,
@@ -458,11 +492,9 @@ namespace Win7BookManagement.Forms
                 _publisherColumn,
                 _quantityColumn,
                 _unitCostColumn,
-                _lineTotalColumn,
-                _shelfColumn,
-                _stockColumn
+                _lineTotalColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v4");
+            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v5");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -559,7 +591,7 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
+                WrapContents = false,
                 BackColor = UiTheme.SurfaceMuted,
                 Margin = Padding.Empty
             };
