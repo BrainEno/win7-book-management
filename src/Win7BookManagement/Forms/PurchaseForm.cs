@@ -22,7 +22,7 @@ namespace Win7BookManagement.Forms
         private readonly Label _total = new Label();
         private readonly Label _emptyState = new Label();
 
-        private TableLayoutPanel _emptySurface;
+        private Panel _emptySurface;
         private TableLayoutPanel _emptyHeaderRow;
         private UiSpecSectionPanel _receivingSection;
         private TableLayoutPanel _supplierRow;
@@ -329,22 +329,19 @@ namespace Win7BookManagement.Forms
 
             var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Surface };
 
-            _emptySurface = new TableLayoutPanel
+            _emptySurface = new Panel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 2,
                 BackColor = UiTheme.Surface,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
-            _emptySurface.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _emptySurface.RowStyles.Add(new RowStyle(SizeType.Absolute, BookDeskUiSpec.Standard.TableHeaderHeight));
-            _emptySurface.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             _emptyHeaderRow = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                Height = BookDeskUiSpec.Standard.TableHeaderHeight,
+                MinimumSize = new Size(0, BookDeskUiSpec.Compact.TableHeaderHeight),
                 ColumnCount = 9,
                 RowCount = 1,
                 BackColor = UiTheme.SurfaceMuted,
@@ -369,8 +366,9 @@ namespace Win7BookManagement.Forms
             _emptyState.Font = UiTheme.Font(BookDeskUiSpec.Standard.SecondaryFontPoints);
             _emptyState.BackColor = UiTheme.Surface;
 
-            _emptySurface.Controls.Add(_emptyHeaderRow, 0, 0);
-            _emptySurface.Controls.Add(_emptyState, 0, 1);
+            _emptySurface.Controls.Add(_emptyState);
+            _emptySurface.Controls.Add(_emptyHeaderRow);
+            _emptyHeaderRow.BringToFront();
 
             content.Controls.Add(_grid);
             content.Controls.Add(_emptySurface);
@@ -619,8 +617,8 @@ namespace Win7BookManagement.Forms
             _grid.Font = UiTheme.Font(profile.TableFontPoints);
             ApplyColumnWidths(profile);
             ConfigureEmptyHeaderColumns(profile);
-            if (_emptySurface != null && _emptySurface.RowStyles.Count > 0)
-                _emptySurface.RowStyles[0].Height = profile.TableHeaderHeight;
+            if (_emptyHeaderRow != null)
+                _emptyHeaderRow.Height = profile.TableHeaderHeight;
             _emptyState.Font = UiTheme.Font(profile.SecondaryFontPoints);
 
             if (_noteSection != null)
