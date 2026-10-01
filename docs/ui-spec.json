@@ -31,7 +31,7 @@
     "calibration": {
       "status": "raster-verified",
       "reference": "approved 1586x992 prototype set",
-      "note": "Shared control/table/shell metrics were recalibrated after pixel comparison against CI WinForms screenshots. These values supersede the initial screenshot estimate."
+      "note": "Shared control/table/shell metrics were recalibrated after pixel comparison against CI WinForms screenshots. These values supersede the initial screenshot estimate. Shell status height and inventory toolbar height were also corrected from direct raster boundary measurement."
     }
   },
   "measurement": {
@@ -257,7 +257,7 @@
       "background": "#F5F7FA"
     },
     "footerStatusBar": {
-      "height": 28,
+      "height": 58,
       "horizontalPadding": 16,
       "fontSize": 11,
       "background": "#F8FAFC"
@@ -816,7 +816,7 @@
         "type": "vertical",
         "gap": 12,
         "toolbar": {
-          "height": 136,
+          "height": 140,
           "compactHeight": 112,
           "padding": 14,
           "compactPadding": 10,
