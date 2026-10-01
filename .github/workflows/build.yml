@@ -17,10 +17,18 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Validate C# source manifest
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\validate-csproj-sources.ps1"
+
       - name: Restore
         run: msbuild Win7BookManagement.sln /t:Restore /p:Configuration=Release /p:Platform=x86
 
-      - name: Build
+      - name: Build Debug x86
+        run: msbuild Win7BookManagement.sln /m /p:Configuration=Debug /p:Platform=x86
+
+      - name: Build Release x86
         run: msbuild Win7BookManagement.sln /m /p:Configuration=Release /p:Platform=x86
 
       - name: Run self test
