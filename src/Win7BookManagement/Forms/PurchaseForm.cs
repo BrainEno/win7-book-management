@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.IO;
+using System.Text;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
@@ -18,8 +19,8 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.DatePicker _purchaseDate = new AntdUI.DatePicker();
         private readonly AntdUI.Input _orderNo = UiTheme.CreateAntdInput("留空时保存草稿会自动生成");
         private readonly AntdUI.Select _supplier = new AntdUI.Select();
-        private readonly AntdUI.Input _isbn = UiTheme.CreateAntdInput("扫码或输入店内编码 / ISBN / 书名 / 作者");
         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写到货批次、物流或其他备注");
+        private readonly StringBuilder _scanBuffer = new StringBuilder();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
         private readonly BindingList<PurchaseCartRow> _rows = new BindingList<PurchaseCartRow>();
         private readonly List<Supplier> _supplierOptions = new List<Supplier>();
@@ -33,10 +34,8 @@ namespace Win7BookManagement.Forms
 
         private TableLayoutPanel _receivingSection;
         private UiSpecSectionPanel _documentSection;
-        private UiSpecSectionPanel _scanSection;
         private FlowLayoutPanel _actionRow;
         private TableLayoutPanel _headerFields;
-        private TableLayoutPanel _scanRow;
         private TableLayoutPanel _cartHost;
         private TableLayoutPanel _cartHeader;
         private TableLayoutPanel _noteSection;
@@ -49,9 +48,8 @@ namespace Win7BookManagement.Forms
         private AntdUI.Button _previousButton;
         private AntdUI.Button _nextButton;
         private AntdUI.Button _exportButton;
+        private AntdUI.Button _lookupButton;
         private AntdUI.Button _clearButton;
-        private AntdUI.Button _addButton;
-        private AntdUI.Button _pickButton;
         private AntdUI.Button _removeButton;
         private AntdUI.Button _saveDraftButton;
         private AntdUI.Button _reviewButton;
@@ -80,6 +78,8 @@ namespace Win7BookManagement.Forms
         private string _baselineNote = "";
         private PurchaseNavigationState _navigationState;
         private UiSpecProfile _profile = BookDeskUiSpec.Standard;
+        private DateTime _lastScanCharAt = DateTime.MinValue;
+        private bool _scannerCaptureEnabled = true;
 
         public PurchaseForm(ApplicationServices services)
         {
@@ -156,6 +156,7 @@ namespace Win7BookManagement.Forms
                 if (!_loadingDocument) MarkDirty();
             };
             KeyDown += HandlePurchaseShortcut;
+            KeyPress += HandleScannerKeyPress;
 
             Resize += delegate { ApplyResponsiveColumns(); };
             _grid.SizeChanged += delegate { ApplyResponsiveColumns(); };
@@ -166,7 +167,7 @@ namespace Win7BookManagement.Forms
                 ResetOrder(false);
                 UpdateTotals();
                 ApplyResponsiveColumns();
-                _isbn.Focus();
+                FocusGridForScanner();
             };
 
             UiTheme.Apply(this);
@@ -197,13 +198,12 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 2,
                 BackColor = UiTheme.Background,
                 Padding = Padding.Empty,
                 Margin = Padding.Empty
             };
             _receivingSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _receivingSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _receivingSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _receivingSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -214,7 +214,7 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, BookDeskUiSpec.PurchaseTopToolbarStandardHeight),
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
+                WrapContents = false,
                 BackColor = UiTheme.Background,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
@@ -226,6 +226,8 @@ namespace Win7BookManagement.Forms
             _previousButton = CreateToolbarButton("上一张", 96, false, delegate { NavigateAdjacent(false); });
             _nextButton = CreateToolbarButton("下一张", 96, false, delegate { NavigateAdjacent(true); });
             _exportButton = CreateToolbarButton("导出 Excel", 118, false, delegate { ExportCurrent(); });
+            _lookupButton = CreateToolbarButton("查找图书", 112, false, delegate { OpenAdvancedBookLookup(""); });
+            _lookupButton.IconSvg = "SearchOutlined";
             _clearButton = CreateToolbarButton("清空明细", 118, false, delegate { ClearCartWithConfirmation(); });
 
             _actionRow.Controls.Add(_newOrderButton);
@@ -233,6 +235,7 @@ namespace Win7BookManagement.Forms
             _actionRow.Controls.Add(_previousButton);
             _actionRow.Controls.Add(_nextButton);
             _actionRow.Controls.Add(_exportButton);
+            _actionRow.Controls.Add(_lookupButton);
             _actionRow.Controls.Add(_clearButton);
 
             _documentSection = new UiSpecSectionPanel
@@ -300,84 +303,8 @@ namespace Win7BookManagement.Forms
             _headerFields.Controls.Add(_statusLabel, 4, 0);
             _documentSection.Controls.Add(_headerFields, 0, 0);
 
-            _scanSection = new UiSpecSectionPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, BookDeskUiSpec.PurchaseScanStandardHeight),
-                ColumnCount = 1,
-                RowCount = 1,
-                BackColor = UiTheme.Surface,
-                Padding = new Padding(10, 14, 10, 14),
-                Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0)
-            };
-            _scanSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _scanSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-            _scanRow = new TableLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, BookDeskUiSpec.PurchaseFieldStandardHeight),
-                ColumnCount = 5,
-                RowCount = 1,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty
-            };
-            _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _scanRow.ColumnStyles.Add(new ColumnStyle(
-                SizeType.Absolute,
-                BookDeskUiSpec.PurchaseSearchStandardMaxWidth));
-            _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _scanRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-            _scanRow.Controls.Add(new Label
-            {
-                Text = "扫码 / 搜索",
-                AutoSize = false,
-                Width = BookDeskUiSpec.PurchaseScanLabelWidth,
-                MinimumSize = new Size(
-                    BookDeskUiSpec.PurchaseScanLabelWidth,
-                    BookDeskUiSpec.PurchaseFieldStandardHeight),
-                Anchor = AnchorStyles.Left,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(BookDeskUiSpec.Standard.BodyFontPoints, FontStyle.Bold),
-                Margin = Padding.Empty
-            }, 0, 0);
-
-            _isbn.Dock = DockStyle.None;
-            _isbn.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            _isbn.Tag = "toolbar-input";
-            _isbn.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
-            _isbn.KeyDown += delegate(object sender, KeyEventArgs e)
-            {
-                if (e.KeyCode != Keys.Enter) return;
-                AddBySearch();
-                e.SuppressKeyPress = true;
-            };
-            _scanRow.Controls.Add(_isbn, 1, 0);
-
-            _addButton = UiTheme.CreateAntdButton("加入", true);
-            _addButton.Width = 104;
-            _addButton.Tag = "toolbar-action";
-            _addButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
-            _addButton.Click += delegate { AddBySearch(); };
-            _scanRow.Controls.Add(_addButton, 3, 0);
-
-            _pickButton = UiTheme.CreateAntdButton("选择图书", false);
-            _pickButton.Width = 118;
-            _pickButton.Tag = "toolbar-action";
-            _pickButton.Click += delegate { PickBook(); };
-            _scanRow.Controls.Add(_pickButton, 4, 0);
-
-            _scanSection.Controls.Add(_scanRow, 0, 0);
             _receivingSection.Controls.Add(_actionRow, 0, 0);
             _receivingSection.Controls.Add(_documentSection, 0, 1);
-            _receivingSection.Controls.Add(_scanSection, 0, 2);
             return _receivingSection;
         }
 
@@ -469,7 +396,7 @@ namespace Win7BookManagement.Forms
 
             _cartHeader.Controls.Add(new Label
             {
-                Text = "草稿状态下可直接编辑数量和进价",
+                Text = "点击明细表后可直接扫码；未匹配会自动打开高级查找",
                 AutoSize = true,
                 Anchor = AnchorStyles.Right,
                 ForeColor = UiTheme.TextSecondary,
@@ -492,12 +419,14 @@ namespace Win7BookManagement.Forms
 
             _emptyState.Dock = DockStyle.None;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
-            _emptyState.Text = "当前入库单为空\r\n请扫码、搜索或选择图书";
+            _emptyState.Text = "当前入库单为空\r\n点击明细表后可直接扫码；也可点击上方“查找图书”";
             _emptyState.ForeColor = UiTheme.TextSecondary;
             _emptyState.BackColor = UiTheme.Surface;
             _emptyState.Font = UiTheme.Font(BookDeskUiSpec.Standard.SecondaryFontPoints);
             _emptyState.Margin = Padding.Empty;
             _emptyState.Padding = Padding.Empty;
+            _emptyState.Cursor = Cursors.IBeam;
+            _emptyState.MouseDown += delegate { FocusGridForScanner(); };
 
             content.Controls.Add(_grid);
             _grid.Controls.Add(_emptyState);
@@ -518,7 +447,7 @@ namespace Win7BookManagement.Forms
             _grid.ColumnDragSort = false;
             _grid.EditMode = AntdUI.TEditMode.Click;
             _grid.ShowTip = true;
-            _grid.EmptyText = "当前入库单为空\r\n请扫码、搜索或选择图书";
+            _grid.EmptyText = "当前入库单为空\r\n点击表格后可直接扫码；未匹配时打开高级查找";
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
@@ -534,9 +463,30 @@ namespace Win7BookManagement.Forms
             };
             _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v5");
 
+            _grid.MouseDown += delegate
+            {
+                if (!IsReviewed)
+                {
+                    _scannerCaptureEnabled = true;
+                    _scanBuffer.Clear();
+                    _grid.Focus();
+                }
+            };
+            _grid.Enter += delegate
+            {
+                if (!IsReviewed)
+                    _scannerCaptureEnabled = true;
+            };
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
                 _selectedRow = e.Record as PurchaseCartRow;
+
+                var key = e.Column == null ? "" : e.Column.Key;
+                _scannerCaptureEnabled =
+                    !string.Equals(key, "Quantity", StringComparison.Ordinal) &&
+                    !string.Equals(key, "UnitCostYuan", StringComparison.Ordinal);
+                if (!_scannerCaptureEnabled)
+                    _scanBuffer.Clear();
             };
             _grid.CellEndEdit += HandleCellEndEdit;
         }
@@ -572,6 +522,8 @@ namespace Win7BookManagement.Forms
             MarkDirty();
             _grid.Refresh();
             UpdateTotals();
+            _scannerCaptureEnabled = true;
+            _scanBuffer.Clear();
             return true;
         }
 
@@ -778,7 +730,7 @@ namespace Win7BookManagement.Forms
                     compact
                         ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight
                         : BookDeskUiSpec.PurchaseTopToolbarStandardHeight);
-                _actionRow.WrapContents = compact;
+                _actionRow.WrapContents = false;
             }
 
             SetTopToolbarButton(_newOrderButton, 118, topButtonHeight, profile);
@@ -786,10 +738,10 @@ namespace Win7BookManagement.Forms
             SetTopToolbarButton(_previousButton, 96, topButtonHeight, profile);
             SetTopToolbarButton(_nextButton, 96, topButtonHeight, profile);
             SetTopToolbarButton(_exportButton, 118, topButtonHeight, profile);
+            SetTopToolbarButton(_lookupButton, 112, topButtonHeight, profile);
             SetTopToolbarButton(_clearButton, 118, topButtonHeight, profile);
-            SetInlineActionButton(_addButton, 104, fieldHeight, profile);
-            SetInlineActionButton(_pickButton, 118, fieldHeight, profile);
-            if (_pickButton != null) _pickButton.Margin = Padding.Empty;
+            if (_clearButton != null) _clearButton.Margin = Padding.Empty;
+
             SetToolbarButton(_removeButton, 106, profile);
             SetToolbarButton(_saveDraftButton, compact ? 96 : 104, profile);
             SetToolbarButton(_unreviewButton, compact ? 80 : 88, profile);
@@ -801,24 +753,12 @@ namespace Win7BookManagement.Forms
             _orderNo.MinimumSize = new Size(0, fieldHeight);
             _supplier.Height = fieldHeight;
             _supplier.MinimumSize = new Size(0, fieldHeight);
-            _isbn.Height = fieldHeight;
-            _isbn.MinimumSize = new Size(
-                BookDeskUiSpec.PurchaseSearchCompactMinimumWidth,
-                fieldHeight);
-            _isbn.MaximumSize = new Size(
-                expanded
-                    ? BookDeskUiSpec.PurchaseSearchExpandedMaxWidth
-                    : compact
-                        ? BookDeskUiSpec.PurchaseSearchCompactMaxWidth
-                        : BookDeskUiSpec.PurchaseSearchStandardMaxWidth,
-                fieldHeight);
             _note.Height = profileControlHeight;
             _note.MinimumSize = new Size(0, profileControlHeight);
 
             _purchaseDate.Font = UiTheme.Font(profile.BodyFontPoints);
             _orderNo.Font = UiTheme.Font(profile.BodyFontPoints);
             _supplier.Font = UiTheme.Font(profile.BodyFontPoints);
-            _isbn.Font = UiTheme.Font(profile.BodyFontPoints);
             _note.Font = UiTheme.Font(profile.BodyFontPoints);
 
             ResizeFieldHost(
@@ -866,52 +806,6 @@ namespace Win7BookManagement.Forms
                     horizontalPadding,
                     verticalPadding);
                 _documentSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            }
-
-            if (_scanSection != null)
-            {
-                _scanSection.MinimumSize = new Size(
-                    0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseScanCompactHeight
-                        : BookDeskUiSpec.PurchaseScanStandardHeight);
-                var scanHorizontalPadding = compact ? 8 : 10;
-                var scanTargetHeight = compact
-                    ? BookDeskUiSpec.PurchaseScanCompactHeight
-                    : BookDeskUiSpec.PurchaseScanStandardHeight;
-                var scanVerticalPadding = Math.Max(0, (scanTargetHeight - fieldHeight) / 2);
-                _scanSection.Padding = new Padding(
-                    scanHorizontalPadding,
-                    scanVerticalPadding,
-                    scanHorizontalPadding,
-                    scanVerticalPadding);
-                _scanSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            }
-
-            if (_scanRow != null)
-            {
-                _scanRow.MinimumSize = new Size(0, fieldHeight);
-                _scanRow.Margin = Padding.Empty;
-                if (_scanRow.ColumnStyles.Count >= 5)
-                {
-                    _scanRow.ColumnStyles[1].SizeType = SizeType.Absolute;
-                    _scanRow.ColumnStyles[1].Width = ResolvePurchaseSearchWidth(
-                        compact,
-                        expanded,
-                        profile.ControlGap);
-                }
-                foreach (Control child in _scanRow.Controls)
-                {
-                    var label = child as Label;
-                    if (label != null && string.Equals(label.Text, "扫码 / 搜索", StringComparison.Ordinal))
-                    {
-                        label.Width = BookDeskUiSpec.PurchaseScanLabelWidth;
-                        label.MinimumSize = new Size(
-                            BookDeskUiSpec.PurchaseScanLabelWidth,
-                            fieldHeight);
-                        label.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
-                    }
-                }
             }
 
             if (_cartHost != null)
@@ -1013,33 +907,6 @@ namespace Win7BookManagement.Forms
             }
         }
 
-        private int ResolvePurchaseSearchWidth(bool compact, bool expanded, int gap)
-        {
-            var maxWidth = expanded
-                ? BookDeskUiSpec.PurchaseSearchExpandedMaxWidth
-                : compact
-                    ? BookDeskUiSpec.PurchaseSearchCompactMaxWidth
-                    : BookDeskUiSpec.PurchaseSearchStandardMaxWidth;
-
-            if (_scanSection == null || _scanSection.ClientSize.Width <= 0)
-                return maxWidth;
-
-            var innerWidth = Math.Max(
-                0,
-                _scanSection.ClientSize.Width - _scanSection.Padding.Horizontal);
-            var reservedWidth =
-                BookDeskUiSpec.PurchaseScanLabelWidth +
-                104 +
-                118 +
-                (gap * 3) +
-                12;
-            var availableForSearch = innerWidth - reservedWidth;
-
-            return Math.Max(
-                BookDeskUiSpec.PurchaseSearchMinimumWidth,
-                Math.Min(maxWidth, availableForSearch));
-        }
-
         private static void SetTopToolbarButton(
             AntdUI.Button button,
             int width,
@@ -1062,26 +929,6 @@ namespace Win7BookManagement.Forms
             button.Padding = new Padding(horizontalPadding, 0, horizontalPadding, 0);
             button.Font = UiTheme.Font(profile.BodyFontPoints);
             button.Margin = new Padding(0, verticalMargin, profile.ControlGap, verticalMargin);
-        }
-
-        private static void SetInlineActionButton(
-            AntdUI.Button button,
-            int width,
-            int height,
-            UiSpecProfile profile)
-        {
-            if (button == null) return;
-
-            button.Width = width;
-            button.Height = height;
-            button.MinimumSize = new Size(width, height);
-            button.Padding = new Padding(
-                profile.ButtonHorizontalPadding,
-                0,
-                profile.ButtonHorizontalPadding,
-                0);
-            button.Font = UiTheme.Font(profile.BodyFontPoints);
-            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
         }
 
         private static void SetToolbarButton(AntdUI.Button button, int width, UiSpecProfile profile)
@@ -1142,65 +989,52 @@ namespace Win7BookManagement.Forms
                 Math.Max(0, _grid.ClientSize.Height - headerHeight));
         }
 
-        private void AddBySearch()
+        private void HandleScannerKeyPress(object sender, KeyPressEventArgs e)
         {
-            if (IsReviewed)
+            if (IsReviewed ||
+                !_scannerCaptureEnabled ||
+                _grid == null ||
+                !_grid.ContainsFocus)
+                return;
+
+            if (e.KeyChar == '\r' || e.KeyChar == '\t')
             {
-                ShowReviewedReadOnlyHint();
+                if (_scanBuffer.Length == 0)
+                    return;
+
+                var identifier = _scanBuffer.ToString().Trim();
+                _scanBuffer.Clear();
+                e.Handled = true;
+
+                if (identifier.Length > 0)
+                    ProcessScannedIdentifier(identifier);
                 return;
             }
 
-            var text = (_isbn.Text ?? "").Trim();
-            if (text.Length == 0)
+            if (e.KeyChar == '\b')
             {
-                MessageBox.Show(this, "请先扫描 ISBN，或输入店内编码 / ISBN / 书名关键词。", "还没有图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                _isbn.Focus();
+                if (_scanBuffer.Length > 0)
+                    _scanBuffer.Length -= 1;
+                e.Handled = true;
                 return;
             }
 
-            var exactBook = _services.Books.FindByExactIsbn(text);
-            if (exactBook != null)
-            {
-                AddBook(exactBook);
-                _isbn.Text = "";
-                _isbn.Focus();
+            if (char.IsControl(e.KeyChar))
                 return;
+
+            var now = DateTime.UtcNow;
+            if (_lastScanCharAt != DateTime.MinValue &&
+                (now - _lastScanCharAt).TotalMilliseconds > 900)
+            {
+                _scanBuffer.Clear();
             }
 
-            var matches = _services.Books.SearchActiveByIsbnOrTitle(text);
-            if (matches.Count == 0)
-            {
-                MessageBox.Show(
-                    this,
-                    "没有找到匹配的启用图书。可以点击“选择图书”，再在弹窗底部选择“新增资料”。",
-                    "未找到图书",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                _isbn.SelectAll();
-                _isbn.Focus();
-                return;
-            }
-
-            if (matches.Count == 1)
-            {
-                AddBook(matches[0]);
-                _isbn.Text = "";
-                _isbn.Focus();
-                return;
-            }
-
-            using (var dialog = new BookLookupDialog(_services, text, true))
-            {
-                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
-                {
-                    AddBook(dialog.SelectedBook);
-                    _isbn.Text = "";
-                }
-            }
-            _isbn.Focus();
+            _lastScanCharAt = now;
+            _scanBuffer.Append(e.KeyChar);
+            e.Handled = true;
         }
 
-        private void PickBook()
+        private void ProcessScannedIdentifier(string identifier)
         {
             if (IsReviewed)
             {
@@ -1208,11 +1042,49 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            using (var dialog = new BookLookupDialog(_services))
+            var book = _services.Books.FindByExactIdentifier(identifier);
+            if (book != null)
             {
-                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
-                    AddBook(dialog.SelectedBook);
+                AddBook(book);
+                FocusGridForScanner();
+                return;
             }
+
+            OpenAdvancedBookLookup(identifier);
+        }
+
+        private void OpenAdvancedBookLookup(string initialIdentifier)
+        {
+            if (IsReviewed)
+            {
+                ShowReviewedReadOnlyHint();
+                return;
+            }
+
+            _scannerCaptureEnabled = false;
+            _scanBuffer.Clear();
+
+            using (var dialog = new AdvancedBookLookupDialog(
+                _services,
+                initialIdentifier,
+                delegate(Book book) { AddBook(book); }))
+            {
+                if (dialog.ShowDialog(this) == DialogResult.OK &&
+                    dialog.SelectedBook != null)
+                {
+                    AddBook(dialog.SelectedBook);
+                }
+            }
+
+            FocusGridForScanner();
+        }
+
+        private void FocusGridForScanner()
+        {
+            _scanBuffer.Clear();
+            _scannerCaptureEnabled = !IsReviewed;
+            if (_grid != null && _grid.CanFocus)
+                _grid.Focus();
         }
 
         private void AddBook(Book book)
@@ -1302,7 +1174,7 @@ namespace Win7BookManagement.Forms
                 _rows.Clear();
                 _selectedRow = null;
                 if (_supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
-                _isbn.Text = "";
+                _scanBuffer.Clear();
                 CaptureBaseline();
                 _dirty = false;
             }
@@ -1314,7 +1186,7 @@ namespace Win7BookManagement.Forms
             UpdateTotals();
             ApplyReviewState();
             UpdateNavigationState();
-            if (focusSearch) _isbn.Focus();
+            if (focusSearch) FocusGridForScanner();
         }
 
         private void OpenHistory()
@@ -1746,6 +1618,22 @@ namespace Win7BookManagement.Forms
 
         private void HandlePurchaseShortcut(object sender, KeyEventArgs e)
         {
+            if (_scannerCaptureEnabled &&
+                _grid != null &&
+                _grid.ContainsFocus &&
+                _scanBuffer.Length > 0 &&
+                (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Tab))
+            {
+                var identifier = _scanBuffer.ToString().Trim();
+                _scanBuffer.Clear();
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+
+                if (identifier.Length > 0)
+                    ProcessScannedIdentifier(identifier);
+                return;
+            }
+
             if (e.Control && e.KeyCode == Keys.S)
             {
                 SaveDraftInternal(true);
@@ -1780,6 +1668,14 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
+            if (e.KeyCode == Keys.F3)
+            {
+                OpenAdvancedBookLookup("");
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+                return;
+            }
+
             if (e.KeyCode == Keys.F4)
             {
                 OpenHistory();
@@ -1802,10 +1698,8 @@ namespace Win7BookManagement.Forms
             _purchaseDate.Enabled = editable;
             _orderNo.Enabled = editable;
             _supplier.Enabled = editable;
-            _isbn.Enabled = editable;
             _note.Enabled = editable;
-            _addButton.Enabled = editable;
-            _pickButton.Enabled = editable;
+            _lookupButton.Enabled = editable;
             _clearButton.Enabled = editable;
             _removeButton.Enabled = editable;
             _saveDraftButton.Enabled = editable;
@@ -1815,6 +1709,8 @@ namespace Win7BookManagement.Forms
             _quantityColumn.ReadOnly = !editable;
             _unitCostColumn.ReadOnly = !editable;
             _grid.Refresh();
+            _scannerCaptureEnabled = editable;
+            if (!editable) _scanBuffer.Clear();
 
             UpdateStatusLabel();
         }

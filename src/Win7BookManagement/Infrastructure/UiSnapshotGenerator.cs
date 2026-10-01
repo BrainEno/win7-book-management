@@ -402,6 +402,22 @@ namespace Win7BookManagement.Infrastructure
                     false,
                     null);
 
+                Capture(
+                    outputDirectory,
+                    "17b-advanced-purchase-book-lookup.png",
+                    delegate
+                    {
+                        return new AdvancedBookLookupDialog(
+                            services,
+                            books.Count > 0 ? books[0].Isbn : "",
+                            null);
+                    },
+                    new Size(
+                        BookDeskUiSpec.PurchaseAdvancedLookupWidth,
+                        BookDeskUiSpec.PurchaseAdvancedLookupHeight),
+                    false,
+                    null);
+
                 var saleDocuments = services.Documents.Search(
                     "sale",
                     DateTime.Today,

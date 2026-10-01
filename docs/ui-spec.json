@@ -1,6 +1,6 @@
 {
   "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
-  "specVersion": "1.1.1",
+  "specVersion": "1.2.0",
   "project": {
     "name": "BOOK DESK / 简易图书管理系统",
     "repository": "https://github.com/BrainEno/win7-book-management",
@@ -764,6 +764,14 @@
             },
             {
               "type": "button",
+              "text": "查找图书",
+              "variant": "default",
+              "width": 112,
+              "heightRule": "topToolbarButtonHeight",
+              "shortcut": "F3"
+            },
+            {
+              "type": "button",
               "text": "清空明细",
               "variant": "defaultDanger",
               "width": 118
@@ -848,72 +856,13 @@
             }
           }
         },
-        "scanCard": {
-          "height": 72,
-          "compactHeight": 64,
-          "padding": 10,
-          "compactPadding": 8,
-          "row": {
-            "height": 44,
-            "verticalAlign": "center",
-            "items": [
-              {
-                "type": "label",
-                "text": "扫码 / 搜索",
-                "width": 124
-              },
-              {
-                "type": "input",
-                "name": "scanSearch",
-                "flex": 1,
-                "minWidth": 360,
-                "placeholder": "扫码或输入店内编码 / ISBN / 书名 / 作者",
-                "height": 44,
-                "preferredWidth": 760,
-                "maxWidth": 880,
-                "compactMaxWidth": 680,
-                "expandedMaxWidth": 960,
-                "compactHeight": 42
-              },
-              {
-                "type": "button",
-                "text": "加入",
-                "variant": "primary",
-                "width": 104,
-                "height": 44,
-                "compactHeight": 42
-              },
-              {
-                "type": "button",
-                "text": "选择图书",
-                "variant": "default",
-                "width": 118,
-                "height": 44,
-                "compactHeight": 42
-              }
-            ],
-            "gap": "$profile.controlGap",
-            "compactHeight": 42,
-            "spacer": {
-              "placement": "between scanSearch and add",
-              "flex": 1,
-              "minWidth": 12,
-              "purpose": "Prevent the search field from becoming visually dominant on wide windows while keeping actions right-aligned."
-            },
-            "alignmentContract": [
-              "scanSearch, 加入 and 选择图书 must have exactly the same height.",
-              "Their vertical centerlines may differ by at most 1 logical px.",
-              "扫码 / 搜索 must remain on one line at every mandatory viewport."
-            ]
-          }
-        },
         "detailPanel": {
           "flex": 1,
           "minHeight": 250,
           "headerHeight": 48,
           "compactHeaderHeight": 44,
           "title": "入库明细",
-          "rightHint": "草稿状态下可直接编辑数量和进价",
+          "rightHint": "点击明细表后可直接扫码；未匹配会自动打开高级查找",
           "rightAction": {
             "text": "移除选中",
             "width": 106,
@@ -1019,7 +968,7 @@
             "title": "当前入库单为空",
             "body": "请扫码、搜索或选择图书添加明细"
           },
-          "heightPolicy": "The detail region gives up 16 logical px of height to the corrected document/search controls (8px per card) before any note/summary area is reduced. Note and bottom actions remain fixed and fully visible."
+          "heightPolicy": "With the scan/search card removed, the detail table receives the reclaimed vertical space. Document header, note row and sticky summary bar retain their fixed profile heights."
         },
         "noteRow": {
           "height": 48,
@@ -1107,26 +1056,176 @@
             "When width is constrained, shrink metrics first, then metric gaps/padding; never shrink or hide the primary action.",
             "When height is constrained, detail table loses height first; summaryBar height remains fixed for the profile."
           ]
+        },
+        "tableScanner": {
+          "activation": "focus_or_click_inside_detail_table_readonly_area",
+          "acceptedInput": [
+            "keyboard-wedge barcode scanner",
+            "manual identifier typing while table owns focus"
+          ],
+          "terminators": [
+            "Enter",
+            "Tab"
+          ],
+          "exactLookupOrder": [
+            "ISBN",
+            "店内编码"
+          ],
+          "exactMatchBehavior": "Immediately add one unit to the purchase detail. If the same book already exists, increment its quantity by 1.",
+          "noExactMatchBehavior": "Open advancedBookLookupDialog and prefill ISBN for ISBN-shaped identifiers, otherwise prefill 店内编码.",
+          "editingSafety": [
+            "Do not capture scanner characters while Quantity or UnitCostYuan cell editor is active.",
+            "After cell editing completes, restore scanner capture to the table.",
+            "Reviewed documents never capture scanner input."
+          ],
+          "discoverability": {
+            "headerHint": "点击明细表后可直接扫码；未匹配会自动打开高级查找",
+            "emptyState": "当前入库单为空\\n点击明细表后可直接扫码；也可点击上方“查找图书”"
+          }
+        },
+        "advancedBookLookupDialog": {
+          "title": "选择图书（高级查找）",
+          "preferredSize": {
+            "width": 1240,
+            "height": 720
+          },
+          "minimumSize": {
+            "width": 960,
+            "height": 600
+          },
+          "filters": [
+            {
+              "key": "selfCode",
+              "label": "店内编码",
+              "type": "input"
+            },
+            {
+              "key": "isbn",
+              "label": "ISBN",
+              "type": "input"
+            },
+            {
+              "key": "author",
+              "label": "作者",
+              "type": "input"
+            },
+            {
+              "key": "title",
+              "label": "书名",
+              "type": "input",
+              "flex": 2
+            },
+            {
+              "key": "publisher",
+              "label": "出版社",
+              "type": "input"
+            },
+            {
+              "key": "category",
+              "label": "分类",
+              "type": "select",
+              "optionsSource": "active book categories",
+              "default": "全部分类"
+            }
+          ],
+          "searchLogic": "All non-empty filters combine with AND. Text filters use contains matching; category uses exact matching. Only active book records are returned.",
+          "columns": [
+            {
+              "key": "selfCode",
+              "title": "店内编码",
+              "width": 118,
+              "minWidth": 96
+            },
+            {
+              "key": "title",
+              "title": "书名",
+              "width": "fill",
+              "minWidth": 180,
+              "maxWidth": 360
+            },
+            {
+              "key": "isbn",
+              "title": "ISBN",
+              "width": 138,
+              "minWidth": 112
+            },
+            {
+              "key": "author",
+              "title": "作者",
+              "width": 150,
+              "minWidth": 110
+            },
+            {
+              "key": "publisher",
+              "title": "出版社",
+              "width": 150,
+              "minWidth": 110
+            },
+            {
+              "key": "category",
+              "title": "分类",
+              "width": 102,
+              "minWidth": 82
+            },
+            {
+              "key": "salePrice",
+              "title": "售价",
+              "width": 86,
+              "minWidth": 76
+            },
+            {
+              "key": "publicationYear",
+              "title": "出版年",
+              "width": 92,
+              "minWidth": 78
+            },
+            {
+              "key": "stock",
+              "title": "库存",
+              "width": 72,
+              "minWidth": 64
+            }
+          ],
+          "actions": {
+            "left": [
+              "查询",
+              "新增资料",
+              "清除"
+            ],
+            "right": [
+              "添加到单据",
+              "确定",
+              "取消"
+            ]
+          },
+          "behaviors": [
+            "Double-clicking a result confirms it and closes the dialog.",
+            "添加到单据 adds the selected book to purchase detail without closing, allowing batch lookup.",
+            "确定 adds the selected result once and closes.",
+            "新增资料 opens the existing book editor; after save, the new book is selected in the lookup results."
+          ]
         }
       },
       "responsive": {
         "compact": [
           "Top toolbar may wrap after 导出 Excel; 清空明细 may move to row 2, but scan row and document row retain their control heights.",
           "Document card may split into two rows: row 1 = 采购日期 + 采购单号; row 2 = 供应商 + 草稿状态.",
-          "Scan row remains one row with search input >= 360px whenever the client width is 1366.",
           "Summary bar stays docked to bottom; actionGroup never wraps and always shows 复核入库.",
           "Reduce metric chip widths/padding before reducing table width or action buttons.",
-          "Table columns shrink to minWidth according to shrinkPriority; no business-critical column is hidden at 1366x768."
+          "Table columns shrink to minWidth according to shrinkPriority; no business-critical column is hidden at 1366x768.",
+          "The removed scan card must not leave blank vertical space. Reclaimed height belongs to the detail table."
         ],
         "standard": [
           "Top toolbar remains one row.",
           "Document card remains one row at 1600x900 and 1920x1080.",
-          "Summary metrics and actionGroup remain one row."
+          "Summary metrics and actionGroup remain one row.",
+          "Advanced lookup dialog keeps all six filters usable; on narrower dialog widths filters may compress but may not clip text."
         ],
         "expanded": [
           "Do not scale toolbar/buttons larger.",
           "Grow supplier/search/title/author/publisher regions with available width.",
-          "Keep bottom summary/action group compact and right anchored."
+          "Keep bottom summary/action group compact and right anchored.",
+          "Advanced lookup fields do not grow into oversized controls; surplus width goes to book title/results table."
         ]
       }
     },
