@@ -505,6 +505,87 @@ namespace Win7BookManagement.Infrastructure
                     services,
                     new Size(1024, 768));
 
+                // Seed one isolated one-line sale only after all legacy snapshots
+                // have been generated. This keeps old snapshot baselines stable
+                // while making the document-center acceptance capture match the
+                // approved prototype's one document / ¥36.00 / one item state.
+                services.Sales.Checkout(
+                    new List<TransactionLineInput>
+                    {
+                        new TransactionLineInput
+                        {
+                            BookId = books[5].Id,
+                            Quantity = 1,
+                            UnitPriceCent = books[5].SalePriceCent
+                        }
+                    },
+                    "");
+
+                Capture(
+                    outputDirectory,
+                    "45-documents-shell-1366x768.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("documents");
+                        return form;
+                    },
+                    new Size(1366, 768),
+                    false,
+                    delegate(Form form) { FilterDocuments(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "46-documents-shell-1600x900.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("documents");
+                        return form;
+                    },
+                    new Size(1600, 900),
+                    false,
+                    delegate(Form form) { FilterDocuments(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "47-documents-shell-1920x1080.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("documents");
+                        return form;
+                    },
+                    new Size(1920, 1080),
+                    false,
+                    delegate(Form form) { FilterDocuments(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "48-documents-shell-2560x1440.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("documents");
+                        return form;
+                    },
+                    new Size(2560, 1440),
+                    false,
+                    delegate(Form form) { FilterDocuments(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "49-documents-shell-prototype-client-1586x945.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("documents");
+                        return form;
+                    },
+                    new Size(1586, 945),
+                    false,
+                    delegate(Form form) { FilterDocuments(form, books[5].Title); });
+
                 return 0;
             }
             catch (Exception ex)
@@ -861,6 +942,26 @@ namespace Win7BookManagement.Infrastructure
                 BindingFlags.Instance | BindingFlags.NonPublic);
             var reloadMethod = typeof(InventoryForm).GetMethod(
                 "Reload",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var search = searchField == null ? null : searchField.GetValue(page) as Control;
+            if (search == null || reloadMethod == null)
+                return;
+
+            search.Text = query ?? "";
+            reloadMethod.Invoke(page, null);
+        }
+
+        private static void FilterDocuments(Form shell, string query)
+        {
+            var page = FindEmbeddedControl<DocumentCenterForm>(shell);
+            if (page == null)
+                return;
+
+            var searchField = typeof(DocumentCenterForm).GetField(
+                "_search",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var reloadMethod = typeof(DocumentCenterForm).GetMethod(
+                "ReloadDocuments",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             var search = searchField == null ? null : searchField.GetValue(page) as Control;
             if (search == null || reloadMethod == null)
