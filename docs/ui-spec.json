@@ -777,8 +777,8 @@
           "compactButtonPaddingX": 10
         },
         "documentCard": {
-          "height": 92,
-          "compactHeight": 80,
+          "height": 100,
+          "compactHeight": 88,
           "padding": 14,
           "compactPadding": 10,
           "row": {
@@ -849,8 +849,8 @@
           }
         },
         "scanCard": {
-          "height": 64,
-          "compactHeight": 56,
+          "height": 72,
+          "compactHeight": 64,
           "padding": 10,
           "compactPadding": 8,
           "row": {
@@ -1019,7 +1019,7 @@
             "title": "当前入库单为空",
             "body": "请扫码、搜索或选择图书添加明细"
           },
-          "heightPolicy": "The detail region gives up height first when purchase header/search controls grow. Raising the document/scan controls by 8px must not push note/summary actions below the viewport."
+          "heightPolicy": "The detail region gives up 16 logical px of height to the corrected document/search controls (8px per card) before any note/summary area is reduced. Note and bottom actions remain fixed and fully visible."
         },
         "noteRow": {
           "height": 48,
