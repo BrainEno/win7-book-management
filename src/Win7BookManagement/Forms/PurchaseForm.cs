@@ -786,6 +786,7 @@ namespace Win7BookManagement.Forms
             SetTopToolbarButton(_clearButton, 118, topButtonHeight, profile);
             SetInlineActionButton(_addButton, 104, fieldHeight, profile);
             SetInlineActionButton(_pickButton, 118, fieldHeight, profile);
+            if (_pickButton != null) _pickButton.Margin = Padding.Empty;
             SetToolbarButton(_removeButton, 106, profile);
             SetToolbarButton(_saveDraftButton, compact ? 96 : 104, profile);
             SetToolbarButton(_unreviewButton, compact ? 80 : 88, profile);
@@ -1007,6 +1008,77 @@ namespace Win7BookManagement.Forms
                 host.ColumnStyles[0].SizeType = SizeType.Absolute;
                 host.ColumnStyles[0].Width = labelWidth;
             }
+        }
+
+        private int ResolvePurchaseSearchWidth(bool compact, bool expanded, int gap)
+        {
+            var maxWidth = expanded
+                ? BookDeskUiSpec.PurchaseSearchExpandedMaxWidth
+                : compact
+                    ? BookDeskUiSpec.PurchaseSearchCompactMaxWidth
+                    : BookDeskUiSpec.PurchaseSearchStandardMaxWidth;
+
+            if (_scanSection == null || _scanSection.ClientSize.Width <= 0)
+                return maxWidth;
+
+            var innerWidth = Math.Max(
+                0,
+                _scanSection.ClientSize.Width - _scanSection.Padding.Horizontal);
+            var reservedWidth =
+                BookDeskUiSpec.PurchaseScanLabelWidth +
+                104 +
+                118 +
+                (gap * 3) +
+                12;
+            var availableForSearch = innerWidth - reservedWidth;
+
+            return Math.Max(
+                BookDeskUiSpec.PurchaseSearchMinimumWidth,
+                Math.Min(maxWidth, availableForSearch));
+        }
+
+        private static void SetTopToolbarButton(
+            AntdUI.Button button,
+            int width,
+            int height,
+            UiSpecProfile profile)
+        {
+            if (button == null) return;
+
+            var toolbarHeight = profile.IsCompact
+                ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight
+                : BookDeskUiSpec.PurchaseTopToolbarStandardHeight;
+            var verticalMargin = Math.Max(0, (toolbarHeight - height) / 2);
+            var horizontalPadding = profile.IsCompact
+                ? BookDeskUiSpec.PurchaseTopButtonCompactPaddingX
+                : BookDeskUiSpec.PurchaseTopButtonStandardPaddingX;
+
+            button.Width = width;
+            button.Height = height;
+            button.MinimumSize = new Size(width, height);
+            button.Padding = new Padding(horizontalPadding, 0, horizontalPadding, 0);
+            button.Font = UiTheme.Font(profile.BodyFontPoints);
+            button.Margin = new Padding(0, verticalMargin, profile.ControlGap, verticalMargin);
+        }
+
+        private static void SetInlineActionButton(
+            AntdUI.Button button,
+            int width,
+            int height,
+            UiSpecProfile profile)
+        {
+            if (button == null) return;
+
+            button.Width = width;
+            button.Height = height;
+            button.MinimumSize = new Size(width, height);
+            button.Padding = new Padding(
+                profile.ButtonHorizontalPadding,
+                0,
+                profile.ButtonHorizontalPadding,
+                0);
+            button.Font = UiTheme.Font(profile.BodyFontPoints);
+            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
         }
 
         private static void SetToolbarButton(AntdUI.Button button, int width, UiSpecProfile profile)
