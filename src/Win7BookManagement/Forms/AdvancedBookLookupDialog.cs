@@ -38,9 +38,11 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             Text = "高级图书查找";
             StartPosition = FormStartPosition.CenterParent;
-            Width = 1240;
-            Height = 720;
-            MinimumSize = new Size(960, 600);
+            Width = BookDeskUiSpec.PurchaseAdvancedLookupWidth;
+            Height = BookDeskUiSpec.PurchaseAdvancedLookupHeight;
+            MinimumSize = new Size(
+                BookDeskUiSpec.PurchaseAdvancedLookupMinimumWidth,
+                BookDeskUiSpec.PurchaseAdvancedLookupMinimumHeight);
             BackColor = UiTheme.Background;
             ShowInTaskbar = false;
             MinimizeBox = false;
@@ -100,7 +102,6 @@ namespace Win7BookManagement.Forms
         private void ConfigureCategoryFilter()
         {
             _category.DropDownArrow = true;
-            _category.PlaceholderText = "分类";
 
             _categoryValues.Clear();
             _categoryValues.Add("");
@@ -187,7 +188,7 @@ namespace Win7BookManagement.Forms
             var bar = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 76,
+                Height = BookDeskUiSpec.PurchaseAdvancedLookupFilterHeight,
                 ColumnCount = 6,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
@@ -209,7 +210,9 @@ namespace Win7BookManagement.Forms
             AddFilter(bar, _publisher, 4);
 
             _category.Dock = DockStyle.Fill;
-            _category.Margin = new Padding(6, 4, 0, 4);
+            _category.Height = BookDeskUiSpec.PurchaseFieldStandardHeight;
+            _category.MinimumSize = new Size(0, BookDeskUiSpec.PurchaseFieldStandardHeight);
+            _category.Margin = new Padding(6, 3, 0, 3);
             bar.Controls.Add(_category, 5, 0);
 
             AttachEnterSearch(_selfCode);
@@ -224,7 +227,9 @@ namespace Win7BookManagement.Forms
         private static void AddFilter(TableLayoutPanel bar, Control control, int column)
         {
             control.Dock = DockStyle.Fill;
-            control.Margin = new Padding(column == 0 ? 0 : 6, 4, 6, 4);
+            control.Height = BookDeskUiSpec.PurchaseFieldStandardHeight;
+            control.MinimumSize = new Size(0, BookDeskUiSpec.PurchaseFieldStandardHeight);
+            control.Margin = new Padding(column == 0 ? 0 : 6, 3, 6, 3);
             bar.Controls.Add(control, column, 0);
         }
 
@@ -241,8 +246,8 @@ namespace Win7BookManagement.Forms
         private Control CreateGrid()
         {
             _grid.Dock = DockStyle.Fill;
-            _grid.RowHeight = 48;
-            _grid.RowHeightHeader = 44;
+            _grid.RowHeight = BookDeskUiSpec.PurchaseAdvancedLookupRowHeight;
+            _grid.RowHeightHeader = BookDeskUiSpec.PurchaseAdvancedLookupHeaderHeight;
             _grid.EnableHeaderResizing = true;
             _grid.ColumnDragSort = false;
             _grid.ShowTip = true;
@@ -444,8 +449,14 @@ namespace Win7BookManagement.Forms
                 _category.SelectedIndex = 0;
                 Reload();
 
-                _selected = saved;
-                _grid.SetSelected(saved, false);
+                foreach (var book in _services.Books.SearchAdvanced(BuildCriteria()))
+                {
+                    if (book.Id != saved.Id) continue;
+                    _selected = book;
+                    _grid.SetSelected(book, false);
+                    break;
+                }
+
                 _summary.Text =
                     "已新建《" + saved.Title + "》，可直接添加到采购单。";
             }
