@@ -1,6 +1,6 @@
 {
   "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
-  "specVersion": "1.0.0",
+  "specVersion": "1.0.1",
   "project": {
     "name": "BOOK DESK / 简易图书管理系统",
     "repository": "https://github.com/BrainEno/win7-book-management",
@@ -243,11 +243,7 @@
       "titleIconSize": 22,
       "titleIconGap": 10,
       "titleSize": 20,
-      "compactTitleSize": 18,
-      "statusControlWidth": 84,
-      "statusControlHeight": 28,
-      "statusPresentation": "plain_text",
-      "statusText": "本机离线"
+      "compactTitleSize": 18
     },
     "content": {
       "paddingX": 12,
@@ -456,23 +452,20 @@
                 {
                   "type": "button",
                   "text": "查询",
-                  "width": 72
+                  "variant": "info",
+                  "width": 82
                 },
                 {
                   "type": "button",
                   "text": "新增图书",
                   "variant": "primary",
-                  "width": 124
+                  "width": 136
                 },
                 {
                   "type": "button",
                   "text": "编辑资料",
-                  "width": 116
-                },
-                {
-                  "type": "checkbox",
-                  "text": "包含停用",
-                  "width": 102
+                  "variant": "info",
+                  "width": 126
                 }
               ],
               "gap": 8
@@ -533,6 +526,22 @@
               "flex": 1
             },
             {
+              "key": "price",
+              "title": "销售价格",
+              "width": 102,
+              "minWidth": 90,
+              "flex": 0,
+              "align": "right"
+            },
+            {
+              "key": "stock",
+              "title": "库存",
+              "width": 72,
+              "minWidth": 62,
+              "flex": 0,
+              "align": "right"
+            },
+            {
               "key": "publisher",
               "title": "出版社",
               "width": 105,
@@ -568,22 +577,6 @@
               "flex": 1
             },
             {
-              "key": "price",
-              "title": "销售价格",
-              "width": 102,
-              "minWidth": 90,
-              "flex": 0,
-              "align": "right"
-            },
-            {
-              "key": "stock",
-              "title": "库存",
-              "width": 72,
-              "minWidth": 62,
-              "flex": 0,
-              "align": "right"
-            },
-            {
               "key": "enabled",
               "title": "启用",
               "width": 94,
@@ -599,7 +592,7 @@
           "Search input stays on the first row and remains at least 360px wide.",
           "Action buttons use compact height 34 and horizontal padding 10.",
           "Metric row top gap reduces to 10.",
-          "Reduce table flexible columns first: title, author, publisher, category, shelf.",
+          "Keep title, author, sales price and stock ahead of secondary publishing metadata.",
           "Do not hide columns at 1366x768."
         ]
       }
