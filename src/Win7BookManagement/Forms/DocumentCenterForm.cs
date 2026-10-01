@@ -174,7 +174,6 @@ namespace Win7BookManagement.Forms
             _actionRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _returnButton.Anchor = AnchorStyles.Right;
             _returnButton.Margin = Padding.Empty;
-            _actionRow.Controls.Add(new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty }, 0, 0);
             _actionRow.Controls.Add(_returnButton, 1, 0);
 
             _filterRow = new TableLayoutPanel
