@@ -1192,7 +1192,35 @@ namespace Win7BookManagement.Forms
                 var result = dialog.ShowDialog(this);
                 if (result == DialogResult.OK && dialog.SelectedDocumentId.HasValue)
                 {
-                    LoadDocument(dialog.SelectedDocumentId.Value);
+                    if (dialog.CopyAsNewRequested)
+                    {
+                        try
+                        {
+                            var copy = _services.Purchases.CopyToNewDraft(
+                                dialog.SelectedDocumentId.Value,
+                                DateTime.Today);
+                            LoadDocument(copy.Id);
+                            MessageBox.Show(
+                                this,
+                                "已复制为新的采购草稿。\r\n新单号：" + copy.OrderNo + "\r\n采购日期已设为今天，供应商、图书、数量和进价已复制。",
+                                "已复制为新单",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(
+                                this,
+                                "复制采购单失败：\r\n" + ex.Message,
+                                "无法复制",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+                        }
+                    }
+                    else
+                    {
+                        LoadDocument(dialog.SelectedDocumentId.Value);
+                    }
                 }
                 else if (dialog.DeletedCurrentDocument)
                 {

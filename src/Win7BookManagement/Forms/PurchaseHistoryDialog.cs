@@ -12,21 +12,35 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly long? _currentDocumentId;
-        private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("采购单号 / 供应商");
+        private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("采购单号 / 供应商 / ISBN / 书名");
+        private readonly AntdUI.Select _statusFilter = new AntdUI.Select();
+        private readonly string[] _statusKeys = { "", PurchaseService.DraftStatus, PurchaseService.ReviewedStatus };
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _summary = new Label();
         private readonly List<PurchaseDocumentSummary> _display = new List<PurchaseDocumentSummary>();
         private IList<PurchaseDocumentSummary> _all = new List<PurchaseDocumentSummary>();
         private PurchaseDocumentSummary _selected;
+        private AntdUI.Button _copyButton;
         private AntdUI.Button _deleteDraftButton;
 
         public long? SelectedDocumentId { get; private set; }
         public bool DeletedCurrentDocument { get; private set; }
+        public bool CopyAsNewRequested { get; private set; }
 
         public PurchaseHistoryDialog(ApplicationServices services, long? currentDocumentId)
         {
             _services = services;
             _currentDocumentId = currentDocumentId;
+
+            _statusFilter.Items.Add("全部状态");
+            _statusFilter.Items.Add("草稿");
+            _statusFilter.Items.Add("已复核");
+            _statusFilter.SelectedIndex = 0;
+            _statusFilter.DropDownArrow = true;
+            _statusFilter.SelectedIndexChanged += delegate(object sender, AntdUI.IntEventArgs e)
+            {
+                if (IsHandleCreated) ApplyFilter();
+            };
 
             UiTheme.ConfigureForm(this);
             Text = "采购历史单据";
@@ -115,7 +129,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                ColumnCount = 3,
+                ColumnCount = 4,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(18, 10, 18, 10),
@@ -123,6 +137,7 @@ namespace Win7BookManagement.Forms
             };
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 132));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             row.Controls.Add(new Label
@@ -146,11 +161,15 @@ namespace Win7BookManagement.Forms
             };
             row.Controls.Add(_search, 1, 0);
 
+            _statusFilter.Dock = DockStyle.Fill;
+            _statusFilter.Margin = new Padding(0, 2, 10, 2);
+            row.Controls.Add(_statusFilter, 2, 0);
+
             var query = UiTheme.CreateAntdButton("查询", true);
             query.Width = 92;
             query.Margin = new Padding(0, 2, 0, 2);
             query.Click += delegate { ApplyFilter(); };
-            row.Controls.Add(query, 2, 0);
+            row.Controls.Add(query, 3, 0);
             return row;
         }
 
@@ -223,6 +242,11 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
 
+            _copyButton = UiTheme.CreateAntdButton("复制为新单", false);
+            _copyButton.Width = 112;
+            _copyButton.Enabled = false;
+            _copyButton.Click += delegate { CopySelectedAsNew(); };
+
             _deleteDraftButton = UiTheme.CreateAntdButton("删除草稿", false);
             _deleteDraftButton.Width = 104;
             _deleteDraftButton.Enabled = false;
@@ -240,6 +264,7 @@ namespace Win7BookManagement.Forms
             open.Width = 108;
             open.Click += delegate { Choose(); };
 
+            buttons.Controls.Add(_copyButton);
             buttons.Controls.Add(_deleteDraftButton);
             buttons.Controls.Add(cancel);
             buttons.Controls.Add(open);
@@ -249,7 +274,6 @@ namespace Win7BookManagement.Forms
 
         private void LoadHistory(long? currentDocumentId)
         {
-            _all = _services.Purchases.GetHistory();
             ApplyFilter();
 
             if (!currentDocumentId.HasValue) return;
@@ -266,26 +290,28 @@ namespace Win7BookManagement.Forms
         private void ApplyFilter()
         {
             var keyword = (_search.Text ?? "").Trim();
-            _display.Clear();
+            var statusIndex = _statusFilter.SelectedIndex;
+            var status = statusIndex >= 0 && statusIndex < _statusKeys.Length
+                ? _statusKeys[statusIndex]
+                : "";
 
+            _all = _services.Purchases.SearchHistory(keyword, status, 500);
+            _display.Clear();
             foreach (var item in _all)
-            {
-                if (keyword.Length > 0 &&
-                    (item.OrderNo ?? "").IndexOf(keyword, StringComparison.OrdinalIgnoreCase) < 0 &&
-                    (item.SupplierName ?? "").IndexOf(keyword, StringComparison.OrdinalIgnoreCase) < 0)
-                    continue;
                 _display.Add(item);
-            }
 
             _selected = _display.Count > 0 ? _display[0] : null;
             _grid.DataSource = _display;
             if (_selected != null) _grid.SetSelected(_selected, false);
-            _summary.Text = "共 " + _display.Count + " 张采购单 · 双击可直接打开";
+            _summary.Text = "共 " + _display.Count + " 张匹配采购单 · 支持单号 / 供应商 / ISBN / 书名";
             UpdateActionState();
         }
 
         private void UpdateActionState()
         {
+            if (_copyButton != null)
+                _copyButton.Enabled = _selected != null;
+
             if (_deleteDraftButton == null) return;
             _deleteDraftButton.Enabled =
                 _selected != null &&
@@ -324,7 +350,6 @@ namespace Win7BookManagement.Forms
                 if (_currentDocumentId.HasValue && _currentDocumentId.Value == deletedId)
                     DeletedCurrentDocument = true;
 
-                _all = _services.Purchases.GetHistory();
                 ApplyFilter();
 
                 MessageBox.Show(
@@ -343,6 +368,20 @@ namespace Win7BookManagement.Forms
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
             }
+        }
+
+        private void CopySelectedAsNew()
+        {
+            if (_selected == null)
+            {
+                MessageBox.Show(this, "请先选择一张采购单。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            SelectedDocumentId = _selected.Id;
+            CopyAsNewRequested = true;
+            DialogResult = DialogResult.OK;
+            Close();
         }
 
         private void Choose()

@@ -517,6 +517,20 @@ ORDER BY pi.id;";
 
         public IList<PurchaseDocumentSummary> GetHistory()
         {
+            return SearchHistory("", "", 500);
+        }
+
+        public IList<PurchaseDocumentSummary> SearchHistory(
+            string keyword,
+            string status,
+            int limit)
+        {
+            if (limit <= 0) limit = 500;
+            if (limit > 2000) limit = 2000;
+
+            keyword = (keyword ?? "").Trim();
+            status = (status ?? "").Trim();
+
             var result = new List<PurchaseDocumentSummary>();
             using (var connection = _factory.Open())
             using (var command = connection.CreateCommand())
@@ -532,10 +546,30 @@ SELECT po.id,
        po.updated_at
 FROM purchase_orders po
 LEFT JOIN purchase_order_items pi ON pi.purchase_order_id=po.id
+WHERE (@status='' OR po.status=@status)
+  AND (
+        @keyword='' OR
+        po.order_no LIKE @pattern OR
+        po.supplier_name_snapshot LIKE @pattern OR
+        EXISTS (
+            SELECT 1
+            FROM purchase_order_items search_item
+            WHERE search_item.purchase_order_id=po.id
+              AND (
+                  search_item.isbn_snapshot LIKE @pattern OR
+                  search_item.title_snapshot LIKE @pattern
+              )
+        )
+      )
 GROUP BY po.id, po.order_no, po.supplier_name_snapshot, po.purchased_at,
          po.total_cent, po.status, po.updated_at
 ORDER BY po.purchased_at DESC, po.id DESC
-LIMIT 500;";
+LIMIT @limit;";
+                command.Parameters.AddWithValue("@status", status);
+                command.Parameters.AddWithValue("@keyword", keyword);
+                command.Parameters.AddWithValue("@pattern", "%" + keyword + "%");
+                command.Parameters.AddWithValue("@limit", limit);
+
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -555,6 +589,32 @@ LIMIT 500;";
                 }
             }
             return result;
+        }
+
+        public PurchaseDocument CopyToNewDraft(long sourceDocumentId, DateTime purchaseDate)
+        {
+            var source = GetDocument(sourceDocumentId);
+            if (source == null)
+                throw new InvalidOperationException("要复制的采购单不存在。");
+
+            var lines = new List<TransactionLineInput>();
+            foreach (var line in source.Lines)
+            {
+                lines.Add(new TransactionLineInput
+                {
+                    BookId = line.BookId,
+                    Quantity = line.Quantity,
+                    UnitPriceCent = line.UnitCostCent
+                });
+            }
+
+            return SaveDraft(
+                null,
+                "",
+                purchaseDate.Date,
+                source.SupplierId,
+                lines,
+                "");
         }
 
         public PurchaseNavigationState GetNavigationState(long currentId)
