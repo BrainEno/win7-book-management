@@ -52,13 +52,13 @@ namespace Win7BookManagement.Forms
 
             _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "108", MinWidth = "82", SortOrder = true };
             _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "110", MinWidth = "92", SortOrder = true };
-            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "110", MinWidth = "90", SortOrder = true };
-            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "105", MinWidth = "86", SortOrder = true };
-            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "92", MinWidth = "78", SortOrder = true };
-            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "86", MinWidth = "72", SortOrder = true };
-            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "78", MinWidth = "66", SortOrder = true };
-            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "92", MinWidth = "78", SortOrder = true };
-            _activeColumn = new AntdUI.Column("ActiveStatus", "启用") { Width = "94", MinWidth = "82" };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "116", MinWidth = "88", SortOrder = true };
+            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "112", MinWidth = "84", SortOrder = true };
+            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "92", MinWidth = "76", SortOrder = true };
+            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "82", MinWidth = "70", SortOrder = true };
+            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "74", MinWidth = "64", SortOrder = true };
+            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "88", MinWidth = "74", SortOrder = true };
+            _activeColumn = new AntdUI.Column("ActiveStatus", "启用") { Width = "82", MinWidth = "72" };
 
             var root = new TableLayoutPanel
             {
@@ -155,8 +155,8 @@ namespace Win7BookManagement.Forms
 
             _searchButton = UiTheme.CreateAntdButton("查询", false);
             _searchButton.Type = AntdUI.TTypeMini.Info;
-            _searchButton.Width = 82;
-            _searchButton.MinimumSize = new Size(82, BookDeskUiSpec.Standard.ControlHeight);
+            _searchButton.Width = 78;
+            _searchButton.MinimumSize = new Size(78, BookDeskUiSpec.Standard.ControlHeight);
             _searchButton.Anchor = AnchorStyles.Left;
             _searchButton.Tag = "toolbar-action";
             _searchButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
@@ -166,8 +166,8 @@ namespace Win7BookManagement.Forms
             _addButton = UiTheme.CreateAntdButton("新增图书", true);
             _addButton.IconSvg = "PlusOutlined";
             _addButton.TextCenterHasIcon = true;
-            _addButton.Width = 136;
-            _addButton.MinimumSize = new Size(136, BookDeskUiSpec.Standard.ControlHeight);
+            _addButton.Width = 118;
+            _addButton.MinimumSize = new Size(118, BookDeskUiSpec.Standard.ControlHeight);
             _addButton.Anchor = AnchorStyles.Left;
             _addButton.Tag = "toolbar-action";
             _addButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
@@ -178,8 +178,8 @@ namespace Win7BookManagement.Forms
             _editButton.Type = AntdUI.TTypeMini.Info;
             _editButton.IconSvg = "EditOutlined";
             _editButton.TextCenterHasIcon = true;
-            _editButton.Width = 126;
-            _editButton.MinimumSize = new Size(126, BookDeskUiSpec.Standard.ControlHeight);
+            _editButton.Width = 110;
+            _editButton.MinimumSize = new Size(110, BookDeskUiSpec.Standard.ControlHeight);
             _editButton.Anchor = AnchorStyles.Left;
             _editButton.Tag = "toolbar-action";
             _editButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
@@ -193,7 +193,7 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                Margin = new Padding(0, 14, 0, 0),
+                Margin = new Padding(0, 10, 0, 0),
                 Padding = Padding.Empty
             };
 
@@ -266,15 +266,15 @@ namespace Win7BookManagement.Forms
             _titleColumn = new AntdUI.Column("Title", "书名")
             {
                 Width = "fill",
-                MinWidth = "140",
-                MaxWidth = "300",
+                MinWidth = "150",
+                MaxWidth = "360",
                 Ellipsis = true,
                 SortOrder = true
             };
             _priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
             {
-                Width = "102",
-                MinWidth = "90",
+                Width = "98",
+                MinWidth = "88",
                 DisplayFormat = "0.00",
                 SortOrder = true
             };
@@ -295,7 +295,7 @@ namespace Win7BookManagement.Forms
                 _shelfColumn,
                 _activeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-ui-spec-v5");
+            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-ui-spec-v6");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -493,19 +493,19 @@ namespace Win7BookManagement.Forms
 
             SetToolbarButton(
                 _searchButton,
-                profile.IsCompact ? 72 : 82,
+                profile.IsCompact ? 72 : 78,
                 profile);
             SetToolbarButton(
                 _addButton,
-                profile.IsCompact ? 120 : 136,
+                profile.IsCompact ? 108 : 118,
                 profile);
             SetToolbarButton(
                 _editButton,
-                profile.IsCompact ? 114 : 126,
+                profile.IsCompact ? 104 : 110,
                 profile);
 
             if (_stats != null)
-                _stats.Margin = new Padding(0, profile.IsCompact ? 10 : 14, 0, 0);
+                _stats.Margin = new Padding(0, 10, 0, 0);
 
             ResizeMetric(_resultChip, 96, profile.MetricHeight, profile);
             ResizeMetric(_lowStockChip, 112, profile.MetricHeight, profile);
@@ -558,23 +558,23 @@ namespace Win7BookManagement.Forms
 
             _selfCodeColumn.Width = compact ? "82" : "108";
             _isbnColumn.Width = compact ? "92" : "110";
-            _authorColumn.Width = compact ? "90" : "110";
-            _publisherColumn.Width = compact ? "86" : "105";
-            _categoryColumn.Width = compact ? "78" : "92";
-            _publicationColumn.Width = compact ? "72" : "86";
-            _bindingColumn.Width = compact ? "66" : "78";
-            _shelfColumn.Width = compact ? "78" : "92";
-            _activeColumn.Width = compact ? "82" : "94";
+            _authorColumn.Width = compact ? "88" : "116";
+            _publisherColumn.Width = compact ? "84" : "112";
+            _categoryColumn.Width = compact ? "76" : "92";
+            _publicationColumn.Width = compact ? "70" : "82";
+            _bindingColumn.Width = compact ? "64" : "74";
+            _shelfColumn.Width = compact ? "74" : "88";
+            _activeColumn.Width = compact ? "72" : "82";
 
             if (_titleColumn != null)
             {
                 _titleColumn.Width = "fill";
-                _titleColumn.MinWidth = "140";
-                _titleColumn.MaxWidth = compact ? "260" : "300";
+                _titleColumn.MinWidth = "150";
+                _titleColumn.MaxWidth = "360";
             }
 
             if (_priceColumn != null)
-                _priceColumn.Width = compact ? "90" : "102";
+                _priceColumn.Width = compact ? "88" : "98";
 
             if (_stockColumn != null)
                 _stockColumn.Width = compact ? "62" : "72";
