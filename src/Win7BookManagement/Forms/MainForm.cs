@@ -210,7 +210,7 @@ namespace Win7BookManagement.Forms
             AddNavigation(core, "sales", "销售开单", "FileAddOutlined");
             AddNavigation(core, "books", "图书资料", "BookOutlined");
             AddNavigation(core, "purchase", "采购入库", "ShoppingCartOutlined");
-            AddNavigation(core, "inventory", "库存管理", "InboxOutlined");
+            AddNavigation(core, "inventory", "库存管理", "CodeSandboxOutlined");
             AddNavigation(core, "documents", "单据中心", "FileTextOutlined");
 
             var management = AddGroup("经营管理");
@@ -584,7 +584,7 @@ namespace Win7BookManagement.Forms
             {
                 case "books": return "BookFilled";
                 case "purchase": return "ShoppingCartOutlined";
-                case "inventory": return "InboxOutlined";
+                case "inventory": return "CodeSandboxOutlined";
                 case "documents": return "FileTextOutlined";
                 case "sales": return "FileAddOutlined";
                 case "suppliers": return "UsergroupAddOutlined";
