@@ -12,7 +12,6 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("输入店内编码、ISBN、书名、作者或出版社");
-        private readonly AntdUI.Checkbox _includeInactive = new AntdUI.Checkbox();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
         private readonly Label _resultChip = new Label();
         private readonly Label _lowStockChip = new Label();
@@ -115,14 +114,13 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, BookDeskUiSpec.Standard.ControlHeight),
-                ColumnCount = 6,
+                ColumnCount = 5,
                 RowCount = 1,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
             _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -156,8 +154,9 @@ namespace Win7BookManagement.Forms
             _searchRow.Controls.Add(_search, 1, 0);
 
             _searchButton = UiTheme.CreateAntdButton("查询", false);
-            _searchButton.Width = 72;
-            _searchButton.MinimumSize = new Size(72, BookDeskUiSpec.Standard.ControlHeight);
+            _searchButton.Type = AntdUI.TTypeMini.Info;
+            _searchButton.Width = 82;
+            _searchButton.MinimumSize = new Size(82, BookDeskUiSpec.Standard.ControlHeight);
             _searchButton.Anchor = AnchorStyles.Left;
             _searchButton.Tag = "toolbar-action";
             _searchButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
@@ -166,8 +165,9 @@ namespace Win7BookManagement.Forms
 
             _addButton = UiTheme.CreateAntdButton("新增图书", true);
             _addButton.IconSvg = "PlusOutlined";
-            _addButton.Width = 124;
-            _addButton.MinimumSize = new Size(124, BookDeskUiSpec.Standard.ControlHeight);
+            _addButton.TextCenterHasIcon = true;
+            _addButton.Width = 136;
+            _addButton.MinimumSize = new Size(136, BookDeskUiSpec.Standard.ControlHeight);
             _addButton.Anchor = AnchorStyles.Left;
             _addButton.Tag = "toolbar-action";
             _addButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
@@ -175,21 +175,16 @@ namespace Win7BookManagement.Forms
             _searchRow.Controls.Add(_addButton, 3, 0);
 
             _editButton = UiTheme.CreateAntdButton("编辑资料", false);
+            _editButton.Type = AntdUI.TTypeMini.Info;
             _editButton.IconSvg = "EditOutlined";
-            _editButton.Width = 116;
-            _editButton.MinimumSize = new Size(116, BookDeskUiSpec.Standard.ControlHeight);
+            _editButton.TextCenterHasIcon = true;
+            _editButton.Width = 126;
+            _editButton.MinimumSize = new Size(126, BookDeskUiSpec.Standard.ControlHeight);
             _editButton.Anchor = AnchorStyles.Left;
             _editButton.Tag = "toolbar-action";
             _editButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
             _editButton.Click += delegate { EditSelected(); };
             _searchRow.Controls.Add(_editButton, 4, 0);
-
-            _includeInactive.Text = "包含停用";
-            _includeInactive.AutoSize = true;
-            _includeInactive.Anchor = AnchorStyles.Left;
-            _includeInactive.Margin = new Padding(4, 0, 0, 0);
-            _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
-            _searchRow.Controls.Add(_includeInactive, 5, 0);
 
             _stats = new FlowLayoutPanel
             {
@@ -291,16 +286,16 @@ namespace Win7BookManagement.Forms
                 _isbnColumn,
                 _titleColumn,
                 _authorColumn,
+                _priceColumn,
+                _stockColumn,
                 _publisherColumn,
                 _categoryColumn,
                 _publicationColumn,
                 _bindingColumn,
                 _shelfColumn,
-                _priceColumn,
-                _stockColumn,
                 _activeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-ui-spec-v4");
+            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-ui-spec-v5");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -438,7 +433,7 @@ namespace Win7BookManagement.Forms
 
         private void Reload()
         {
-            var books = _services.Books.Search(_search.Text, _includeInactive.Checked);
+            var books = _services.Books.Search(_search.Text, false);
             _selectedBook = null;
 
             var rows = new List<BookRow>();
@@ -498,19 +493,16 @@ namespace Win7BookManagement.Forms
 
             SetToolbarButton(
                 _searchButton,
-                profile.IsCompact ? 64 : 72,
+                profile.IsCompact ? 72 : 82,
                 profile);
             SetToolbarButton(
                 _addButton,
-                profile.IsCompact ? 108 : 124,
+                profile.IsCompact ? 120 : 136,
                 profile);
             SetToolbarButton(
                 _editButton,
-                profile.IsCompact ? 104 : 116,
+                profile.IsCompact ? 114 : 126,
                 profile);
-
-            _includeInactive.Font = UiTheme.Font(profile.BodyFontPoints);
-            _includeInactive.Margin = new Padding(4, 0, 0, 0);
 
             if (_stats != null)
                 _stats.Margin = new Padding(0, profile.IsCompact ? 10 : 14, 0, 0);
