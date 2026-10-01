@@ -164,71 +164,72 @@ namespace Win7BookManagement.Infrastructure
         public const int InventoryToolbarCompactHeight = 112;
         public const int InventorySearchLabelWidth = 80;
         public const int InventorySearchMinimumWidth = 380;
-        public const int InventoryQueryWidth = 72;
-        public const int InventoryAdjustWidth = 118;
+        public const int InventoryQueryWidth = 78;
+        public const int InventoryTopAdjustWidth = 140;
+        public const int InventoryDetailAdjustWidth = 130;
         public const int InventoryLowOnlyWidth = 120;
-        public const int InventoryDetailStandardWidth = 330;
-        public const int InventoryDetailCompactWidth = 286;
-        public const int InventoryDetailMaxWidth = 360;
+        public const int InventoryDetailStandardWidth = 460;
+        public const int InventoryDetailCompactWidth = 340;
+        public const int InventoryDetailMaxWidth = 480;
         public const int InventorySplitStackThreshold = 1020;
         public const int InventoryDetailRowHeight = 64;
         public const int InventoryDetailLabelWidth = 88;
 
         public static readonly UiSpecProfile Compact = new UiSpecProfile(
             "compact",
-            208,
-            56,
+            218,
+            64,
             10,
             8,
             8,
-            34,
+            44,
             6,
             10,
-            38,
-            42,
+            48,
+            48,
             10,
-            30,
+            34,
             18,
+            14,
             13,
-            12,
-            11);
+            12);
 
         public static readonly UiSpecProfile Standard = new UiSpecProfile(
             "standard",
-            228,
-            64,
+            230,
+            68,
             12,
             12,
             12,
-            36,
+            48,
             8,
             14,
-            42,
-            46,
+            52,
+            52,
             14,
-            34,
+            36,
             20,
+            15,
             14,
-            13,
             12);
 
         public static readonly UiSpecProfile Expanded = new UiSpecProfile(
             "expanded",
             232,
-            64,
+            68,
             16,
             14,
             12,
-            36,
+            48,
             8,
             14,
-            42,
-            46,
+            52,
+            52,
             14,
-            34,
+            36,
             20,
+            15,
             14,
-            13,
             12);
 
         public static UiSpecProfile Resolve(int clientWidth, int clientHeight)
