@@ -655,6 +655,17 @@ namespace Win7BookManagement.Forms
 
             _grid.LoadLayout();
             _grid.Refresh();
+
+            if (_rows.Count == 0)
+            {
+                LayoutEmptyCartSurface();
+                _grid.SendToBack();
+                _emptyState.BringToFront();
+            }
+            else
+            {
+                _grid.BringToFront();
+            }
         }
 
         private void LayoutEmptyCartSurface()
