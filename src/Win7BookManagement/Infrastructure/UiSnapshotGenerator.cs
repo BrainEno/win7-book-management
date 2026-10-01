@@ -91,6 +91,76 @@ namespace Win7BookManagement.Infrastructure
                     true,
                     null);
 
+                // Full-shell book-master captures are the visual acceptance
+                // matrix for the approved prototype. MainForm may be hosted
+                // off-screen on CI when the requested canvas exceeds the
+                // runner's physical desktop, but the complete WinForms client
+                // hierarchy is still laid out and rendered at the target size.
+                Capture(
+                    outputDirectory,
+                    "30-book-shell-1366x768.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1366, 768),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "31-book-shell-1600x900.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1600, 900),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "32-book-shell-1920x1080.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1920, 1080),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "33-book-shell-2560x1440.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(2560, 1440),
+                    false,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "34-book-shell-prototype-client-1586x945.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("books");
+                        return form;
+                    },
+                    new Size(1586, 945),
+                    false,
+                    null);
+
                 var firstBook = services.Books.GetById(books[0].Id);
                 Capture(
                     outputDirectory,
