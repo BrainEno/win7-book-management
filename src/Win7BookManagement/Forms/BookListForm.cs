@@ -17,6 +17,14 @@ namespace Win7BookManagement.Forms
         private readonly Label _resultChip = new Label();
         private readonly Label _lowStockChip = new Label();
         private readonly SplitContainer _split = new SplitContainer();
+
+        private PrototypeSectionPanel _searchSection;
+        private TableLayoutPanel _searchRow;
+        private FlowLayoutPanel _stats;
+        private AntdUI.Button _searchButton;
+        private AntdUI.Button _addButton;
+        private AntdUI.Button _editButton;
+        private UiSpecProfile _profile = BookDeskUiSpec.Standard;
         private readonly Dictionary<string, Label> _detailValues = new Dictionary<string, Label>();
 
         private readonly AntdUI.Column _selfCodeColumn;
@@ -40,15 +48,15 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
 
-            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", MinWidth = "92", SortOrder = true };
-            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "130", MinWidth = "108", SortOrder = true };
-            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "100", MinWidth = "72", SortOrder = true };
-            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "110", MinWidth = "82", SortOrder = true };
-            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "88", MinWidth = "68", SortOrder = true };
-            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "82", MinWidth = "74", SortOrder = true };
-            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "74", MinWidth = "64", SortOrder = true };
-            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "86", MinWidth = "74", SortOrder = true };
-            _activeColumn = new AntdUI.Column("ActiveStatus", "启用") { Width = "98", MinWidth = "88" };
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "108", MinWidth = "82", SortOrder = true };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "110", MinWidth = "92", SortOrder = true };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "110", MinWidth = "90", SortOrder = true };
+            _publisherColumn = new AntdUI.Column("Publisher", "出版社") { Width = "105", MinWidth = "86", SortOrder = true };
+            _categoryColumn = new AntdUI.Column("Category", "分类") { Width = "92", MinWidth = "78", SortOrder = true };
+            _publicationColumn = new AntdUI.Column("PublicationYear", "出版年") { Width = "86", MinWidth = "72", SortOrder = true };
+            _bindingColumn = new AntdUI.Column("Binding", "装帧") { Width = "78", MinWidth = "66", SortOrder = true };
+            _shelfColumn = new AntdUI.Column("ShelfCode", "货架位") { Width = "92", MinWidth = "78", SortOrder = true };
+            _activeColumn = new AntdUI.Column("ActiveStatus", "启用") { Width = "94", MinWidth = "82" };
 
             var root = new TableLayoutPanel
             {
@@ -77,51 +85,56 @@ namespace Win7BookManagement.Forms
             };
 
             UiTheme.Apply(this);
+            ApplyUiSpecProfile(BookDeskUiSpec.Standard);
         }
 
         private Control CreateSearchSection()
         {
-            var section = new PrototypeSectionPanel
+            _searchSection = new PrototypeSectionPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, BookDeskUiSpec.BookToolbarStandardHeight),
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(24, 17, 16, 16),
+                Padding = new Padding(BookDeskUiSpec.Standard.ToolbarPadding),
                 Margin = Padding.Empty
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _searchSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _searchSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _searchSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            var searchRow = new TableLayoutPanel
+            _searchRow = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                MinimumSize = new Size(0, UiTheme.InputHeight + 6),
+                MinimumSize = new Size(0, BookDeskUiSpec.Standard.ControlHeight),
                 ColumnCount = 6,
                 RowCount = 1,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            searchRow.Controls.Add(new Label
+            _searchRow.Controls.Add(new Label
             {
                 Text = "搜索",
-                AutoSize = true,
+                AutoSize = false,
+                Width = BookDeskUiSpec.BookSearchLabelWidth,
+                MinimumSize = new Size(BookDeskUiSpec.BookSearchLabelWidth, BookDeskUiSpec.Standard.ControlHeight),
                 Anchor = AnchorStyles.Left,
+                TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(10.5F, FontStyle.Bold),
-                Margin = new Padding(0, 0, 12, 0)
+                Font = UiTheme.Font(BookDeskUiSpec.Standard.BodyFontPoints, FontStyle.Bold),
+                Margin = Padding.Empty
             }, 0, 0);
 
             _search.Dock = DockStyle.None;
@@ -137,45 +150,45 @@ namespace Win7BookManagement.Forms
                     e.SuppressKeyPress = true;
                 }
             };
-            searchRow.Controls.Add(_search, 1, 0);
+            _searchRow.Controls.Add(_search, 1, 0);
 
-            var searchButton = UiTheme.CreateAntdButton("查询", false);
-            searchButton.Width = 86;
-            searchButton.MinimumSize = new Size(86, UiTheme.ButtonHeight);
-            searchButton.Anchor = AnchorStyles.Left;
-            searchButton.Tag = "toolbar-action";
-            searchButton.Margin = new Padding(0, 0, 6, 0);
-            searchButton.Click += delegate { Reload(); };
-            searchRow.Controls.Add(searchButton, 2, 0);
+            _searchButton = UiTheme.CreateAntdButton("查询", false);
+            _searchButton.Width = 72;
+            _searchButton.MinimumSize = new Size(72, BookDeskUiSpec.Standard.ControlHeight);
+            _searchButton.Anchor = AnchorStyles.Left;
+            _searchButton.Tag = "toolbar-action";
+            _searchButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
+            _searchButton.Click += delegate { Reload(); };
+            _searchRow.Controls.Add(_searchButton, 2, 0);
 
-            var addButton = UiTheme.CreateAntdButton("新增图书", true);
-            addButton.IconSvg = "PlusOutlined";
-            addButton.Width = 136;
-            addButton.MinimumSize = new Size(136, UiTheme.ButtonHeight);
-            addButton.Anchor = AnchorStyles.Left;
-            addButton.Tag = "toolbar-action";
-            addButton.Margin = new Padding(0, 0, 6, 0);
-            addButton.Click += delegate { EditBook(null); };
-            searchRow.Controls.Add(addButton, 3, 0);
+            _addButton = UiTheme.CreateAntdButton("新增图书", true);
+            _addButton.IconSvg = "PlusOutlined";
+            _addButton.Width = 124;
+            _addButton.MinimumSize = new Size(124, BookDeskUiSpec.Standard.ControlHeight);
+            _addButton.Anchor = AnchorStyles.Left;
+            _addButton.Tag = "toolbar-action";
+            _addButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
+            _addButton.Click += delegate { EditBook(null); };
+            _searchRow.Controls.Add(_addButton, 3, 0);
 
-            var editButton = UiTheme.CreateAntdButton("编辑资料", false);
-            editButton.IconSvg = "EditOutlined";
-            editButton.Width = 132;
-            editButton.MinimumSize = new Size(132, UiTheme.ButtonHeight);
-            editButton.Anchor = AnchorStyles.Left;
-            editButton.Tag = "toolbar-action";
-            editButton.Margin = new Padding(0, 0, 8, 0);
-            editButton.Click += delegate { EditSelected(); };
-            searchRow.Controls.Add(editButton, 4, 0);
+            _editButton = UiTheme.CreateAntdButton("编辑资料", false);
+            _editButton.IconSvg = "EditOutlined";
+            _editButton.Width = 116;
+            _editButton.MinimumSize = new Size(116, BookDeskUiSpec.Standard.ControlHeight);
+            _editButton.Anchor = AnchorStyles.Left;
+            _editButton.Tag = "toolbar-action";
+            _editButton.Margin = new Padding(0, 0, BookDeskUiSpec.Standard.ControlGap, 0);
+            _editButton.Click += delegate { EditSelected(); };
+            _searchRow.Controls.Add(_editButton, 4, 0);
 
             _includeInactive.Text = "包含停用";
             _includeInactive.AutoSize = true;
             _includeInactive.Anchor = AnchorStyles.Left;
-            _includeInactive.Margin = new Padding(4, 4, 0, 0);
+            _includeInactive.Margin = new Padding(4, 0, 0, 0);
             _includeInactive.CheckedChanged += delegate(object sender, AntdUI.BoolEventArgs e) { Reload(); };
-            searchRow.Controls.Add(_includeInactive, 5, 0);
+            _searchRow.Controls.Add(_includeInactive, 5, 0);
 
-            var stats = new FlowLayoutPanel
+            _stats = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
@@ -187,8 +200,8 @@ namespace Win7BookManagement.Forms
             };
 
             _resultChip.AutoSize = false;
-            _resultChip.Size = new Size(96, 36);
-            _resultChip.MinimumSize = new Size(96, 36);
+            _resultChip.Size = new Size(96, BookDeskUiSpec.Standard.MetricHeight);
+            _resultChip.MinimumSize = new Size(96, BookDeskUiSpec.Standard.MetricHeight);
             _resultChip.Padding = new Padding(8, 0, 8, 0);
             _resultChip.Margin = new Padding(0, 0, 12, 0);
             _resultChip.BackColor = UiTheme.AccentSoft;
@@ -197,8 +210,8 @@ namespace Win7BookManagement.Forms
             _resultChip.TextAlign = ContentAlignment.MiddleCenter;
 
             _lowStockChip.AutoSize = false;
-            _lowStockChip.Size = new Size(112, 36);
-            _lowStockChip.MinimumSize = new Size(112, 36);
+            _lowStockChip.Size = new Size(112, BookDeskUiSpec.Standard.MetricHeight);
+            _lowStockChip.MinimumSize = new Size(112, BookDeskUiSpec.Standard.MetricHeight);
             _lowStockChip.Padding = new Padding(8, 0, 8, 0);
             _lowStockChip.Margin = Padding.Empty;
             _lowStockChip.BackColor = Color.FromArgb(255, 247, 230);
@@ -206,12 +219,12 @@ namespace Win7BookManagement.Forms
             _lowStockChip.Font = UiTheme.Font(9.5F, FontStyle.Bold);
             _lowStockChip.TextAlign = ContentAlignment.MiddleCenter;
 
-            stats.Controls.Add(_resultChip);
-            stats.Controls.Add(_lowStockChip);
+            _stats.Controls.Add(_resultChip);
+            _stats.Controls.Add(_lowStockChip);
 
-            section.Controls.Add(searchRow, 0, 0);
-            section.Controls.Add(stats, 0, 1);
-            return section;
+            _searchSection.Controls.Add(_searchRow, 0, 0);
+            _searchSection.Controls.Add(_stats, 0, 1);
+            return _searchSection;
         }
 
         private Control CreateContentSection()
@@ -221,7 +234,7 @@ namespace Win7BookManagement.Forms
             _split.FixedPanel = FixedPanel.Panel2;
             _split.SplitterWidth = 8;
             _split.BackColor = UiTheme.Background;
-            _split.Margin = new Padding(0, UiTheme.SectionGap, 0, 0);
+            _split.Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0);
 
             ConfigureGrid();
 
@@ -255,19 +268,19 @@ namespace Win7BookManagement.Forms
             var titleColumn = new AntdUI.Column("Title", "书名")
             {
                 Width = "fill",
-                MinWidth = "160",
-                MaxWidth = "320",
+                MinWidth = "140",
+                MaxWidth = "300",
                 Ellipsis = true,
                 SortOrder = true
             };
             var priceColumn = new AntdUI.Column("SalePriceYuan", "销售价格")
             {
-                Width = "96",
-                MinWidth = "86",
+                Width = "102",
+                MinWidth = "90",
                 DisplayFormat = "0.00",
                 SortOrder = true
             };
-            var stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "72", MinWidth = "64", SortOrder = true };
+            var stockColumn = new AntdUI.Column("StockQuantity", "库存") { Width = "72", MinWidth = "62", SortOrder = true };
 
             _grid.Columns = new AntdUI.ColumnCollection
             {
@@ -284,7 +297,7 @@ namespace Win7BookManagement.Forms
                 stockColumn,
                 _activeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-prototype-v3");
+            _grid.ConfigureColumnPersistence(_services.Settings, "book-master-ui-spec-v4");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -448,44 +461,128 @@ namespace Win7BookManagement.Forms
             ShowSelectedDetails();
         }
 
+        public void ApplyUiSpecProfile(UiSpecProfile profile)
+        {
+            _profile = profile ?? BookDeskUiSpec.Standard;
+            ApplyResponsiveLayout();
+        }
+
         private void ApplyResponsiveLayout()
         {
-            if (_split.Width <= 0) return;
+            if (_split.Width <= 0)
+                return;
 
-            // The approved prototype is table-first through the requested
-            // 2560-wide validation range.  Preserve the existing detail pane
-            // only for genuinely ultra-wide workspaces.
-            var showDetails = ClientSize.Width >= 2500;
+            var profile = _profile ?? BookDeskUiSpec.Standard;
+            var controlHeight = profile.ControlHeight;
+
+            if (_searchSection != null)
+            {
+                _searchSection.Padding = new Padding(profile.ToolbarPadding);
+                _searchSection.MinimumSize = new Size(
+                    0,
+                    profile.IsCompact
+                        ? BookDeskUiSpec.BookToolbarCompactHeight
+                        : BookDeskUiSpec.BookToolbarStandardHeight);
+            }
+
+            if (_searchRow != null)
+                _searchRow.MinimumSize = new Size(0, controlHeight);
+
+            _search.Height = controlHeight;
+            _search.MinimumSize = new Size(BookDeskUiSpec.BookSearchMinimumWidth, controlHeight);
+            _search.Font = UiTheme.Font(profile.BodyFontPoints);
+            _search.Margin = new Padding(0, 0, profile.ControlGap, 0);
+
+            SetToolbarButton(
+                _searchButton,
+                profile.IsCompact ? 64 : 72,
+                profile);
+            SetToolbarButton(
+                _addButton,
+                profile.IsCompact ? 108 : 124,
+                profile);
+            SetToolbarButton(
+                _editButton,
+                profile.IsCompact ? 104 : 116,
+                profile);
+
+            _includeInactive.Font = UiTheme.Font(profile.BodyFontPoints);
+            _includeInactive.Margin = new Padding(4, 0, 0, 0);
+
+            if (_stats != null)
+                _stats.Margin = new Padding(0, profile.IsCompact ? 10 : 14, 0, 0);
+
+            ResizeMetric(_resultChip, 96, profile.MetricHeight, profile);
+            ResizeMetric(_lowStockChip, 112, profile.MetricHeight, profile);
+
+            _split.Margin = new Padding(0, profile.SectionGap, 0, 0);
+            _grid.RowHeightHeader = profile.TableHeaderHeight;
+            _grid.RowHeight = profile.TableRowHeight;
+            _grid.Font = UiTheme.Font(profile.TableFontPoints);
+
+            // The approved four-page spec is table-first through 2560x1440.
+            // Retain the legacy detail pane for exceptional ultra-wide setups,
+            // but keep it outside the required acceptance matrix.
+            var showDetails = ClientSize.Width >= 3000;
             _split.Panel2Collapsed = !showDetails;
 
             if (showDetails)
             {
-                var desiredRightWidth = Math.Min(340, Math.Max(300, _split.Width / 4));
+                var desiredRightWidth = Math.Min(360, Math.Max(300, _split.Width / 4));
                 var distance = _split.Width - desiredRightWidth - _split.SplitterWidth;
-                const int minimumLeftWidth = 420;
-                const int minimumRightWidth = 300;
+                const int minimumLeftWidth = 720;
+                const int minimumRightWidth = 286;
                 var maximumDistance = _split.Width - minimumRightWidth - _split.SplitterWidth;
                 if (distance >= minimumLeftWidth && maximumDistance >= minimumLeftWidth)
                     _split.SplitterDistance = Math.Min(distance, maximumDistance);
             }
 
             var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
-            // The compact view keeps the fields most useful for finding and selling a book.
-            // Administrative metadata is progressively restored on larger windows.
-            _selfCodeColumn.Visible = gridWidth >= 960;
-            _publisherColumn.Visible = gridWidth >= 1160;
-            _categoryColumn.Visible = gridWidth >= 880;
-            _publicationColumn.Visible = gridWidth >= 1080;
-            _bindingColumn.Visible = gridWidth >= 1220;
-            _shelfColumn.Visible = gridWidth >= 920;
-            _activeColumn.Visible = gridWidth >= 900;
-            _authorColumn.Visible = gridWidth >= 740;
-            _isbnColumn.Visible = gridWidth >= 660;
 
-            _grid.Font = UiTheme.Font(
-                gridWidth < 900 ? 9F : gridWidth < 1180 ? 10F : 11.5F);
+            // The ui-spec requires all columns to remain visible at 1366x768.
+            // Below the supported 1280px shell minimum, progressively remove
+            // secondary metadata before allowing a table scrollbar.
+            var fullColumns = gridWidth >= 1040;
+            _selfCodeColumn.Visible = gridWidth >= 900;
+            _isbnColumn.Visible = gridWidth >= 700;
+            _authorColumn.Visible = gridWidth >= 760;
+            _publisherColumn.Visible = fullColumns;
+            _categoryColumn.Visible = gridWidth >= 900;
+            _publicationColumn.Visible = fullColumns;
+            _bindingColumn.Visible = fullColumns;
+            _shelfColumn.Visible = gridWidth >= 900;
+            _activeColumn.Visible = gridWidth >= 900;
 
             _grid.LoadLayout();
+        }
+
+        private static void SetToolbarButton(
+            AntdUI.Button button,
+            int width,
+            UiSpecProfile profile)
+        {
+            if (button == null)
+                return;
+
+            button.Width = width;
+            button.Height = profile.ControlHeight;
+            button.MinimumSize = new Size(width, profile.ControlHeight);
+            button.Font = UiTheme.Font(profile.BodyFontPoints);
+            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
+        }
+
+        private static void ResizeMetric(
+            Label label,
+            int width,
+            int height,
+            UiSpecProfile profile)
+        {
+            if (label == null)
+                return;
+
+            label.Size = new Size(width, height);
+            label.MinimumSize = new Size(width, height);
+            label.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
         }
 
         private void ShowSelectedDetails()
