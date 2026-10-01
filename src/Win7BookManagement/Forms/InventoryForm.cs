@@ -381,7 +381,7 @@ namespace Win7BookManagement.Forms
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(0, 0, 12, 0),
                 ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8F, FontStyle.Bold)
+                Font = UiTheme.Font(9.5F, FontStyle.Bold)
             }, 0, row);
             var value = new Label
             {
@@ -394,7 +394,7 @@ namespace Win7BookManagement.Forms
                 BackColor = UiTheme.SurfaceMuted,
                 ForeColor = UiTheme.TextPrimary,
                 AutoEllipsis = true,
-                Font = UiTheme.Font(8.5F)
+                Font = UiTheme.Font(9.5F)
             };
             table.Controls.Add(value, 1, row);
             _detailValues[key] = value;
