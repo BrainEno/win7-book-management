@@ -173,7 +173,7 @@ namespace Win7BookManagement.Infrastructure
                     },
                     new Size(1586, 945),
                     false,
-                    null);
+                    delegate(Form form) { FilterBookMaster(form, books[5].Isbn); });
 
                 var firstBook = services.Books.GetById(books[0].Id);
                 Capture(
@@ -700,6 +700,77 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        private static void FilterBookMaster(Form shell, string query)
+        {
+            var page = FindEmbeddedControl<BookListForm>(shell);
+            if (page == null)
+                return;
+
+            var searchField = typeof(BookListForm).GetField(
+                "_search",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var reloadMethod = typeof(BookListForm).GetMethod(
+                "Reload",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var search = searchField == null ? null : searchField.GetValue(page) as Control;
+            if (search == null || reloadMethod == null)
+                return;
+
+            search.Text = query ?? "";
+            reloadMethod.Invoke(page, null);
+        }
+
+        private static T FindEmbeddedControl<T>(Control root) where T : Control
+        {
+            if (root == null)
+                return null;
+
+            var match = root as T;
+            if (match != null)
+                return match;
+
+            foreach (Control child in root.Controls)
+            {
+                var nested = FindEmbeddedControl<T>(child);
+                if (nested != null)
+                    return nested;
+            }
+
+            return null;
+        }
+
+        private static void ForceEmbeddedFormBounds(Control root)
+        {
+            if (root == null)
+                return;
+
+            foreach (Control child in root.Controls)
+            {
+                var embedded = child as Form;
+                if (embedded != null &&
+                    !embedded.TopLevel &&
+                    embedded.Parent != null &&
+                    embedded.Dock == DockStyle.Fill)
+                {
+                    var client = embedded.Parent.ClientSize;
+                    if (client.Width > 0 && client.Height > 0)
+                    {
+                        SetWindowPos(
+                            embedded.Handle,
+                            IntPtr.Zero,
+                            0,
+                            0,
+                            client.Width,
+                            client.Height,
+                            SwpNoZOrder | SwpNoActivate);
+                        embedded.PerformLayout();
+                    }
+                }
+
+                ForceEmbeddedFormBounds(child);
+            }
+        }
+
         private static void PopulateByIsbn(Form form, IList<Book> books, int count)
         {
             if (form == null || books == null)
@@ -780,6 +851,11 @@ namespace Win7BookManagement.Infrastructure
                             SwpNoZOrder | SwpNoActivate);
                         Application.DoEvents();
 
+                        form.PerformLayout();
+                        host.PerformLayout();
+                        ForceEmbeddedFormBounds(form);
+                        Application.DoEvents();
+
                         if (afterShown != null)
                         {
                             afterShown(form);
@@ -788,6 +864,7 @@ namespace Win7BookManagement.Infrastructure
 
                         form.PerformLayout();
                         host.PerformLayout();
+                        ForceEmbeddedFormBounds(form);
                         Application.DoEvents();
 
                         using (var bitmap = new Bitmap(
