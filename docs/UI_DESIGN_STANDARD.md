@@ -145,7 +145,7 @@
 
 “图书资料”已存在确认原型，因此该页的视觉验收优先级高于早期通用布局设想。业务字段仍以代码为准，不为匹配截图删除能力。
 
-- Standard 96 DPI 基线：Sidebar 230px、Shell Header 68px、Shell Status 28px；Compact 为 218 / 64 / 28px，Expanded Sidebar 为 232px。
+- Standard 96 DPI 基线：Sidebar 230px、Shell Header 68px、Shell Status 58px；Compact 为 218 / 64 / 58px，Expanded Sidebar 为 232px。
 - Standard 页边距 12px；Compact 为左右 10 / 上下 8px；Expanded 为左右 16 / 上下 14px；查询区与表格间隔分别为 12 / 8 / 12px。
 - Input / Button：Standard / Expanded 48px，Compact 44px；统计 chip：36 / 34px；Table Header / Row：Standard 52 / 52px，Compact 48 / 48px。
 - 页面标题 Standard / Expanded 20px、Compact 18px；标题仅用于导航确认，不做 Banner。
