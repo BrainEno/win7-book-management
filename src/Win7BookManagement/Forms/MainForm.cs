@@ -66,7 +66,7 @@ namespace Win7BookManagement.Forms
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
-                Padding = new Padding(18, 8, 16, 8),
+                Padding = new Padding(23, 8, 18, 8),
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -76,15 +76,15 @@ namespace Win7BookManagement.Forms
             {
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Font = UiTheme.Font(13F, FontStyle.Bold),
+                Font = UiTheme.Font(16F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Text = "经营概览",
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
-                PrefixSvg = "BarChartOutlined",
+                PrefixSvg = "BarChartFilled",
                 PrefixColor = UiTheme.Accent,
-                IconRatio = 0.9F,
-                IconGap = 8,
+                IconRatio = 1.1F,
+                IconGap = 10,
                 Margin = Padding.Empty
             };
 
@@ -176,9 +176,9 @@ namespace Win7BookManagement.Forms
                 Unique = false,
                 BackColor = UiTheme.NavigationSurface,
                 Margin = Padding.Empty,
-                Padding = new Padding(6, 12, 6, 8),
+                Padding = new Padding(9, 14, 6, 8),
                 Radius = 6,
-                Gap = 7,
+                Gap = 18,
                 itemMargin = 2,
                 InlineIndent = 18,
                 IconRatio = 1.05F,
@@ -287,7 +287,7 @@ namespace Win7BookManagement.Forms
             var footer = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 76,
+                Height = 110,
                 BackColor = UiTheme.NavigationSurface,
                 Padding = new Padding(20, 10, 12, 8)
             };
@@ -516,9 +516,9 @@ namespace Win7BookManagement.Forms
             var host = new AntdUI.Panel
             {
                 AutoSize = false,
-                Width = 148,
-                Height = 40,
-                MinimumSize = new Size(148, 40),
+                Width = 154,
+                Height = 44,
+                MinimumSize = new Size(154, 44),
                 Back = UiTheme.Surface,
                 BorderWidth = 1F,
                 BorderColor = UiTheme.Border,
@@ -542,7 +542,7 @@ namespace Win7BookManagement.Forms
                 Text = "●",
                 AutoSize = true,
                 ForeColor = UiTheme.Success,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Font = UiTheme.Font(9.5F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 7, 0)
             });
             row.Controls.Add(new Label
@@ -550,7 +550,7 @@ namespace Win7BookManagement.Forms
                 Text = "本机离线",
                 AutoSize = true,
                 ForeColor = UiTheme.TextPrimary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Font = UiTheme.Font(9.5F, FontStyle.Bold),
                 Margin = new Padding(0, 0, 8, 0)
             });
             row.Controls.Add(new Label
@@ -569,7 +569,7 @@ namespace Win7BookManagement.Forms
         {
             switch (key)
             {
-                case "books": return "BookOutlined";
+                case "books": return "BookFilled";
                 case "purchase": return "ShoppingCartOutlined";
                 case "inventory": return "InboxOutlined";
                 case "documents": return "FileTextOutlined";
@@ -595,17 +595,17 @@ namespace Win7BookManagement.Forms
                 _sidebar.Width = UiTheme.SidebarWidth;
 
             _navigation.Font = UiTheme.Font(
-                width < 1080 ? 8.25F : width < 1360 ? 8.6F : 9F);
+                width < 1080 ? 9F : width < 1360 ? 10F : 11F);
 
             _pageTitle.Font = UiTheme.Font(
-                width < 1080 ? 11F : width < 1360 ? 11.5F : 12.5F,
+                width < 1080 ? 12.5F : width < 1360 ? 14F : 16F,
                 FontStyle.Bold);
 
             _contentHost.Padding = width < 1080
                 ? new Padding(UiTheme.PagePaddingCompact)
                 : width < 1360
-                    ? new Padding(UiTheme.PagePaddingMedium, 8, UiTheme.PagePaddingMedium, 8)
-                    : new Padding(UiTheme.PagePadding, 10, UiTheme.PagePadding, 10);
+                    ? new Padding(UiTheme.PagePaddingMedium, 9, UiTheme.PagePaddingMedium, 9)
+                    : new Padding(UiTheme.PagePadding, 13, 18, 12);
 
             if (_currentPage != null)
                 UiTheme.ApplyResponsiveDensity(
