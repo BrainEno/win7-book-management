@@ -891,7 +891,7 @@ namespace Win7BookManagement.Forms
             }
         }
 
-        private sealed class PurchaseEmptySurface : TableLayoutPanel
+        private sealed class PurchaseEmptySurface : Panel
         {
             private readonly TableLayoutPanel _header = new TableLayoutPanel();
             private readonly Label _body = new Label();
@@ -911,17 +911,11 @@ namespace Win7BookManagement.Forms
             public PurchaseEmptySurface()
             {
                 DoubleBuffered = true;
-                ColumnCount = 1;
-                RowCount = 2;
                 Margin = Padding.Empty;
                 Padding = Padding.Empty;
                 BackColor = UiTheme.Surface;
 
-                ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                RowStyles.Add(new RowStyle(SizeType.AutoSize));
-                RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-                _header.Dock = DockStyle.Top;
+                _header.Dock = DockStyle.None;
                 _header.AutoSize = false;
                 _header.Height = BookDeskUiSpec.Standard.TableHeaderHeight;
                 _header.MinimumSize = new Size(0, BookDeskUiSpec.Standard.TableHeaderHeight);
@@ -963,7 +957,7 @@ namespace Win7BookManagement.Forms
                     _header.Controls.Add(label, i, 0);
                 }
 
-                _body.Dock = DockStyle.Fill;
+                _body.Dock = DockStyle.None;
                 _body.Text = "当前入库单为空\r\n请扫码、搜索或选择图书";
                 _body.TextAlign = ContentAlignment.MiddleCenter;
                 _body.ForeColor = UiTheme.TextSecondary;
@@ -972,10 +966,26 @@ namespace Win7BookManagement.Forms
                 _body.Margin = Padding.Empty;
                 _body.Padding = Padding.Empty;
 
-                Controls.Add(_header, 0, 0);
-                Controls.Add(_body, 0, 1);
+                Controls.Add(_body);
+                Controls.Add(_header);
+                _header.BringToFront();
 
                 ApplyProfile();
+            }
+
+            protected override void OnLayout(LayoutEventArgs levent)
+            {
+                base.OnLayout(levent);
+
+                var profile = _profile ?? BookDeskUiSpec.Standard;
+                var headerHeight = Math.Min(profile.TableHeaderHeight, Math.Max(0, ClientSize.Height));
+                _header.SetBounds(0, 0, Math.Max(0, ClientSize.Width), headerHeight);
+                _body.SetBounds(
+                    0,
+                    headerHeight,
+                    Math.Max(0, ClientSize.Width),
+                    Math.Max(0, ClientSize.Height - headerHeight));
+                _header.BringToFront();
             }
 
             private void ApplyProfile()
