@@ -36,25 +36,25 @@ namespace Win7BookManagement.Infrastructure
 
         // These are logical 96-DPI minimums. WinForms scales them together with
         // the Form because every primary Form uses AutoScaleMode.Dpi.
-        public const int InputHeight = 38;
-        public const int ButtonHeight = 38;
+        public const int InputHeight = 48;
+        public const int ButtonHeight = 48;
 
         // 96-DPI shell/page metrics reverse-engineered from the approved
         // desktop prototype.  They are logical pixels and therefore still
         // participate in WinForms DPI scaling.
-        public const int SidebarWidth = 232;
+        public const int SidebarWidth = 233;
         public const int SidebarMediumWidth = 204;
         public const int SidebarCompactWidth = 178;
         public const int ShellHeaderHeight = 66;
-        public const int ShellStatusHeight = 34;
+        public const int ShellStatusHeight = 58;
         public const int PagePadding = 14;
         public const int PagePaddingMedium = 10;
         public const int PagePaddingCompact = 7;
         public const int SectionGap = 12;
         public const int SectionRadius = 7;
         public const int SectionBorderWidth = 1;
-        public const int TableHeaderHeight = 42;
-        public const int TableRowHeight = 42;
+        public const int TableHeaderHeight = 52;
+        public const int TableRowHeight = 52;
         public const int ToolbarHorizontalGap = 8;
 
         public const int CompactBreakpoint = 980;
@@ -87,8 +87,8 @@ namespace Win7BookManagement.Infrastructure
 
         public static int ResponsiveInputHeight(int availableWidth)
         {
-            if (availableWidth < 900) return 34;
-            if (availableWidth < 1180) return 36;
+            if (availableWidth < 900) return 40;
+            if (availableWidth < 1180) return 44;
             return InputHeight;
         }
 
@@ -102,9 +102,9 @@ namespace Win7BookManagement.Infrastructure
 
         public static float ResponsiveControlFontSize(int availableWidth)
         {
-            if (availableWidth < 900) return 8.25F;
-            if (availableWidth < 1180) return 8.6F;
-            return 9F;
+            if (availableWidth < 900) return 9F;
+            if (availableWidth < 1180) return 10.2F;
+            return 11.5F;
         }
 
         public static void ApplyResponsiveDensity(Control root, int availableWidth)
@@ -133,7 +133,8 @@ namespace Win7BookManagement.Infrastructure
                     var font = Font(fontSize);
                     antdButton.Font = font;
                     antdButton.Height = buttonHeight;
-                    antdButton.MinimumSize = new Size(0, buttonHeight);
+                    var configuredMinimumWidth = antdButton.MinimumSize.Width;
+                    antdButton.MinimumSize = new Size(configuredMinimumWidth, buttonHeight);
 
                     var measured = TextRenderer.MeasureText(
                         string.IsNullOrWhiteSpace(antdButton.Text) ? "按钮" : antdButton.Text,
@@ -144,9 +145,9 @@ namespace Win7BookManagement.Infrastructure
                     var iconAllowance = antdButton.HasIcon
                         ? (availableWidth < 900 ? 18 : availableWidth < 1180 ? 20 : 22)
                         : 0;
-                    var minimumWidth = availableWidth < 900 ? 58 : availableWidth < 1180 ? 64 : 72;
+                    var minimumWidth = availableWidth < 900 ? 64 : availableWidth < 1180 ? 72 : 80;
                     antdButton.Width = Math.Max(
-                        minimumWidth,
+                        Math.Max(minimumWidth, configuredMinimumWidth),
                         measured.Width + horizontalPadding + iconAllowance);
                 }
                 else
