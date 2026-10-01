@@ -46,6 +46,8 @@ namespace Win7BookManagement.Infrastructure
                     Isbn = "9780000000001",
                     Title = "自检图书",
                     Author = "Test",
+                    Publisher = "测试出版社",
+                    Category = "测试分类",
                     SelfCode = "BK-TEST-001",
                     PublicationYear = "2026",
                     Edition = "1版1印",
@@ -93,6 +95,21 @@ namespace Win7BookManagement.Infrastructure
                 if (titleMatches.Count != 1 || titleMatches[0].Id != bookId ||
                     isbnMatches.Count != 1 || isbnMatches[0].Id != bookId)
                     throw new InvalidOperationException("采购入库 ISBN / 书名模糊搜索自检失败。");
+
+                var exactByIsbn = services.Books.FindByExactIdentifier("9780000000001");
+                var exactBySelfCode = services.Books.FindByExactIdentifier("BK-TEST-001");
+                var advancedMatches = services.Books.SearchAdvanced(new BookSearchCriteria
+                {
+                    Title = "自检",
+                    Publisher = "测试",
+                    Category = "测试分类"
+                });
+                var categories = services.Books.GetActiveCategories();
+                if (exactByIsbn == null || exactByIsbn.Id != bookId ||
+                    exactBySelfCode == null || exactBySelfCode.Id != bookId ||
+                    advancedMatches.Count != 1 || advancedMatches[0].Id != bookId ||
+                    !categories.Contains("测试分类"))
+                    throw new InvalidOperationException("采购表格扫码精确匹配 / 高级查找自检失败。");
 
                 services.Inventory.Adjust(bookId, 5, "opening");
 
@@ -378,6 +395,7 @@ namespace Win7BookManagement.Infrastructure
                 new BookListForm(services),
                 new BookEditForm(services, storedBook),
                 new BookLookupDialog(services),
+                new AdvancedBookLookupDialog(services, "", null),
                 new PurchaseForm(services),
                 new SalesForm(services),
                 new InventoryForm(services),
