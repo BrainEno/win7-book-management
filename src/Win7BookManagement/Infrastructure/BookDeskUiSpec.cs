@@ -133,7 +133,7 @@ namespace Win7BookManagement.Infrastructure
         public const int MinimumClientWidth = 1280;
         public const int MinimumClientHeight = 720;
 
-        public const int ShellStatusHeight = 28;
+        public const int ShellStatusHeight = 58;
         public const int SidebarFooterHeight = 72;
         public const int OfflineBadgeWidth = 148;
         public const int OfflineBadgeHeight = 36;
@@ -160,7 +160,7 @@ namespace Win7BookManagement.Infrastructure
         public const int PurchaseConfirmWidth = 146;
         public const int PurchaseConfirmHeight = 40;
 
-        public const int InventoryToolbarStandardHeight = 136;
+        public const int InventoryToolbarStandardHeight = 140;
         public const int InventoryToolbarCompactHeight = 112;
         public const int InventorySearchLabelWidth = 80;
         public const int InventorySearchMinimumWidth = 380;
