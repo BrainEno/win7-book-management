@@ -4,24 +4,29 @@ using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
+using Win7BookManagement.Services;
 
 namespace Win7BookManagement.Forms
 {
     public sealed class PurchaseHistoryDialog : Form
     {
         private readonly ApplicationServices _services;
+        private readonly long? _currentDocumentId;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("采购单号 / 供应商");
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly Label _summary = new Label();
         private readonly List<PurchaseDocumentSummary> _display = new List<PurchaseDocumentSummary>();
         private IList<PurchaseDocumentSummary> _all = new List<PurchaseDocumentSummary>();
         private PurchaseDocumentSummary _selected;
+        private AntdUI.Button _deleteDraftButton;
 
         public long? SelectedDocumentId { get; private set; }
+        public bool DeletedCurrentDocument { get; private set; }
 
         public PurchaseHistoryDialog(ApplicationServices services, long? currentDocumentId)
         {
             _services = services;
+            _currentDocumentId = currentDocumentId;
 
             UiTheme.ConfigureForm(this);
             Text = "采购历史单据";
@@ -171,6 +176,7 @@ namespace Win7BookManagement.Forms
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
                 _selected = e.Record as PurchaseDocumentSummary;
+                UpdateActionState();
             };
             _grid.CellDoubleClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -217,6 +223,11 @@ namespace Win7BookManagement.Forms
                 Margin = Padding.Empty
             };
 
+            _deleteDraftButton = UiTheme.CreateAntdButton("删除草稿", false);
+            _deleteDraftButton.Width = 104;
+            _deleteDraftButton.Enabled = false;
+            _deleteDraftButton.Click += delegate { DeleteSelectedDraft(); };
+
             var cancel = UiTheme.CreateAntdButton("取消", false);
             cancel.Width = 88;
             cancel.Click += delegate
@@ -229,6 +240,7 @@ namespace Win7BookManagement.Forms
             open.Width = 108;
             open.Click += delegate { Choose(); };
 
+            buttons.Controls.Add(_deleteDraftButton);
             buttons.Controls.Add(cancel);
             buttons.Controls.Add(open);
             footer.Controls.Add(buttons, 1, 0);
@@ -246,6 +258,7 @@ namespace Win7BookManagement.Forms
                 if (item.Id != currentDocumentId.Value) continue;
                 _selected = item;
                 _grid.SetSelected(item, false);
+                UpdateActionState();
                 break;
             }
         }
@@ -268,6 +281,68 @@ namespace Win7BookManagement.Forms
             _grid.DataSource = _display;
             if (_selected != null) _grid.SetSelected(_selected, false);
             _summary.Text = "共 " + _display.Count + " 张采购单 · 双击可直接打开";
+            UpdateActionState();
+        }
+
+        private void UpdateActionState()
+        {
+            if (_deleteDraftButton == null) return;
+            _deleteDraftButton.Enabled =
+                _selected != null &&
+                string.Equals(
+                    _selected.Status,
+                    PurchaseService.DraftStatus,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void DeleteSelectedDraft()
+        {
+            if (_selected == null)
+            {
+                MessageBox.Show(this, "请先选择一张采购草稿。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (!string.Equals(_selected.Status, PurchaseService.DraftStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(this, "只有从未正式入库的草稿才能删除。已复核单据必须保留历史。", "不能删除", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (MessageBox.Show(
+                    this,
+                    "确定删除采购草稿“" + _selected.OrderNo + "”吗？\r\n\r\n删除后无法恢复；如果该单曾经复核产生过库存流水，系统会自动拒绝删除。",
+                    "删除采购草稿",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+
+            try
+            {
+                var deletedId = _selected.Id;
+                var orderNo = _services.Purchases.DeleteDraft(deletedId);
+                if (_currentDocumentId.HasValue && _currentDocumentId.Value == deletedId)
+                    DeletedCurrentDocument = true;
+
+                _all = _services.Purchases.GetHistory();
+                ApplyFilter();
+
+                MessageBox.Show(
+                    this,
+                    "采购草稿“" + orderNo + "”已删除。",
+                    "草稿已删除",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    this,
+                    "删除采购草稿失败：\r\n" + ex.Message,
+                    "无法删除",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
         }
 
         private void Choose()
