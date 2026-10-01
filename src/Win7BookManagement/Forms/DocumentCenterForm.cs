@@ -707,7 +707,10 @@ namespace Win7BookManagement.Forms
             if (available <= minimumList + minimumDetails)
                 return;
 
-            var target = (int)Math.Round(available * 0.57);
+            // The approved 1586x992 prototype allocates roughly 54% of
+            // the post-filter workspace to the document list and 46% to the
+            // selected-document detail table. Keep the compact minimums below.
+            var target = (int)Math.Round(available * 0.54);
             var maximum = available - minimumDetails;
             _split.SplitterDistance = Math.Max(
                 minimumList,
