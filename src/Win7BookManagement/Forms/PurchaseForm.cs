@@ -21,8 +21,8 @@ namespace Win7BookManagement.Forms
         private readonly Label _quantityTotal = new Label();
         private readonly Label _total = new Label();
         private readonly Label _emptyState = new Label();
-        private readonly List<Label> _emptyHeaderLabels = new List<Label>();
-        private TableLayoutPanel _emptyHeaderRow;
+        private readonly List<PurchaseCartRow> _emptyDisplayRows =
+            new List<PurchaseCartRow> { new PurchaseCartRow() };
         private Panel _cartContent;
         private UiSpecSectionPanel _receivingSection;
         private TableLayoutPanel _supplierRow;
@@ -335,7 +335,6 @@ namespace Win7BookManagement.Forms
                 Padding = Padding.Empty
             };
 
-            _emptyHeaderRow = CreateEmptyHeaderRow();
             _emptyState.Dock = DockStyle.None;
             _emptyState.TextAlign = ContentAlignment.MiddleCenter;
             _emptyState.Text = "当前入库单为空\r\n请扫码、搜索或选择图书";
@@ -347,9 +346,7 @@ namespace Win7BookManagement.Forms
 
             _cartContent.Controls.Add(_grid);
             _cartContent.Controls.Add(_emptyState);
-            _cartContent.Controls.Add(_emptyHeaderRow);
             _emptyState.BringToFront();
-            _emptyHeaderRow.BringToFront();
             _cartContent.Resize += delegate { LayoutEmptyCartSurface(); };
 
             _cartHost.Controls.Add(_cartHeader, 0, 0);
@@ -594,7 +591,6 @@ namespace Win7BookManagement.Forms
             _grid.RowHeight = profile.TableRowHeight;
             _grid.Font = UiTheme.Font(profile.TableFontPoints);
             ApplyColumnWidths(profile);
-            ApplyEmptyHeaderProfile(profile);
             _emptyState.Font = UiTheme.Font(profile.SecondaryFontPoints);
             LayoutEmptyCartSurface();
 
@@ -661,96 +657,16 @@ namespace Win7BookManagement.Forms
             _grid.Refresh();
         }
 
-        private TableLayoutPanel CreateEmptyHeaderRow()
-        {
-            var row = new TableLayoutPanel
-            {
-                Dock = DockStyle.None,
-                AutoSize = false,
-                Height = BookDeskUiSpec.Standard.TableHeaderHeight,
-                MinimumSize = new Size(0, BookDeskUiSpec.Standard.TableHeaderHeight),
-                ColumnCount = 9,
-                RowCount = 1,
-                Margin = Padding.Empty,
-                Padding = Padding.Empty,
-                BackColor = UiTheme.SurfaceMuted
-            };
-            row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            var labels = new[]
-            {
-                "序号",
-                "店内编码",
-                "ISBN",
-                "书名",
-                "作者",
-                "出版社",
-                "数量",
-                "进价（元）",
-                "小计（元）"
-            };
-
-            for (var i = 0; i < labels.Length; i++)
-            {
-                var label = new Label
-                {
-                    Text = labels[i],
-                    Dock = DockStyle.Fill,
-                    AutoSize = false,
-                    TextAlign = ContentAlignment.MiddleLeft,
-                    Padding = new Padding(10, 0, 6, 0),
-                    Margin = Padding.Empty,
-                    ForeColor = UiTheme.TextPrimary,
-                    BackColor = UiTheme.SurfaceMuted,
-                    Font = UiTheme.Font(BookDeskUiSpec.Standard.TableFontPoints, FontStyle.Bold),
-                    AutoEllipsis = true
-                };
-                _emptyHeaderLabels.Add(label);
-                row.Controls.Add(label, i, 0);
-            }
-
-            ApplyEmptyHeaderProfile(BookDeskUiSpec.Standard);
-            return row;
-        }
-
-        private void ApplyEmptyHeaderProfile(UiSpecProfile profile)
-        {
-            if (_emptyHeaderRow == null)
-                return;
-
-            profile = profile ?? BookDeskUiSpec.Standard;
-            var compact = profile.IsCompact;
-
-            _emptyHeaderRow.Height = profile.TableHeaderHeight;
-            _emptyHeaderRow.MinimumSize = new Size(0, profile.TableHeaderHeight);
-            _emptyHeaderRow.ColumnStyles.Clear();
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 54 : 60));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 90 : 110));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 96 : 118));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 86 : 110));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 86 : 110));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 70 : 82));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 94 : 112));
-            _emptyHeaderRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, compact ? 94 : 112));
-
-            foreach (var label in _emptyHeaderLabels)
-                label.Font = UiTheme.Font(profile.TableFontPoints, FontStyle.Bold);
-        }
-
         private void LayoutEmptyCartSurface()
         {
-            if (_cartContent == null || _emptyHeaderRow == null)
+            if (_cartContent == null)
                 return;
 
             var profile = _profile ?? BookDeskUiSpec.Standard;
-            var headerHeight = Math.Min(profile.TableHeaderHeight, Math.Max(0, _cartContent.ClientSize.Height));
+            var headerHeight = Math.Min(
+                profile.TableHeaderHeight,
+                Math.Max(0, _cartContent.ClientSize.Height));
 
-            _emptyHeaderRow.SetBounds(
-                0,
-                0,
-                Math.Max(0, _cartContent.ClientSize.Width),
-                headerHeight);
             _emptyState.SetBounds(
                 0,
                 headerHeight,
@@ -958,16 +874,20 @@ namespace Win7BookManagement.Forms
             _total.Text = "采购金额  ¥" + total.ToString("0.00");
 
             var empty = _rows.Count == 0;
-            if (_emptyHeaderRow != null) _emptyHeaderRow.Visible = empty;
             _emptyState.Visible = empty;
             if (empty)
             {
+                // AntdUI only paints its column header once it has at least one
+                // data record. Feed it a blank display-only row so the native
+                // header remains visible, then cover the body below the header
+                // with the prototype empty state. Business data stays in _rows.
+                _grid.DataSource = _emptyDisplayRows;
                 LayoutEmptyCartSurface();
                 _emptyState.BringToFront();
-                _emptyHeaderRow.BringToFront();
             }
             else
             {
+                _grid.DataSource = _rows;
                 _grid.BringToFront();
             }
         }
