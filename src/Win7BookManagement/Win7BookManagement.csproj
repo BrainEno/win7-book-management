@@ -52,8 +52,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
     <Compile Include="**\*.cs"
-             Exclude="bin\**\*;obj\**\*;packages\**\*" />
+             Exclude="bin\**\*;obj\**\*;packages\**\*;Infrastructure\BookDeskUiSpec.cs" />
     <None Include="App.config" />
     <None Include="app.manifest" />
   </ItemGroup>
