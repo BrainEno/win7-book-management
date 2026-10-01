@@ -2,6 +2,11 @@ using System;
 
 namespace Win7BookManagement.Infrastructure
 {
+    public interface IUiSpecPage
+    {
+        void ApplyUiSpecProfile(UiSpecProfile profile);
+    }
+
     /// <summary>
     /// Machine-readable layout metrics derived from docs/ui-spec.json.
     ///
@@ -91,6 +96,22 @@ namespace Win7BookManagement.Infrastructure
         public const int BookToolbarCompactHeight = 116;
         public const int BookSearchLabelWidth = 56;
         public const int BookSearchMinimumWidth = 360;
+
+        public const int PurchaseToolbarStandardHeight = 148;
+        public const int PurchaseToolbarCompactHeight = 126;
+        public const int PurchaseSupplierLabelWidth = 72;
+        public const int PurchaseSupplierStandardWidth = 304;
+        public const int PurchaseSupplierCompactWidth = 240;
+        public const int PurchaseScanLabelWidth = 94;
+        public const int PurchaseSearchMinimumWidth = 400;
+        public const int PurchaseSearchCompactMinimumWidth = 360;
+        public const int PurchaseCartHeaderHeight = 52;
+        public const int PurchaseNoteStandardHeight = 48;
+        public const int PurchaseNoteCompactHeight = 42;
+        public const int PurchaseSummaryStandardHeight = 72;
+        public const int PurchaseSummaryCompactHeight = 62;
+        public const int PurchaseConfirmWidth = 146;
+        public const int PurchaseConfirmHeight = 40;
 
         public static readonly UiSpecProfile Compact = new UiSpecProfile(
             "compact",
