@@ -906,33 +906,6 @@ namespace Win7BookManagement.Forms
             }
         }
 
-        private int ResolvePurchaseSearchWidth(bool compact, bool expanded, int gap)
-        {
-            var maxWidth = expanded
-                ? BookDeskUiSpec.PurchaseSearchExpandedMaxWidth
-                : compact
-                    ? BookDeskUiSpec.PurchaseSearchCompactMaxWidth
-                    : BookDeskUiSpec.PurchaseSearchStandardMaxWidth;
-
-            if (_scanSection == null || _scanSection.ClientSize.Width <= 0)
-                return maxWidth;
-
-            var innerWidth = Math.Max(
-                0,
-                _scanSection.ClientSize.Width - _scanSection.Padding.Horizontal);
-            var reservedWidth =
-                BookDeskUiSpec.PurchaseScanLabelWidth +
-                104 +
-                118 +
-                (gap * 3) +
-                12;
-            var availableForSearch = innerWidth - reservedWidth;
-
-            return Math.Max(
-                BookDeskUiSpec.PurchaseSearchMinimumWidth,
-                Math.Min(maxWidth, availableForSearch));
-        }
-
         private static void SetTopToolbarButton(
             AntdUI.Button button,
             int width,
@@ -1023,7 +996,7 @@ namespace Win7BookManagement.Forms
                 !_grid.ContainsFocus)
                 return;
 
-            if (e.KeyChar == '\r')
+            if (e.KeyChar == '\r' || e.KeyChar == '\t')
             {
                 if (_scanBuffer.Length == 0)
                     return;
