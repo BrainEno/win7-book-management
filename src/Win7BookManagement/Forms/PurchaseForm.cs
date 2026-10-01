@@ -345,9 +345,9 @@ namespace Win7BookManagement.Forms
             _emptyState.Padding = Padding.Empty;
 
             _cartContent.Controls.Add(_grid);
-            _cartContent.Controls.Add(_emptyState);
+            _grid.Controls.Add(_emptyState);
             _emptyState.BringToFront();
-            _cartContent.Resize += delegate { LayoutEmptyCartSurface(); };
+            _grid.Resize += delegate { LayoutEmptyCartSurface(); };
 
             _cartHost.Controls.Add(_cartHeader, 0, 0);
             _cartHost.Controls.Add(_cartContent, 0, 1);
@@ -659,30 +659,25 @@ namespace Win7BookManagement.Forms
             if (_rows.Count == 0)
             {
                 LayoutEmptyCartSurface();
-                _grid.SendToBack();
                 _emptyState.BringToFront();
-            }
-            else
-            {
-                _grid.BringToFront();
             }
         }
 
         private void LayoutEmptyCartSurface()
         {
-            if (_cartContent == null)
+            if (_grid == null)
                 return;
 
             var profile = _profile ?? BookDeskUiSpec.Standard;
             var headerHeight = Math.Min(
                 profile.TableHeaderHeight,
-                Math.Max(0, _cartContent.ClientSize.Height));
+                Math.Max(0, _grid.ClientSize.Height));
 
             _emptyState.SetBounds(
                 0,
                 headerHeight,
-                Math.Max(0, _cartContent.ClientSize.Width),
-                Math.Max(0, _cartContent.ClientSize.Height - headerHeight));
+                Math.Max(0, _grid.ClientSize.Width),
+                Math.Max(0, _grid.ClientSize.Height - headerHeight));
         }
 
         private void ApplyColumnWidths(UiSpecProfile profile)
@@ -899,7 +894,6 @@ namespace Win7BookManagement.Forms
             else
             {
                 _grid.DataSource = _rows;
-                _grid.BringToFront();
             }
         }
 
