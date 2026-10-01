@@ -283,6 +283,71 @@ namespace Win7BookManagement.Infrastructure
 
                 Capture(
                     outputDirectory,
+                    "40-inventory-shell-1366x768.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("inventory");
+                        return form;
+                    },
+                    new Size(1366, 768),
+                    false,
+                    delegate(Form form) { FilterInventory(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "41-inventory-shell-1600x900.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("inventory");
+                        return form;
+                    },
+                    new Size(1600, 900),
+                    false,
+                    delegate(Form form) { FilterInventory(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "42-inventory-shell-1920x1080.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("inventory");
+                        return form;
+                    },
+                    new Size(1920, 1080),
+                    false,
+                    delegate(Form form) { FilterInventory(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "43-inventory-shell-2560x1440.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("inventory");
+                        return form;
+                    },
+                    new Size(2560, 1440),
+                    false,
+                    delegate(Form form) { FilterInventory(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
+                    "44-inventory-shell-prototype-client-1586x945.png",
+                    delegate
+                    {
+                        var form = new MainForm(services);
+                        form.Navigate("inventory");
+                        return form;
+                    },
+                    new Size(1586, 945),
+                    false,
+                    delegate(Form form) { FilterInventory(form, books[5].Title); });
+
+                Capture(
+                    outputDirectory,
                     "11-suppliers-1366x768.png",
                     delegate { return new SupplierForm(services); },
                     new Size(1366, 768),
@@ -775,6 +840,26 @@ namespace Win7BookManagement.Infrastructure
                 "_search",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             var reloadMethod = typeof(BookListForm).GetMethod(
+                "Reload",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var search = searchField == null ? null : searchField.GetValue(page) as Control;
+            if (search == null || reloadMethod == null)
+                return;
+
+            search.Text = query ?? "";
+            reloadMethod.Invoke(page, null);
+        }
+
+        private static void FilterInventory(Form shell, string query)
+        {
+            var page = FindEmbeddedControl<InventoryForm>(shell);
+            if (page == null)
+                return;
+
+            var searchField = typeof(InventoryForm).GetField(
+                "_search",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var reloadMethod = typeof(InventoryForm).GetMethod(
                 "Reload",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             var search = searchField == null ? null : searchField.GetValue(page) as Control;
