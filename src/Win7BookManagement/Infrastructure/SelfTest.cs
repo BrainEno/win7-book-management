@@ -110,6 +110,29 @@ namespace Win7BookManagement.Infrastructure
                     !purchaseDraft.OrderNo.StartsWith(DateTime.Today.ToString("yyyyMMdd"), StringComparison.Ordinal))
                     throw new InvalidOperationException("采购草稿保存或自动单号自检失败。");
 
+                var olderPurchaseDraft = services.Purchases.SaveDraft(
+                    null,
+                    "",
+                    DateTime.Today.AddDays(-1),
+                    null,
+                    new List<TransactionLineInput>(),
+                    "navigation older");
+                var newerPurchaseDraft = services.Purchases.SaveDraft(
+                    null,
+                    "",
+                    DateTime.Today.AddDays(1),
+                    null,
+                    new List<TransactionLineInput>(),
+                    "navigation newer");
+                var navigation = services.Purchases.GetNavigationState(purchaseDraft.Id);
+                if (navigation.TotalCount != 3 ||
+                    navigation.Position != 2 ||
+                    navigation.PreviousId != olderPurchaseDraft.Id ||
+                    navigation.NextId != newerPurchaseDraft.Id ||
+                    services.Purchases.GetAdjacentDocumentId(purchaseDraft.Id, false) != olderPurchaseDraft.Id ||
+                    services.Purchases.GetAdjacentDocumentId(purchaseDraft.Id, true) != newerPurchaseDraft.Id)
+                    throw new InvalidOperationException("采购单上一张 / 下一张导航顺序自检失败。");
+
                 services.Purchases.Review(purchaseDraft.Id);
                 if (services.Books.GetById(bookId).StockQuantity != 9)
                     throw new InvalidOperationException("采购复核没有正确增加库存。");
