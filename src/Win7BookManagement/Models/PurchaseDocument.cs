@@ -53,6 +53,25 @@ namespace Win7BookManagement.Models
         public long LineTotalCent { get; set; }
     }
 
+    public sealed class PurchaseNavigationState
+    {
+        public long CurrentId { get; set; }
+        public long? PreviousId { get; set; }
+        public long? NextId { get; set; }
+        public int Position { get; set; }
+        public int TotalCount { get; set; }
+
+        public bool HasPrevious
+        {
+            get { return PreviousId.HasValue; }
+        }
+
+        public bool HasNext
+        {
+            get { return NextId.HasValue; }
+        }
+    }
+
     public sealed class PurchaseDocumentSummary
     {
         public long Id { get; set; }
