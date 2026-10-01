@@ -27,7 +27,12 @@
       "aspectRatio": 1.59879,
       "usage": "Primary visual reference. Geometry below is normalized from this 1586x992 prototype family."
     },
-    "rule": "Do not infer an existing numeric value from screenshots when the value exists in this spec. Screenshots are for visual validation, not dimension guessing."
+    "rule": "Do not infer an existing numeric value from screenshots when the value exists in this spec. Screenshots are for visual validation, not dimension guessing.",
+    "calibration": {
+      "status": "raster-verified",
+      "reference": "approved 1586x992 prototype set",
+      "note": "Shared control/table/shell metrics were recalibrated after pixel comparison against CI WinForms screenshots. These values supersede the initial screenshot estimate."
+    }
   },
   "measurement": {
     "unit": "logical_px_at_96_dpi",
@@ -127,7 +132,7 @@
         "lineHeight": 24
       },
       "body": {
-        "size": 14,
+        "size": 15,
         "weight": 400,
         "lineHeight": 22
       },
@@ -142,12 +147,12 @@
         "lineHeight": 18
       },
       "tableHeader": {
-        "size": 13,
+        "size": 14,
         "weight": 600,
         "lineHeight": 20
       },
       "tableCell": {
-        "size": 13,
+        "size": 14,
         "weight": 400,
         "lineHeight": 20
       },
@@ -182,9 +187,9 @@
       "focusWidth": 2
     },
     "control": {
-      "standardHeight": 36,
-      "compactHeight": 34,
-      "expandedHeight": 36,
+      "standardHeight": 48,
+      "compactHeight": 44,
+      "expandedHeight": 48,
       "buttonHorizontalPadding": 14,
       "buttonMinWidth": 68,
       "inputHorizontalPadding": 12,
@@ -193,10 +198,10 @@
       "gap": 8
     },
     "table": {
-      "headerHeight": 42,
-      "rowHeight": 46,
-      "compactHeaderHeight": 38,
-      "compactRowHeight": 42,
+      "headerHeight": 52,
+      "rowHeight": 52,
+      "compactHeaderHeight": 48,
+      "compactRowHeight": 48,
       "cellPaddingX": 12,
       "cellPaddingY": 8,
       "gridLineWidth": 1
@@ -213,8 +218,8 @@
       "background": "#F7FBFF"
     },
     "sidebar": {
-      "width": 228,
-      "compactWidth": 208,
+      "width": 230,
+      "compactWidth": 218,
       "expandedWidth": 232,
       "minWidth": 200,
       "maxWidth": 240,
@@ -232,8 +237,8 @@
       "selectedBehavior": "Selected row background uses selectedNavBackground and a 3px primary left indicator."
     },
     "pageHeader": {
-      "height": 64,
-      "compactHeight": 56,
+      "height": 68,
+      "compactHeight": 64,
       "horizontalPadding": 16,
       "titleIconSize": 22,
       "titleIconGap": 10,
@@ -261,20 +266,20 @@
   "responsiveProfiles": {
     "compact": {
       "when": "clientWidth <= 1440 OR clientHeight <= 800",
-      "sidebarWidth": 208,
-      "pageHeaderHeight": 56,
+      "sidebarWidth": 218,
+      "pageHeaderHeight": 64,
       "pageTitleSize": 18,
       "contentPaddingX": 10,
       "contentPaddingY": 8,
       "sectionGap": 8,
-      "controlHeight": 34,
+      "controlHeight": 44,
       "buttonHorizontalPadding": 10,
       "controlGap": 6,
-      "tableHeaderHeight": 38,
-      "tableRowHeight": 42,
-      "bodyFontSize": 13,
-      "tableFontSize": 12,
-      "secondaryFontSize": 11,
+      "tableHeaderHeight": 48,
+      "tableRowHeight": 48,
+      "bodyFontSize": 14,
+      "tableFontSize": 13,
+      "secondaryFontSize": 12,
       "rules": [
         "Shrink margins and gaps before reducing font size.",
         "Never shrink standard controls below 32px height.",
@@ -286,36 +291,36 @@
     },
     "standard": {
       "when": "1441 <= clientWidth < 2200 AND clientHeight > 800",
-      "sidebarWidth": 228,
-      "pageHeaderHeight": 64,
+      "sidebarWidth": 230,
+      "pageHeaderHeight": 68,
       "pageTitleSize": 20,
       "contentPaddingX": 12,
       "contentPaddingY": 12,
       "sectionGap": 12,
-      "controlHeight": 36,
+      "controlHeight": 48,
       "buttonHorizontalPadding": 14,
       "controlGap": 8,
-      "tableHeaderHeight": 42,
-      "tableRowHeight": 46,
-      "bodyFontSize": 14,
-      "tableFontSize": 13,
+      "tableHeaderHeight": 52,
+      "tableRowHeight": 52,
+      "bodyFontSize": 15,
+      "tableFontSize": 14,
       "secondaryFontSize": 12
     },
     "expanded": {
       "when": "clientWidth >= 2200",
       "sidebarWidth": 232,
-      "pageHeaderHeight": 64,
+      "pageHeaderHeight": 68,
       "pageTitleSize": 20,
       "contentPaddingX": 16,
       "contentPaddingY": 14,
       "sectionGap": 12,
-      "controlHeight": 36,
+      "controlHeight": 48,
       "buttonHorizontalPadding": 14,
       "controlGap": 8,
-      "tableHeaderHeight": 42,
-      "tableRowHeight": 46,
-      "bodyFontSize": 14,
-      "tableFontSize": 13,
+      "tableHeaderHeight": 52,
+      "tableRowHeight": 52,
+      "bodyFontSize": 15,
+      "tableFontSize": 14,
       "secondaryFontSize": 12,
       "rules": [
         "Do not scale buttons, row heights, sidebar, or fonts indefinitely.",
@@ -361,8 +366,8 @@
       }
     },
     "metricChip": {
-      "height": 34,
-      "compactHeight": 30,
+      "height": 36,
+      "compactHeight": 34,
       "radius": 4,
       "paddingX": 14,
       "gap": 6
@@ -833,13 +838,13 @@
               {
                 "type": "button",
                 "text": "查询",
-                "width": 72
+                "width": 78
               },
               {
                 "type": "button",
                 "text": "库存调整",
                 "variant": "primary",
-                "width": 118
+                "width": 140
               },
               {
                 "type": "checkbox",
@@ -938,9 +943,9 @@
           },
           "right": {
             "type": "detailPane",
-            "width": 330,
-            "minWidth": 286,
-            "maxWidth": 360,
+            "width": 460,
+            "minWidth": 340,
+            "maxWidth": 480,
             "title": "库存详情",
             "action": "库存调整",
             "rowHeight": 64,
@@ -959,11 +964,11 @@
       },
       "responsive": {
         "compact": [
-          "At main-content width >= 1020px keep horizontal split and set detail pane to 286px.",
+          "At main-content width >= 1020px keep horizontal split and set detail pane to 340px.",
           "At main-content width < 1020px switch to vertical stack: inventory table first, detail pane below.",
           "In vertical stack, detail fields use two columns when width >= 900px, otherwise one column.",
           "Optional helper text in summary row may hide before any primary control moves.",
-          "Never shrink the detail pane below 286px while it is in side-by-side mode."
+          "Never shrink the detail pane below 340px while it is in side-by-side mode."
         ]
       }
     },
@@ -998,3 +1003,216 @@
               {
                 "type": "field",
                 "label": "从",
+                "control": "date",
+                "width": 220,
+                "value": "2026-10-01"
+              },
+              {
+                "type": "field",
+                "label": "到",
+                "control": "date",
+                "width": 220,
+                "value": "2026-10-01"
+              },
+              {
+                "type": "field",
+                "label": "关键词",
+                "control": "input",
+                "flex": 1,
+                "minWidth": 320,
+                "placeholder": "单号、ISBN、书名、备注或供应商"
+              },
+              {
+                "type": "button",
+                "text": "查询",
+                "variant": "primary",
+                "width": 94,
+                "alignSelf": "bottom"
+              }
+            ],
+            "gap": 10
+          },
+          "helperText": "支持按单号、ISBN、书名和备注搜索；采购单还支持供应商。退货必须从原单据发起。",
+          "summary": [
+            {
+              "type": "metric",
+              "text": "单据 1",
+              "tone": "primary",
+              "width": 94
+            },
+            {
+              "type": "metric",
+              "text": "销售金额 ¥36.00",
+              "tone": "warning",
+              "width": 166
+            }
+          ]
+        },
+        "billList": {
+          "height": 288,
+          "minHeight": 220,
+          "flex": 1,
+          "columns": [
+            {
+              "key": "date",
+              "title": "日期",
+              "width": 220,
+              "minWidth": 180
+            },
+            {
+              "key": "number",
+              "title": "单号",
+              "width": 270,
+              "minWidth": 220,
+              "flex": 1
+            },
+            {
+              "key": "quantity",
+              "title": "数量",
+              "width": 140,
+              "minWidth": 90
+            },
+            {
+              "key": "amount",
+              "title": "金额",
+              "width": 180,
+              "minWidth": 120
+            },
+            {
+              "key": "status",
+              "title": "状态",
+              "width": 180,
+              "minWidth": 120
+            },
+            {
+              "key": "note",
+              "title": "备注",
+              "flex": 1,
+              "minWidth": 160
+            }
+          ],
+          "selectedRowBackground": "#EAF4FF"
+        },
+        "billDetails": {
+          "height": 218,
+          "minHeight": 180,
+          "titleHeight": 54,
+          "titleTemplate": "单据明细 · {documentNumber}",
+          "columns": [
+            {
+              "key": "isbn",
+              "title": "ISBN",
+              "width": 220,
+              "minWidth": 160
+            },
+            {
+              "key": "title",
+              "title": "书名",
+              "flex": 2,
+              "minWidth": 220
+            },
+            {
+              "key": "originalQty",
+              "title": "原数量",
+              "width": 128,
+              "minWidth": 90
+            },
+            {
+              "key": "returnedQty",
+              "title": "已退",
+              "width": 124,
+              "minWidth": 86
+            },
+            {
+              "key": "returnableQty",
+              "title": "可退",
+              "width": 128,
+              "minWidth": 86
+            },
+            {
+              "key": "unitPrice",
+              "title": "单价",
+              "width": 158,
+              "minWidth": 110
+            },
+            {
+              "key": "amount",
+              "title": "金额",
+              "width": 160,
+              "minWidth": 110
+            }
+          ]
+        }
+      },
+      "responsive": {
+        "compact": [
+          "Filter controls become two rows instead of reducing date/input heights below compact control height.",
+          "Row 1: 类型 / 从 / 到 / 查询.",
+          "Row 2: 关键词 input fills available width; return action remains top-right or moves to row 2 far-right if necessary.",
+          "Helper text becomes a single-line ellipsis or hides if vertical space is constrained.",
+          "Bill list and bill detail both remain visible; allocate vertical space approximately 58% / 42% after filters."
+        ]
+      }
+    }
+  },
+  "implementationRules": {
+    "winFormsLayout": [
+      "Use Dock/Anchor for shell regions.",
+      "Use TableLayoutPanel or equivalent structured layout for toolbars and responsive row wrapping.",
+      "Use FlowLayoutPanel only where item wrapping is desired.",
+      "Avoid page-wide absolute Location/Size placement.",
+      "Fixed geometry is allowed inside stable components such as a 36px button or 42px table header."
+    ],
+    "resizingPriority": [
+      "Reduce page margins",
+      "Reduce panel padding",
+      "Reduce inter-control gaps",
+      "Reduce button horizontal padding",
+      "Compress flexible table columns",
+      "Reduce font sizes only within compact profile limits",
+      "Wrap lower-priority toolbar actions",
+      "Hide optional helper text",
+      "Use scrolling only as a last resort"
+    ],
+    "forbidden": [
+      "Whole-page resolution scaling",
+      "Oversized cards and mobile-app spacing",
+      "Large drop shadows or glass effects",
+      "Page title larger than 20px in standard/expanded profiles",
+      "Search button height different from adjacent input height",
+      "Primary action hidden below viewport",
+      "Horizontal scrollbar across the entire main workspace at 1366x768 or above"
+    ]
+  },
+  "visualValidation": {
+    "required": true,
+    "referenceCaptureViewport": {
+      "width": 1586,
+      "height": 992
+    },
+    "process": [
+      "Build",
+      "Run application",
+      "Open target page",
+      "Capture screenshot at exact test viewport",
+      "Compare to approved reference",
+      "Generate image diff",
+      "Fix geometry first, typography second, color third",
+      "Repeat until within tolerance"
+    ],
+    "requiredViewports": [
+      "1366x768",
+      "1600x900",
+      "1920x1080",
+      "2560x1440"
+    ],
+    "acceptance": {
+      "noClippedText": true,
+      "noMissingPrimaryActions": true,
+      "alignedToolbarBaselines": true,
+      "noWorkspaceHorizontalScrollAtOrAbove1366": true,
+      "pageTitleMaxStandardPx": 20,
+      "inputAndAdjacentButtonSameHeight": true
+    }
+  }
+}
