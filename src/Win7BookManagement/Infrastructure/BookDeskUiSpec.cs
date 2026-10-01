@@ -133,32 +133,36 @@ namespace Win7BookManagement.Infrastructure
         public const int MinimumClientWidth = 1280;
         public const int MinimumClientHeight = 720;
 
-        public const int ShellStatusHeight = 58;
+        public const int ShellStatusHeight = 28;
         public const int SidebarFooterHeight = 72;
         public const int PageTitleIconSize = 22;
 
-        public const int BookToolbarStandardHeight = 138;
-        public const int BookToolbarCompactHeight = 116;
-        public const int BookSearchLabelWidth = 56;
+        public const int BookToolbarStandardHeight = 104;
+        public const int BookToolbarCompactHeight = 92;
+        public const int BookSearchLabelWidth = 48;
         public const int BookSearchMinimumWidth = 360;
 
-        public const int PurchaseToolbarStandardHeight = 148;
-        public const int PurchaseToolbarCompactHeight = 126;
-        public const int PurchaseSupplierLabelWidth = 72;
-        public const int PurchaseSupplierStandardWidth = 304;
-        public const int PurchaseSupplierCompactWidth = 240;
-        public const int PurchaseScanLabelWidth = 94;
-        public const int PurchaseSearchMinimumWidth = 400;
+        public const int PurchaseTopToolbarStandardHeight = 50;
+        public const int PurchaseTopToolbarCompactHeight = 44;
+        public const int PurchaseDocumentStandardHeight = 92;
+        public const int PurchaseDocumentCompactHeight = 80;
+        public const int PurchaseScanStandardHeight = 64;
+        public const int PurchaseScanCompactHeight = 56;
+        public const int PurchaseSupplierLabelWidth = 62;
+        public const int PurchaseSupplierStandardWidth = 320;
+        public const int PurchaseSupplierCompactWidth = 230;
+        public const int PurchaseScanLabelWidth = 112;
+        public const int PurchaseSearchMinimumWidth = 360;
         public const int PurchaseSearchCompactMinimumWidth = 360;
-        public const int PurchaseCartHeaderHeight = 52;
+        public const int PurchaseCartHeaderHeight = 48;
         public const int PurchaseNoteStandardHeight = 48;
         public const int PurchaseNoteCompactHeight = 42;
-        public const int PurchaseSummaryStandardHeight = 72;
-        public const int PurchaseSummaryCompactHeight = 62;
-        public const int PurchaseConfirmWidth = 146;
-        public const int PurchaseConfirmHeight = 40;
+        public const int PurchaseSummaryStandardHeight = 68;
+        public const int PurchaseSummaryCompactHeight = 58;
+        public const int PurchaseConfirmWidth = 112;
+        public const int PurchaseConfirmHeight = 36;
 
-        public const int InventoryToolbarStandardHeight = 140;
+        public const int InventoryToolbarStandardHeight = 136;
         public const int InventoryToolbarCompactHeight = 112;
         public const int InventorySearchLabelWidth = 80;
         public const int InventorySearchMinimumWidth = 380;
@@ -174,7 +178,7 @@ namespace Win7BookManagement.Infrastructure
         public const int InventoryDetailLabelWidth = 88;
 
         public const int DocumentsFilterStandardHeight = 236;
-        public const int DocumentsFilterCompactHeight = 210;
+        public const int DocumentsFilterCompactHeight = 184;
         public const int DocumentsTopActionWidth = 200;
         public const int DocumentsTypeStandardWidth = 210;
         public const int DocumentsTypeCompactWidth = 160;
@@ -193,59 +197,59 @@ namespace Win7BookManagement.Infrastructure
 
         public static readonly UiSpecProfile Compact = new UiSpecProfile(
             "compact",
-            218,
-            64,
+            208,
+            56,
             10,
             8,
             8,
-            44,
+            34,
             6,
             10,
-            48,
-            48,
+            38,
+            42,
             10,
-            34,
+            30,
             18,
-            14,
             13,
-            12);
+            12,
+            11);
 
         public static readonly UiSpecProfile Standard = new UiSpecProfile(
             "standard",
-            230,
-            68,
+            228,
+            64,
             12,
             12,
             12,
-            48,
+            36,
             8,
             14,
-            52,
-            52,
+            42,
+            46,
             14,
-            36,
+            34,
             20,
-            15,
             14,
+            13,
             12);
 
         public static readonly UiSpecProfile Expanded = new UiSpecProfile(
             "expanded",
             232,
-            68,
+            64,
             16,
             14,
             12,
-            48,
+            36,
             8,
             14,
-            52,
-            52,
+            42,
+            46,
             14,
-            36,
+            34,
             20,
-            15,
             14,
+            13,
             12);
 
         public static UiSpecProfile Resolve(int clientWidth, int clientHeight)
