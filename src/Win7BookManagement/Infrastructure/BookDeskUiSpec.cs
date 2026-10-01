@@ -148,8 +148,8 @@ namespace Win7BookManagement.Infrastructure
         public const int PurchaseTopButtonCompactHeight = 40;
         public const int PurchaseTopButtonStandardPaddingX = 12;
         public const int PurchaseTopButtonCompactPaddingX = 10;
-        public const int PurchaseDocumentStandardHeight = 92;
-        public const int PurchaseDocumentCompactHeight = 80;
+        public const int PurchaseDocumentStandardHeight = 100;
+        public const int PurchaseDocumentCompactHeight = 88;
         public const int PurchaseFieldStandardHeight = 44;
         public const int PurchaseFieldCompactHeight = 42;
         public const int PurchaseDateLabelWidth = 82;
@@ -158,8 +158,8 @@ namespace Win7BookManagement.Infrastructure
         public const int PurchaseSupplierStandardWidth = 320;
         public const int PurchaseSupplierCompactWidth = 230;
         public const int PurchaseSupplierExpandedWidth = 380;
-        public const int PurchaseScanStandardHeight = 64;
-        public const int PurchaseScanCompactHeight = 56;
+        public const int PurchaseScanStandardHeight = 72;
+        public const int PurchaseScanCompactHeight = 64;
         public const int PurchaseScanLabelWidth = 124;
         public const int PurchaseSearchMinimumWidth = 360;
         public const int PurchaseSearchCompactMinimumWidth = 360;
