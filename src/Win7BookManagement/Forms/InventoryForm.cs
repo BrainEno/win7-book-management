@@ -152,7 +152,7 @@ namespace Win7BookManagement.Forms
             _searchRow.Controls.Add(_queryButton, 2, 0);
 
             _topAdjustButton = UiTheme.CreateAntdButton("库存调整", true);
-            _topAdjustButton.Width = BookDeskUiSpec.InventoryAdjustWidth;
+            _topAdjustButton.Width = BookDeskUiSpec.InventoryTopAdjustWidth;
             _topAdjustButton.Click += delegate { AdjustSelected(); };
             _searchRow.Controls.Add(_topAdjustButton, 3, 0);
 
@@ -328,7 +328,7 @@ namespace Win7BookManagement.Forms
             }, 0, 0);
 
             _detailAdjustButton = UiTheme.CreateAntdButton("库存调整", true);
-            _detailAdjustButton.Width = BookDeskUiSpec.InventoryAdjustWidth;
+            _detailAdjustButton.Width = BookDeskUiSpec.InventoryDetailAdjustWidth;
             _detailAdjustButton.Click += delegate { AdjustSelected(); };
             _detailHeader.Controls.Add(_detailAdjustButton, 1, 0);
 
@@ -361,8 +361,6 @@ namespace Win7BookManagement.Forms
             AddDetailRow(_detailsTable, "分类", "category");
             AddDetailRow(_detailsTable, "货架位", "shelf");
             AddDetailRow(_detailsTable, "当前库存", "stock");
-            AddDetailRow(_detailsTable, "低库存阈值", "threshold");
-            AddDetailRow(_detailsTable, "库存状态", "stockState");
 
             scroll.Controls.Add(_detailsTable);
             host.Controls.Add(_detailHeader, 0, 0);
@@ -460,8 +458,8 @@ namespace Win7BookManagement.Forms
             _search.Margin = new Padding(0, 0, profile.ControlGap, 0);
 
             SetToolbarButton(_queryButton, BookDeskUiSpec.InventoryQueryWidth, profile);
-            SetToolbarButton(_topAdjustButton, BookDeskUiSpec.InventoryAdjustWidth, profile);
-            SetToolbarButton(_detailAdjustButton, BookDeskUiSpec.InventoryAdjustWidth, profile);
+            SetToolbarButton(_topAdjustButton, BookDeskUiSpec.InventoryTopAdjustWidth, profile);
+            SetToolbarButton(_detailAdjustButton, BookDeskUiSpec.InventoryDetailAdjustWidth, profile);
 
             _lowOnly.Width = BookDeskUiSpec.InventoryLowOnlyWidth;
             _lowOnly.Height = controlHeight;
@@ -605,9 +603,6 @@ namespace Win7BookManagement.Forms
             _detailValues["category"].Text = EmptyAsDash(book.Category);
             _detailValues["shelf"].Text = EmptyAsDash(book.ShelfCode);
             _detailValues["stock"].Text = book.StockQuantity + " 册";
-            _detailValues["threshold"].Text = "≤ " + threshold + " 册";
-            _detailValues["stockState"].Text = low ? "低库存，需要关注" : "库存正常";
-            _detailValues["stockState"].ForeColor = low ? UiTheme.Warning : UiTheme.Success;
         }
 
         private static string EmptyAsDash(string text)
