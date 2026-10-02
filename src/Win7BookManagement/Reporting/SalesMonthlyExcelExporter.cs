@@ -65,7 +65,8 @@ namespace Win7BookManagement.Reporting
             string path,
             DateTime month,
             string storeName,
-            int nightShiftStartHour)
+            int nightShiftStartHour,
+            string categoryMapping)
         {
             if (detail == null) throw new ArgumentNullException("detail");
             if (returnDetail == null) throw new ArgumentNullException("returnDetail");
@@ -85,6 +86,7 @@ namespace Win7BookManagement.Reporting
 
             var rows = ReadRows(detail);
             var returns = ReadReturns(returnDetail);
+            var categoryMap = BuildCategoryMap(categoryMapping);
             IWorkbook workbook = new XSSFWorkbook();
             try
             {
@@ -94,6 +96,7 @@ namespace Win7BookManagement.Reporting
                     styles,
                     rows,
                     returns,
+                    categoryMap,
                     normalizedMonth,
                     normalizedStoreName,
                     nightShiftStartHour);
@@ -122,6 +125,7 @@ namespace Win7BookManagement.Reporting
             StyleFactory styles,
             IList<MonthlySalesRow> rows,
             IList<MonthlyReturnRow> returns,
+            IDictionary<string, int> categoryMap,
             DateTime month,
             string storeName,
             int nightShiftStartHour)
@@ -235,7 +239,7 @@ namespace Win7BookManagement.Reporting
 
             foreach (var row in rows)
             {
-                var lineIndex = ResolveBusinessLine(row.Category);
+                var lineIndex = ResolveBusinessLine(row.Category, categoryMap);
                 var dayIndex = row.SoldAt.Day - 1;
                 var shift = row.SoldAt.Hour >= nightShiftStartHour ? 1 : 0;
 
@@ -825,11 +829,59 @@ namespace Win7BookManagement.Reporting
             return result;
         }
 
-        private static int ResolveBusinessLine(string category)
+        private static IDictionary<string, int> BuildCategoryMap(string mappingText)
+        {
+            var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(mappingText))
+                return result;
+
+            var lines = mappingText.Replace("\r", "").Split('\n');
+            foreach (var rawLine in lines)
+            {
+                var line = (rawLine ?? "").Trim();
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                    continue;
+
+                var separator = line.IndexOf('=');
+                if (separator <= 0 || separator >= line.Length - 1)
+                    continue;
+
+                var source = line.Substring(0, separator).Trim();
+                var target = line.Substring(separator + 1).Trim();
+                var targetIndex = FindBusinessLineIndex(target);
+                if (source.Length > 0 && targetIndex >= 0)
+                    result[source] = targetIndex;
+            }
+            return result;
+        }
+
+        private static int FindBusinessLineIndex(string target)
+        {
+            var value = (target ?? "").Trim();
+            if (value.Length == 0) return -1;
+
+            for (var i = 0; i < BusinessLines.Length; i++)
+            {
+                var display = string.IsNullOrWhiteSpace(BusinessLines[i].Label)
+                    ? BusinessLines[i].Group
+                    : BusinessLines[i].Label;
+                if (string.Equals(value, display, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+            return -1;
+        }
+
+        private static int ResolveBusinessLine(
+            string category,
+            IDictionary<string, int> categoryMap)
         {
             var value = (category ?? "").Trim();
             if (value.Length == 0)
                 return 0;
+
+            int mappedIndex;
+            if (categoryMap != null && categoryMap.TryGetValue(value, out mappedIndex))
+                return mappedIndex;
 
             for (var i = 0; i < BusinessLines.Length; i++)
             {
