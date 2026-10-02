@@ -44,27 +44,31 @@ namespace Win7BookManagement.Reporting
         private static readonly string[] TemplateDetailHeaders =
         {
             "序号", "单号", "商品编码", "商品名称", "数量", "库存", "售价", "折让价",
-            "折扣", "码洋", "实洋", "出版日期", "价款(财务成本)", "税款", "财务实洋",
+            "折扣", "码洋", "实洋", "出版日期", "价款(参考成本)", "税款", "财务实洋",
             "进货折扣(参考值)", "标记", "批准退货人", "预定折扣", "操作时间",
             "明细业务员", "成本(参考值)", "毛利(参考值)", "部门编码", "用户名称",
             "折扣人员", "供 应 商", "出版社号", "出版社", "作者",
-            "收款方式", "应收金额", "实收金额", "找零金额", "单据备注", "系统分类"
+            "收款方式", "应收金额", "实收金额", "找零金额", "单据备注", "系统分类",
+            "当月退货数量", "月末累计已退", "参考成本口径"
         };
 
         private static readonly int[] DetailColumnWidths =
         {
             6, 20, 16, 28, 8, 8, 10, 10, 8, 10, 10, 12, 14, 10, 12, 15, 9, 12,
-            10, 20, 12, 14, 14, 10, 12, 12, 16, 12, 18, 20, 10, 12, 12, 10, 24, 14
+            10, 20, 12, 14, 14, 10, 12, 12, 16, 12, 18, 20, 10, 12, 12, 10, 24, 14,
+            12, 13, 16
         };
 
         public void Export(
             DataTable detail,
+            DataTable returnDetail,
             string path,
             DateTime month,
             string storeName,
             int nightShiftStartHour)
         {
             if (detail == null) throw new ArgumentNullException("detail");
+            if (returnDetail == null) throw new ArgumentNullException("returnDetail");
             if (string.IsNullOrWhiteSpace(path))
                 throw new ArgumentException("导出路径不能为空。", "path");
             if (nightShiftStartHour < 0 || nightShiftStartHour > 23)
@@ -80,6 +84,7 @@ namespace Win7BookManagement.Reporting
                 Directory.CreateDirectory(directory);
 
             var rows = ReadRows(detail);
+            var returns = ReadReturns(returnDetail);
             IWorkbook workbook = new XSSFWorkbook();
             try
             {
@@ -88,6 +93,7 @@ namespace Win7BookManagement.Reporting
                     workbook,
                     styles,
                     rows,
+                    returns,
                     normalizedMonth,
                     normalizedStoreName,
                     nightShiftStartHour);
