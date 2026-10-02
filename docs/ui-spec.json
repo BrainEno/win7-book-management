@@ -1,6 +1,6 @@
 {
   "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
-  "specVersion": "1.2.0",
+  "specVersion": "1.3.0",
   "project": {
     "name": "BOOK DESK / 简易图书管理系统",
     "repository": "https://github.com/BrainEno/win7-book-management",
@@ -465,7 +465,7 @@
       {
         "name": "经营管理",
         "items": [
-          "供应商",
+          "字典管理",
           "报表与导出"
         ]
       },
@@ -578,13 +578,13 @@
           "minHeight": 300,
           "headerHeight": "$profile.tableHeaderHeight",
           "rowHeight": "$profile.tableRowHeight",
-          "horizontalScrollPolicy": "forbidden_at_mandatory_viewports",
+          "horizontalScrollPolicy": "avoid_at_mandatory_viewports",
           "columnSizingAlgorithm": [
-            "Start from preferred width.",
-            "Allocate extra width to columns with flex > 0 by flex weight up to maxWidth.",
-            "When width is constrained, shrink by shrinkPriority (1 shrinks first) down to minWidth.",
-            "At mandatory viewports, every listed column remains visible; no column is hidden.",
-            "If all columns are at minWidth, remaining surplus goes to title first, then author/publisher."
+            "Identification priority is ISBN / title / author / publisher / category / price / stock.",
+            "At constrained widths, hide low-priority metadata before hiding publisher/category.",
+            "Hide priority: enabled, binding, publicationYear, shelf, storeCode, then other secondary metadata.",
+            "Empty textual cells render an em dash (—) without writing the dash back to SQLite.",
+            "At standard/expanded widths, restore columns as space permits and keep title flexible."
           ],
           "columns": [
             {
@@ -703,11 +703,10 @@
       "responsive": {
         "compact": [
           "Toolbar may use two rows only if the first row cannot keep the search input >= 360px.",
-          "If wrapped: row 1 = 搜索 + search input + 查询; row 2 = 新增图书 + 编辑资料, right aligned.",
           "Search input, 查询, 新增图书 and 编辑资料 always use the same profile controlHeight.",
-          "Do not render '包含停用'.",
-          "Reduce table columns to minWidth by shrinkPriority; do not hide columns at 1366x768.",
-          "Search field gets remaining horizontal space before buttons gain extra width."
+          "ISBN / 书名 / 作者 / 出版社 / 分类 / 销售价格 / 库存 are the highest-priority visible fields.",
+          "店内编码 / 出版年 / 装帧 / 货架位 / 启用状态 hide first on constrained Win7 screens.",
+          "Text fields with no information display —."
         ],
         "standard": [
           "Keep all search/actions on one row.",
@@ -1401,8 +1400,8 @@
         "type": "vertical",
         "gap": 12,
         "filterCard": {
-          "height": 236,
-          "compactHeight": 184,
+          "height": 252,
+          "compactHeight": 210,
           "padding": 14,
           "compactPadding": 10,
           "topAction": {
@@ -1419,6 +1418,7 @@
                 "label": "类型",
                 "control": "select",
                 "width": 210,
+                "compactWidth": 160,
                 "value": "销售单"
               },
               {
@@ -1426,6 +1426,7 @@
                 "label": "从",
                 "control": "date",
                 "width": 220,
+                "compactWidth": 170,
                 "value": "2026-10-01"
               },
               {
@@ -1433,22 +1434,8 @@
                 "label": "到",
                 "control": "date",
                 "width": 220,
+                "compactWidth": 170,
                 "value": "2026-10-01"
-              },
-              {
-                "type": "field",
-                "label": "关键词",
-                "control": "input",
-                "flex": 1,
-                "minWidth": 320,
-                "placeholder": "单号、ISBN、书名、备注或供应商"
-              },
-              {
-                "type": "button",
-                "text": "查询",
-                "variant": "primary",
-                "width": 94,
-                "alignSelf": "bottom"
               }
             ],
             "gap": 10
@@ -1467,7 +1454,35 @@
               "tone": "warning",
               "width": 166
             }
-          ]
+          ],
+          "searchRow": {
+            "height": 58,
+            "items": [
+              {
+                "type": "field",
+                "label": "关键词",
+                "control": "input",
+                "width": 520,
+                "compactWidth": 360,
+                "minWidth": 220,
+                "placeholder": "单号、ISBN、书名、备注或供应商"
+              },
+              {
+                "type": "spacer",
+                "flex": 1,
+                "minWidth": 8
+              },
+              {
+                "type": "button",
+                "text": "查询",
+                "variant": "primary",
+                "width": 94,
+                "compactWidth": 78,
+                "alignSelf": "bottom"
+              }
+            ],
+            "gap": 10
+          }
         },
         "billList": {
           "height": 288,
@@ -1567,13 +1582,199 @@
       },
       "responsive": {
         "compact": [
-          "Filter controls become two rows instead of reducing date/input heights below compact control height.",
-          "Row 1: 类型 / 从 / 到 / 查询.",
-          "Row 2: 关键词 input fills available width; return action remains top-right or moves to row 2 far-right if necessary.",
+          "类型 / 从 / 到保持第一行，关键词与查询保持第二行。",
+          "关键词宽度使用 compact 360px 上限并允许缩到 220px；不再通过挤压同一行导致占位文字或输入框裁切。",
+          "查询按钮始终保持完整可见并与关键词输入框同一视觉高度。",
           "Helper text becomes a single-line ellipsis or hides if vertical space is constrained.",
           "Bill list and bill detail both remain visible; allocate vertical space approximately 58% / 42% after filters."
         ]
       }
+    },
+    "salesCheckout": {
+      "routeName": "销售开单",
+      "selectedNav": "销售开单",
+      "layout": {
+        "type": "vertical",
+        "gap": 8,
+        "searchToolbar": {
+          "controlHeight": "$profile.controlHeight",
+          "items": [
+            "扫码 / 搜索",
+            "searchInput",
+            "加入",
+            "选择图书",
+            "新单",
+            "清空"
+          ]
+        },
+        "detailTable": {
+          "headerHeight": "$profile.tableHeaderHeight",
+          "rowHeight": "$profile.tableRowHeight",
+          "editableColumns": [
+            "数量",
+            "销售价",
+            "单品折扣%"
+          ],
+          "columns": [
+            {
+              "key": "title",
+              "title": "书名",
+              "flex": 1,
+              "minWidth": 180
+            },
+            {
+              "key": "quantity",
+              "title": "数量",
+              "width": 82,
+              "minWidth": 72
+            },
+            {
+              "key": "basePrice",
+              "title": "销售价",
+              "width": 98,
+              "minWidth": 88
+            },
+            {
+              "key": "lineDiscount",
+              "title": "单品折扣%",
+              "width": 98,
+              "minWidth": 88,
+              "default": 100
+            },
+            {
+              "key": "discountedUnit",
+              "title": "折后单价",
+              "width": 96,
+              "minWidth": 86
+            },
+            {
+              "key": "lineTotal",
+              "title": "小计",
+              "width": 104,
+              "minWidth": 92
+            },
+            {
+              "key": "stock",
+              "title": "库存",
+              "width": 70,
+              "minWidth": 62
+            },
+            {
+              "key": "author",
+              "title": "作者",
+              "width": 112,
+              "minWidth": 76
+            },
+            {
+              "key": "isbn",
+              "title": "ISBN",
+              "width": 142,
+              "minWidth": 112
+            },
+            {
+              "key": "storeCode",
+              "title": "店内编码",
+              "width": 112,
+              "minWidth": 90
+            }
+          ]
+        },
+        "settlement": {
+          "note": {
+            "flex": 1
+          },
+          "orderDiscount": {
+            "label": "整单折扣 %",
+            "width": 126,
+            "default": 100,
+            "min": 0,
+            "max": 100,
+            "decimalPlaces": 2
+          }
+        },
+        "summary": [
+          "商品项",
+          "合计数量",
+          "原金额",
+          "优惠",
+          "应收金额"
+        ]
+      },
+      "pricingRules": [
+        "单品折扣先于整单折扣计算。",
+        "折扣百分比转 basis points 保存：100.00%=10000。",
+        "每一步都在分级金额上按 MidpointRounding.AwayFromZero 舍入到整数分。",
+        "sales_order_items.unit_price_cent 保存两级折扣后的实际成交单价，确保部分退货按真实支付金额退款。",
+        "历史销售单保持折扣前价格、单品折扣、整单折扣和最终成交价快照。"
+      ],
+      "responsive": {
+        "compact": [
+          "折扣列保持可见，优先隐藏店内编码、作者、ISBN等辅助识别列。",
+          "底部整单折扣输入框和确认结账按钮始终完整可见。"
+        ]
+      }
+    },
+    "dictionaryManagement": {
+      "routeName": "字典管理",
+      "selectedNav": "字典管理",
+      "purpose": "统一管理结构化供应商与可扩展的简单字典。",
+      "providers": [
+        {
+          "key": "suppliers",
+          "label": "供应商",
+          "storage": "suppliers",
+          "fields": [
+            "名称",
+            "联系人",
+            "电话",
+            "备注",
+            "状态"
+          ]
+        },
+        {
+          "key": "book_category",
+          "label": "图书分类",
+          "storage": "dictionary_values",
+          "fields": [
+            "字典值",
+            "排序",
+            "备注",
+            "状态"
+          ],
+          "behavior": [
+            "新增/编辑值立即可用于图书资料分类选择。",
+            "停用不清空历史图书分类。",
+            "重命名图书分类时在同一事务中同步现有 books.category。"
+          ]
+        }
+      ],
+      "extensibility": {
+        "storageColumns": [
+          "dictionary_key",
+          "value",
+          "sort_order",
+          "note",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "futureKeys": [
+          "binding",
+          "shelf_zone",
+          "payment_method",
+          "customer_source",
+          "tag"
+        ]
+      }
+    },
+    "onboardingSpotlight": {
+      "behavior": [
+        "Overlay covers the application client area, not the non-client title bar.",
+        "Render a snapshot of the real current page beneath a roughly 42% dim layer.",
+        "Redraw the target rectangle at full brightness and outline it with the application accent.",
+        "Guide card remains 100% opaque.",
+        "Do not use whole-form opacity to dim the UI because that also dims the guide card and makes the target unreadable."
+      ]
     }
   },
   "implementationRules": {
@@ -1583,7 +1784,8 @@
       "Use FlowLayoutPanel only where the spec explicitly permits wrapping.",
       "Avoid page-wide absolute Location/Size placement.",
       "Fixed logical sizes are allowed for stable controls defined by this spec.",
-      "Apply MinimumSize / MaximumSize to columns and key controls according to this spec."
+      "Apply MinimumSize / MaximumSize to columns and key controls according to this spec.",
+      "Application icon is generated reproducibly before compilation and embedded in the EXE; installer, shortcuts and WinForms title bars use the same BOOK DESK icon."
     ],
     "resizingPriority": [
       "Reduce page margins",
