@@ -23,6 +23,7 @@ DisableProgramGroupPage=yes
 SetupLogging=yes
 RestartIfNeededByRun=yes
 InfoBeforeFile=install-info.txt
+SetupIconFile=..\src\Win7BookManagement\Resources\BookDesk.ico
 
 [Languages]
 Name: "chinesesimp"; MessagesFile: "ChineseSimplified.isl"
