@@ -84,6 +84,25 @@ namespace Win7BookManagement.Infrastructure
                     selfPublished.Isbn != "")
                     throw new InvalidOperationException("无 ISBN 图书自动店内编码自检失败。");
 
+                var seededCategories = services.Dictionaries.GetActiveValues(DictionaryKeys.BookCategory);
+                if (!seededCategories.Contains("测试分类"))
+                    throw new InvalidOperationException("图书分类字典自动同步自检失败。");
+
+                selfPublished.Category = "临时分类";
+                services.Books.Update(selfPublished);
+                var tempCategories = services.Dictionaries.Search(
+                    DictionaryKeys.BookCategory,
+                    "临时分类",
+                    false);
+                if (tempCategories.Count != 1)
+                    throw new InvalidOperationException("新增图书分类字典值自检失败。");
+
+                var renamedCategory = tempCategories[0];
+                renamedCategory.Value = "重命名分类";
+                services.Dictionaries.Update(renamedCategory);
+                if (services.Books.GetById(selfPublishedId).Category != "重命名分类")
+                    throw new InvalidOperationException("图书分类重命名同步自检失败。");
+
                 var selfCodeMatches = services.Books.SearchActiveByIsbnOrTitle(selfPublished.SelfCode);
                 var authorMatches = services.Books.SearchActiveByIsbnOrTitle("独立作者");
                 if (selfCodeMatches.Count != 1 || selfCodeMatches[0].Id != selfPublishedId ||
@@ -211,9 +230,17 @@ namespace Win7BookManagement.Infrastructure
                 services.Sales.Checkout(
                     new List<TransactionLineInput>
                     {
-                        new TransactionLineInput { BookId = bookId, Quantity = 2, UnitPriceCent = 2000 }
+                        new TransactionLineInput
+                        {
+                            BookId = bookId,
+                            Quantity = 2,
+                            UnitPriceCent = 2000,
+                            BaseUnitPriceCent = 2000,
+                            DiscountBasisPoints = 9000
+                        }
                     },
-                    "sale");
+                    "sale",
+                    8000);
 
                 if (services.Books.GetById(bookId).StockQuantity != 7)
                     throw new InvalidOperationException("采购/销售库存事务自检失败。");
@@ -273,8 +300,13 @@ namespace Win7BookManagement.Infrastructure
                     throw new InvalidOperationException("退货单据查询自检失败。");
 
                 var saleItems = services.Documents.GetItems("sale", saleId);
-                if (saleItems.Rows.Count != 1 || Convert.ToInt32(saleItems.Rows[0]["已退"]) != 1)
-                    throw new InvalidOperationException("原销售单退货状态自检失败。");
+                if (saleItems.Rows.Count != 1 ||
+                    Convert.ToInt32(saleItems.Rows[0]["已退"]) != 1 ||
+                    Convert.ToDecimal(saleItems.Rows[0]["原价"]) != 20.00m ||
+                    Convert.ToDecimal(saleItems.Rows[0]["单品折扣%"]) != 90.00m ||
+                    Convert.ToDecimal(saleItems.Rows[0]["整单折扣%"]) != 80.00m ||
+                    Convert.ToDecimal(saleItems.Rows[0]["实收单价"]) != 14.40m)
+                    throw new InvalidOperationException("原销售单退货状态 / 折扣快照自检失败。");
 
                 try
                 {
@@ -297,14 +329,20 @@ namespace Win7BookManagement.Infrastructure
                     dashboard.StockUnits != 7 ||
                     dashboard.TodaySalesOrders != 1 ||
                     dashboard.TodaySalesQuantity != 1 ||
-                    dashboard.TodaySalesCent != 2000)
+                    dashboard.TodaySalesCent != 1440)
                     throw new InvalidOperationException("退货后的净销售经营概览自检失败。");
 
                 var sales = services.Reports.SalesDetail(DateTime.Today, DateTime.Today);
                 var saleReturns = services.Reports.SalesReturnDetail(DateTime.Today, DateTime.Today);
                 var purchaseReturns = services.Reports.PurchaseReturnDetail(DateTime.Today, DateTime.Today);
-                if (sales.Rows.Count != 1 || saleReturns.Rows.Count != 1 || purchaseReturns.Rows.Count != 1)
-                    throw new InvalidOperationException("销售/退货报表自检失败。");
+                if (sales.Rows.Count != 1 ||
+                    saleReturns.Rows.Count != 1 ||
+                    purchaseReturns.Rows.Count != 1 ||
+                    Convert.ToDecimal(sales.Rows[0]["原单价"]) != 20.00m ||
+                    Convert.ToDecimal(sales.Rows[0]["单品折扣%"]) != 90.00m ||
+                    Convert.ToDecimal(sales.Rows[0]["整单折扣%"]) != 80.00m ||
+                    Convert.ToDecimal(sales.Rows[0]["实收单价"]) != 14.40m)
+                    throw new InvalidOperationException("销售折扣 / 退货报表自检失败。");
 
                 var snapshot = services.Reports.InventorySnapshot(DateTime.Today);
                 var selfPublishedSnapshotFound = false;
@@ -401,6 +439,7 @@ namespace Win7BookManagement.Infrastructure
                 new InventoryForm(services),
                 new DocumentCenterForm(services),
                 new ReportsForm(services),
+                new DictionaryManagementForm(services),
                 new SupplierForm(services),
                 new BackupForm(services),
                 new SettingsForm(services),
