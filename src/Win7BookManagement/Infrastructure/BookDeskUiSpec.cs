@@ -188,15 +188,17 @@ namespace Win7BookManagement.Infrastructure
         public const int InventoryDetailRowHeight = 64;
         public const int InventoryDetailLabelWidth = 88;
 
-        public const int DocumentsFilterStandardHeight = 236;
-        public const int DocumentsFilterCompactHeight = 184;
+        public const int DocumentsFilterStandardHeight = 252;
+        public const int DocumentsFilterCompactHeight = 210;
         public const int DocumentsTopActionWidth = 200;
         public const int DocumentsTypeStandardWidth = 210;
         public const int DocumentsTypeCompactWidth = 160;
         public const int DocumentsDateStandardWidth = 220;
         public const int DocumentsDateCompactWidth = 170;
-        public const int DocumentsSearchMinimumWidth = 320;
-        public const int DocumentsSearchCompactMinimumWidth = 260;
+        public const int DocumentsSearchMinimumWidth = 260;
+        public const int DocumentsSearchCompactMinimumWidth = 220;
+        public const int DocumentsSearchStandardWidth = 520;
+        public const int DocumentsSearchCompactWidth = 360;
         public const int DocumentsQueryWidth = 94;
         public const int DocumentsCompactQueryWidth = 78;
         public const int DocumentsFilterFieldGap = 10;

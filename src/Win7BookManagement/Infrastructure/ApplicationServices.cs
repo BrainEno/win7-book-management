@@ -14,6 +14,7 @@ namespace Win7BookManagement.Infrastructure
 
             Books = new BookRepository(Database);
             Suppliers = new SupplierRepository(Database);
+            Dictionaries = new DictionaryRepository(Database);
             Purchases = new PurchaseService(Database);
             Sales = new SalesService(Database);
             Returns = new ReturnService(Database);
@@ -29,6 +30,7 @@ namespace Win7BookManagement.Infrastructure
         public DatabaseConnectionFactory Database { get; private set; }
         public BookRepository Books { get; private set; }
         public SupplierRepository Suppliers { get; private set; }
+        public DictionaryRepository Dictionaries { get; private set; }
         public PurchaseService Purchases { get; private set; }
         public SalesService Sales { get; private set; }
         public ReturnService Returns { get; private set; }

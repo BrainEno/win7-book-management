@@ -16,6 +16,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\BookDesk.ico</ApplicationIcon>
     <LangVersion>7.3</LangVersion>
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>true</Prefer32Bit>
@@ -68,6 +69,7 @@
     <Compile Include="Forms\BookLookupDialog.cs" />
     <Compile Include="Forms\DashboardForm.cs" />
     <Compile Include="Forms\DocumentCenterForm.cs" />
+    <Compile Include="Forms\DictionaryManagementForm.cs" />
     <Compile Include="Forms\HelpForm.cs" />
     <Compile Include="Forms\INavigationGuard.cs" />
     <Compile Include="Forms\InventoryForm.cs" />
@@ -92,6 +94,7 @@
 
     <Compile Include="Models\Book.cs" />
     <Compile Include="Models\DashboardSummary.cs" />
+    <Compile Include="Models\DictionaryValue.cs" />
     <Compile Include="Models\PurchaseDocument.cs" />
     <Compile Include="Models\ReturnLineInput.cs" />
     <Compile Include="Models\ReturnableDocumentLine.cs" />
@@ -104,6 +107,7 @@
 
     <Compile Include="Repositories\BookRepository.cs" />
     <Compile Include="Repositories\DashboardRepository.cs" />
+    <Compile Include="Repositories\DictionaryRepository.cs" />
     <Compile Include="Repositories\DocumentRepository.cs" />
     <Compile Include="Repositories\ReportRepository.cs" />
     <Compile Include="Repositories\SettingsRepository.cs" />
@@ -128,6 +132,10 @@
     <PackageReference Include="NPOI" Version="2.6.2" />
     <PackageReference Include="AntdUI" Version="2.4.12" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <PreBuildEvent>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\scripts\generate-app-icon.ps1" -OutputPath "$(MSBuildProjectDirectory)\Resources\BookDesk.ico"</PreBuildEvent>
+  </PropertyGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

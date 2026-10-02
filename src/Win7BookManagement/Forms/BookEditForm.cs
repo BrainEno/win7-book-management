@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
@@ -18,7 +19,8 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Input _title = new AntdUI.Input();
         private readonly AntdUI.Input _author = new AntdUI.Input();
         private readonly AntdUI.Input _publisher = new AntdUI.Input();
-        private readonly AntdUI.Input _category = new AntdUI.Input();
+        private readonly AntdUI.Select _category = new AntdUI.Select();
+        private readonly List<string> _categoryValues = new List<string>();
         private readonly AntdUI.Input _publicationYear = new AntdUI.Input();
         private readonly AntdUI.Input _edition = new AntdUI.Input();
         private readonly AntdUI.Input _binding = new AntdUI.Input();
@@ -52,6 +54,7 @@ namespace Win7BookManagement.Forms
 
             ConfigureMoney(_price);
             ConfigureMoney(_defaultPurchasePrice);
+            ConfigureCategories(book == null ? "" : book.Category);
 
             _selfCode.ReadOnly = true;
             _selfCode.PlaceholderText = "系统自动生成";
@@ -253,7 +256,7 @@ namespace Win7BookManagement.Forms
             AddPair(
                 grid,
                 0,
-                CreateField("分类", _category, "例如 文学 / 社科 / 艺术 / 自出版。"),
+                CreateField("分类", CreateCategorySelector(), "从“字典管理 → 图书分类”维护；也可以在这里立即新增。"),
                 CreateField("默认货架位", _shelfCode, "例如 A-03-2，便于找书和盘点。"));
 
             AddPair(
@@ -272,6 +275,100 @@ namespace Win7BookManagement.Forms
                 "归类与出版信息",
                 "这些字段用于整理和陈列，不阻止无 ISBN、自出版或小批量出版物建档。",
                 grid);
+        }
+
+        private Control CreateCategorySelector()
+        {
+            var host = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, UiTheme.InputHeight),
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+            host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            host.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            _category.Dock = DockStyle.Fill;
+            _category.DropDownArrow = true;
+            _category.Margin = new Padding(0, 0, 7, 0);
+            _category.MinimumSize = new Size(0, UiTheme.InputHeight);
+            host.Controls.Add(_category, 0, 0);
+
+            var add = UiTheme.CreateAntdButton("新增分类", false);
+            add.Width = 96;
+            add.IconSvg = "PlusOutlined";
+            add.Margin = Padding.Empty;
+            add.Click += delegate
+            {
+                var value = DictionaryManagementForm.ShowAddBookCategory(
+                    this,
+                    _services,
+                    "");
+                if (!string.IsNullOrWhiteSpace(value))
+                    ConfigureCategories(value);
+            };
+            host.Controls.Add(add, 1, 0);
+
+            return host;
+        }
+
+        private void ConfigureCategories(string preferred)
+        {
+            var target = (preferred ?? "").Trim();
+            _category.Items.Clear();
+            _categoryValues.Clear();
+
+            var values = _services.Dictionaries.GetActiveValues(DictionaryKeys.BookCategory);
+            foreach (var value in values)
+                AddCategoryOption(value);
+
+            if (target.Length > 0)
+                AddCategoryOption(target);
+
+            _category.SelectedIndex = -1;
+            if (target.Length > 0)
+            {
+                for (var i = 0; i < _categoryValues.Count; i++)
+                {
+                    if (!string.Equals(
+                        _categoryValues[i],
+                        target,
+                        StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    _category.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        private void AddCategoryOption(string value)
+        {
+            var normalized = (value ?? "").Trim();
+            if (normalized.Length == 0) return;
+
+            foreach (var existing in _categoryValues)
+            {
+                if (string.Equals(existing, normalized, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+
+            _categoryValues.Add(normalized);
+            _category.Items.Add(normalized);
+        }
+
+        private string GetSelectedCategory()
+        {
+            var index = _category.SelectedIndex;
+            return index >= 0 && index < _categoryValues.Count
+                ? _categoryValues[index]
+                : "";
         }
 
         private Control CreateOperationsSection()
@@ -444,7 +541,7 @@ namespace Win7BookManagement.Forms
             _title.Text = book.Title;
             _author.Text = book.Author;
             _publisher.Text = book.Publisher;
-            _category.Text = book.Category;
+            ConfigureCategories(book.Category);
             _publicationYear.Text = book.PublicationYear;
             _edition.Text = book.Edition;
             _binding.Text = book.Binding;
@@ -486,7 +583,7 @@ namespace Win7BookManagement.Forms
                 target.Title = _title.Text;
                 target.Author = _author.Text;
                 target.Publisher = _publisher.Text;
-                target.Category = _category.Text;
+                target.Category = GetSelectedCategory();
                 target.PublicationYear = _publicationYear.Text;
                 target.Edition = _edition.Text;
                 target.Binding = _binding.Text;

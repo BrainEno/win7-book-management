@@ -108,7 +108,7 @@ namespace Win7BookManagement.Forms
             _categoryValues.Add("");
             _category.Items.Add("全部分类");
 
-            foreach (var value in _services.Books.GetActiveCategories())
+            foreach (var value in _services.Dictionaries.GetActiveValues(DictionaryKeys.BookCategory))
             {
                 _categoryValues.Add(value);
                 _category.Items.Add(value);

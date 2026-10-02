@@ -13,10 +13,13 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _isbn = UiTheme.CreateAntdInput("扫码或输入店内编码 / ISBN / 书名 / 作者");
         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写销售备注");
+        private readonly AntdUI.InputNumber _orderDiscount = new AntdUI.InputNumber();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
         private readonly BindingList<SalesCartRow> _rows = new BindingList<SalesCartRow>();
         private readonly Label _itemCount = new Label();
         private readonly Label _quantityTotal = new Label();
+        private readonly Label _originalTotal = new Label();
+        private readonly Label _discountTotal = new Label();
         private readonly Label _total = new Label();
         private readonly Label _emptyState = new Label();
 
@@ -27,6 +30,8 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Column _titleColumn;
         private readonly AntdUI.Column _quantityColumn;
         private readonly AntdUI.Column _priceColumn;
+        private readonly AntdUI.Column _discountColumn;
+        private readonly AntdUI.Column _discountedUnitColumn;
         private readonly AntdUI.Column _lineTotalColumn;
 
         private SalesCartRow _selectedRow;
@@ -37,27 +42,50 @@ namespace Win7BookManagement.Forms
             UiTheme.ConfigureForm(this);
             BackColor = UiTheme.Background;
 
-            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "120", MinWidth = "96", ReadOnly = true };
-            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "150", MinWidth = "116", ReadOnly = true };
-            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "116", MinWidth = "76", ReadOnly = true };
-            _stockColumn = new AntdUI.Column("Stock", "库存") { Width = "78", MinWidth = "68", ReadOnly = true };
-            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "fill", MinWidth = "220", MaxWidth = "420", Ellipsis = true, ReadOnly = true };
+            _selfCodeColumn = new AntdUI.Column("SelfCode", "店内编码") { Width = "112", MinWidth = "90", ReadOnly = true };
+            _isbnColumn = new AntdUI.Column("Isbn", "ISBN") { Width = "142", MinWidth = "112", ReadOnly = true };
+            _authorColumn = new AntdUI.Column("Author", "作者") { Width = "112", MinWidth = "76", ReadOnly = true };
+            _stockColumn = new AntdUI.Column("Stock", "库存") { Width = "70", MinWidth = "62", ReadOnly = true };
+            _titleColumn = new AntdUI.Column("Title", "书名") { Width = "fill", MinWidth = "180", MaxWidth = "360", Ellipsis = true, ReadOnly = true };
             _quantityColumn = new AntdUI.Column("Quantity", "数量")
             {
-                Width = "96",
-                MinWidth = "82",
+                Width = "82",
+                MinWidth = "72",
                 ReadOnly = false,
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
-            _priceColumn = new AntdUI.Column("UnitPriceYuan", "销售价格")
+            _priceColumn = new AntdUI.Column("UnitPriceYuan", "销售价")
             {
-                Width = "112",
-                MinWidth = "100",
+                Width = "98",
+                MinWidth = "88",
                 ReadOnly = false,
                 DisplayFormat = "0.00",
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
-            _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计") { Width = "112", MinWidth = "92", ReadOnly = true, DisplayFormat = "0.00" };
+            _discountColumn = new AntdUI.Column("DiscountPercent", "单品折扣%")
+            {
+                Width = "98",
+                MinWidth = "88",
+                ReadOnly = false,
+                DisplayFormat = "0.00",
+                Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
+            };
+            _discountedUnitColumn = new AntdUI.Column("DiscountedUnitPriceYuan", "折后单价")
+            {
+                Width = "96",
+                MinWidth = "86",
+                ReadOnly = true,
+                DisplayFormat = "0.00"
+            };
+            _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计")
+            {
+                Width = "104",
+                MinWidth = "92",
+                ReadOnly = true,
+                DisplayFormat = "0.00"
+            };
+
+            ConfigureOrderDiscount();
 
             var root = new TableLayoutPanel
             {
@@ -107,6 +135,23 @@ namespace Win7BookManagement.Forms
                 "未完成的销售单",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning) == DialogResult.Yes;
+        }
+
+        private void ConfigureOrderDiscount()
+        {
+            _orderDiscount.Minimum = 0m;
+            _orderDiscount.Maximum = 100m;
+            _orderDiscount.DecimalPlaces = 2;
+            _orderDiscount.Value = 100m;
+            _orderDiscount.Width = 126;
+            _orderDiscount.MinimumSize = new Size(126, UiTheme.InputHeight);
+            _orderDiscount.ValueChanged += delegate(object sender, AntdUI.DecimalEventArgs e)
+            {
+                foreach (var row in _rows)
+                    row.OrderDiscountPercent = _orderDiscount.Value;
+                _grid.Refresh();
+                UpdateTotals();
+            };
         }
 
         private Control CreateInputSection()
@@ -231,7 +276,7 @@ namespace Win7BookManagement.Forms
 
             header.Controls.Add(new Label
             {
-                Text = "数量和售价可直接编辑",
+                Text = "数量、销售价和单品折扣可直接编辑；折扣按百分比输入",
                 AutoSize = true,
                 Anchor = AnchorStyles.Right,
                 ForeColor = UiTheme.TextSecondary,
@@ -265,7 +310,6 @@ namespace Win7BookManagement.Forms
         private void ConfigureGrid()
         {
             _grid.Dock = DockStyle.Fill;
-
             _grid.RowHeight = 44;
             _grid.RowHeightHeader = 42;
             _grid.EnableHeaderResizing = true;
@@ -279,13 +323,15 @@ namespace Win7BookManagement.Forms
                 _titleColumn,
                 _quantityColumn,
                 _priceColumn,
+                _discountColumn,
+                _discountedUnitColumn,
                 _lineTotalColumn,
                 _stockColumn,
                 _authorColumn,
                 _isbnColumn,
                 _selfCodeColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "sales-lines-v2");
+            _grid.ConfigureColumnPersistence(_services.Settings, "sales-lines-v3-discount");
 
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
@@ -322,7 +368,17 @@ namespace Win7BookManagement.Forms
                     MessageBox.Show(this, "销售价格必须是有效的非负金额。", "金额格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return false;
                 }
-                row.UnitPriceYuan = price;
+                row.UnitPriceYuan = decimal.Round(price, 2, MidpointRounding.AwayFromZero);
+            }
+            else if (string.Equals(e.Column.Key, "DiscountPercent", StringComparison.Ordinal))
+            {
+                decimal percent;
+                if (!decimal.TryParse(e.Value, out percent) || percent < 0m || percent > 100m)
+                {
+                    MessageBox.Show(this, "单品折扣必须在 0 到 100 之间，例如 90 表示九折。", "折扣格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+                row.DiscountPercent = decimal.Round(percent, 2, MidpointRounding.AwayFromZero);
             }
 
             _grid.Refresh();
@@ -338,7 +394,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, UiTheme.InputHeight + 14),
-                ColumnCount = 2,
+                ColumnCount = 4,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(14, 7, 14, 7),
@@ -346,6 +402,8 @@ namespace Win7BookManagement.Forms
             };
             section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             section.Controls.Add(new Label
             {
@@ -358,8 +416,23 @@ namespace Win7BookManagement.Forms
             }, 0, 0);
 
             _note.Dock = DockStyle.Fill;
-            _note.Margin = Padding.Empty;
+            _note.Margin = new Padding(0, 0, 18, 0);
             section.Controls.Add(_note, 1, 0);
+
+            section.Controls.Add(new Label
+            {
+                Text = "整单折扣 %",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                Margin = new Padding(0, 0, 8, 0)
+            }, 2, 0);
+
+            _orderDiscount.Dock = DockStyle.None;
+            _orderDiscount.Anchor = AnchorStyles.Left;
+            _orderDiscount.Margin = Padding.Empty;
+            section.Controls.Add(_orderDiscount, 3, 0);
             return section;
         }
 
@@ -391,9 +464,13 @@ namespace Win7BookManagement.Forms
 
             ConfigureSummaryLabel(_itemCount, false);
             ConfigureSummaryLabel(_quantityTotal, false);
+            ConfigureSummaryLabel(_originalTotal, false);
+            ConfigureSummaryLabel(_discountTotal, false);
             ConfigureSummaryLabel(_total, true);
             metrics.Controls.Add(_itemCount);
             metrics.Controls.Add(_quantityTotal);
+            metrics.Controls.Add(_originalTotal);
+            metrics.Controls.Add(_discountTotal);
             metrics.Controls.Add(_total);
 
             var submit = UiTheme.CreateAntdButton("确认结账", true);
@@ -419,12 +496,10 @@ namespace Win7BookManagement.Forms
         private void ApplyResponsiveColumns()
         {
             var width = _grid.ClientSize.Width > 0 ? _grid.ClientSize.Width : ClientSize.Width;
-            // Keep the checkout table readable without horizontal scrolling.
-            // Low-priority reference fields progressively return as width grows.
-            _selfCodeColumn.Visible = width >= 1250;
-            _authorColumn.Visible = width >= 1080;
-            _isbnColumn.Visible = width >= 900;
-            _stockColumn.Visible = width >= 720;
+            _selfCodeColumn.Visible = width >= 1400;
+            _authorColumn.Visible = width >= 1150;
+            _isbnColumn.Visible = width >= 950;
+            _stockColumn.Visible = width >= 760;
             _grid.LoadLayout();
         }
 
@@ -507,7 +582,9 @@ namespace Win7BookManagement.Forms
                 Author = book.Author,
                 Stock = book.StockQuantity,
                 Quantity = 1,
-                UnitPriceYuan = Money.ToYuan(book.SalePriceCent)
+                UnitPriceYuan = Money.ToYuan(book.SalePriceCent),
+                DiscountPercent = 100m,
+                OrderDiscountPercent = _orderDiscount.Value
             };
             _rows.Add(added);
             _selectedRow = added;
@@ -548,23 +625,37 @@ namespace Win7BookManagement.Forms
             _selectedRow = null;
             _note.Text = "";
             _isbn.Text = "";
+            _orderDiscount.Value = 100m;
             _isbn.Focus();
             UpdateTotals();
         }
 
         private void UpdateTotals()
         {
-            decimal total = 0m;
+            long originalCent = 0;
+            long finalCent = 0;
             var quantity = 0;
+
             foreach (var row in _rows)
             {
-                total += row.Quantity * row.UnitPriceYuan;
+                row.OrderDiscountPercent = _orderDiscount.Value;
+
+                var baseUnitCent = Money.FromYuan(row.UnitPriceYuan);
+                var lineBasisPoints = PercentToBasisPoints(row.DiscountPercent);
+                var orderBasisPoints = PercentToBasisPoints(row.OrderDiscountPercent);
+                var lineUnitCent = ApplyBasisPoints(baseUnitCent, lineBasisPoints);
+                var finalUnitCent = ApplyBasisPoints(lineUnitCent, orderBasisPoints);
+
+                originalCent = checked(originalCent + checked((long)row.Quantity * baseUnitCent));
+                finalCent = checked(finalCent + checked((long)row.Quantity * finalUnitCent));
                 quantity += row.Quantity;
             }
 
             _itemCount.Text = "商品项  " + _rows.Count;
             _quantityTotal.Text = "合计数量  " + quantity;
-            _total.Text = "应收金额  ¥" + total.ToString("0.00");
+            _originalTotal.Text = "原金额  ¥" + Money.ToYuan(originalCent).ToString("0.00");
+            _discountTotal.Text = "优惠  ¥" + Money.ToYuan(originalCent - finalCent).ToString("0.00");
+            _total.Text = "应收金额  ¥" + Money.ToYuan(finalCent).ToString("0.00");
 
             _emptyState.Visible = _rows.Count == 0;
             if (_rows.Count == 0) _emptyState.BringToFront();
@@ -585,19 +676,28 @@ namespace Win7BookManagement.Forms
                 var lines = new List<TransactionLineInput>();
                 foreach (var row in _rows)
                 {
-                    if (row.Quantity <= 0) throw new InvalidOperationException("《" + row.Title + "》的数量必须大于 0。");
-                    if (row.Quantity > row.Stock) throw new InvalidOperationException("《" + row.Title + "》库存只有 " + row.Stock + " 册，请调整销售数量。");
-                    if (row.UnitPriceYuan < 0) throw new InvalidOperationException("《" + row.Title + "》的售价不能为负数。");
+                    if (row.Quantity <= 0)
+                        throw new InvalidOperationException("《" + row.Title + "》的数量必须大于 0。");
+                    if (row.Quantity > row.Stock)
+                        throw new InvalidOperationException("《" + row.Title + "》库存只有 " + row.Stock + " 册，请调整销售数量。");
+                    if (row.UnitPriceYuan < 0)
+                        throw new InvalidOperationException("《" + row.Title + "》的售价不能为负数。");
+                    if (row.DiscountPercent < 0m || row.DiscountPercent > 100m)
+                        throw new InvalidOperationException("《" + row.Title + "》的单品折扣必须在 0 到 100 之间。");
 
+                    var baseCent = Money.FromYuan(row.UnitPriceYuan);
                     lines.Add(new TransactionLineInput
                     {
                         BookId = row.BookId,
                         Quantity = row.Quantity,
-                        UnitPriceCent = Money.FromYuan(row.UnitPriceYuan)
+                        UnitPriceCent = baseCent,
+                        BaseUnitPriceCent = baseCent,
+                        DiscountBasisPoints = PercentToBasisPoints(row.DiscountPercent)
                     });
                 }
 
-                var orderNo = _services.Sales.Checkout(lines, _note.Text);
+                var orderBasisPoints = PercentToBasisPoints(_orderDiscount.Value);
+                var orderNo = _services.Sales.Checkout(lines, _note.Text, orderBasisPoints);
                 MessageBox.Show(this, "销售完成。\r\n单号：" + orderNo, "结账成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ResetOrder();
             }
@@ -605,6 +705,27 @@ namespace Win7BookManagement.Forms
             {
                 MessageBox.Show(this, "结账失败：\r\n" + ex.Message, "请检查销售单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private static int PercentToBasisPoints(decimal percent)
+        {
+            var clamped = Math.Max(0m, Math.Min(100m, percent));
+            return decimal.ToInt32(
+                decimal.Round(clamped * 100m, 0, MidpointRounding.AwayFromZero));
+        }
+
+        private static long ApplyBasisPoints(long amountCent, int basisPoints)
+        {
+            if (amountCent <= 0 || basisPoints <= 0)
+                return 0;
+            if (basisPoints >= 10000)
+                return amountCent;
+
+            return decimal.ToInt64(
+                decimal.Round(
+                    amountCent * (basisPoints / 10000m),
+                    0,
+                    MidpointRounding.AwayFromZero));
         }
 
         private sealed class SalesCartRow
@@ -617,7 +738,29 @@ namespace Win7BookManagement.Forms
             public int Stock { get; set; }
             public int Quantity { get; set; }
             public decimal UnitPriceYuan { get; set; }
-            public decimal LineTotalYuan { get { return Quantity * UnitPriceYuan; } }
+            public decimal DiscountPercent { get; set; }
+            public decimal OrderDiscountPercent { get; set; }
+
+            public decimal DiscountedUnitPriceYuan
+            {
+                get
+                {
+                    var baseCent = Money.FromYuan(UnitPriceYuan);
+                    return Money.ToYuan(
+                        ApplyBasisPoints(baseCent, PercentToBasisPoints(DiscountPercent)));
+                }
+            }
+
+            public decimal LineTotalYuan
+            {
+                get
+                {
+                    var baseCent = Money.FromYuan(UnitPriceYuan);
+                    var lineCent = ApplyBasisPoints(baseCent, PercentToBasisPoints(DiscountPercent));
+                    var finalCent = ApplyBasisPoints(lineCent, PercentToBasisPoints(OrderDiscountPercent));
+                    return Money.ToYuan(checked((long)Quantity * finalCent));
+                }
+            }
         }
     }
 }

@@ -61,6 +61,7 @@ namespace Win7BookManagement.Infrastructure
 
         private const string HostedInputTag = "ui-input-hosted";
         private static readonly string FontFamilyName = ResolveFontFamily();
+        private static Icon _applicationIcon;
 
         public static void InitializeAntdUi()
         {
@@ -218,8 +219,29 @@ namespace Win7BookManagement.Infrastructure
             form.Font = Font(9F);
             form.ForeColor = TextPrimary;
 
+            var icon = GetApplicationIcon();
+            if (icon != null)
+                form.Icon = icon;
+
             if (form.BackColor == SystemColors.Control)
                 form.BackColor = Background;
+        }
+
+        private static Icon GetApplicationIcon()
+        {
+            if (_applicationIcon != null)
+                return _applicationIcon;
+
+            try
+            {
+                _applicationIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            }
+            catch
+            {
+                _applicationIcon = null;
+            }
+
+            return _applicationIcon;
         }
 
         public static FlowLayoutPanel CreateResponsiveToolbar()

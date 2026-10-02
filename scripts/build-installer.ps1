@@ -15,6 +15,8 @@ $innoDir = Join-Path $toolsDir "InnoSetup6"
 $innoInstaller = Join-Path $toolsDir "innosetup-6.7.3.exe"
 $issFile = Join-Path $installerDir "win7-book-management.iss"
 $dotnetInstaller = Join-Path $prereqDir "NDP48-x86-x64-AllOS-ENU.exe"
+$iconGenerator = Join-Path $root "scripts\generate-app-icon.ps1"
+$appIcon = Join-Path $root "src\Win7BookManagement\Resources\BookDesk.ico"
 
 $dotnetUrl = "https://download.microsoft.com/download/f/3/a/f3a6af84-da23-40a5-8d1c-49cc10c8e76f/NDP48-x86-x64-AllOS-ENU.exe"
 $innoUrl = "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe"
@@ -143,6 +145,17 @@ function Ensure-InnoSetupCompiler {
 
 Push-Location $root
 try {
+    Write-Host "== Generate BOOK DESK application icon =="
+    Invoke-Checked "powershell.exe" @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        $iconGenerator,
+        "-OutputPath",
+        $appIcon
+    )
+
     if (-not $SkipBuild) {
         $msbuild = Find-MSBuild
 

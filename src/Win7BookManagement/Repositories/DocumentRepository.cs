@@ -271,9 +271,13 @@ SELECT si.isbn_snapshot AS ISBN,
        si.quantity AS 原数量,
        COALESCE((SELECT SUM(sri.quantity) FROM sales_return_items sri WHERE sri.source_sales_order_item_id=si.id),0) AS 已退,
        si.quantity-COALESCE((SELECT SUM(sri.quantity) FROM sales_return_items sri WHERE sri.source_sales_order_item_id=si.id),0) AS 可退,
-       ROUND(si.unit_price_cent/100.0,2) AS 单价,
+       ROUND(si.base_unit_price_cent/100.0,2) AS 原价,
+       ROUND(si.line_discount_basis_points/100.0,2) AS [单品折扣%],
+       ROUND(so.order_discount_basis_points/100.0,2) AS [整单折扣%],
+       ROUND(si.unit_price_cent/100.0,2) AS 实收单价,
        ROUND(si.line_total_cent/100.0,2) AS 金额
 FROM sales_order_items si
+JOIN sales_orders so ON so.id=si.sales_order_id
 WHERE si.sales_order_id=@id
 ORDER BY si.id;";
                 case "purchase":
@@ -293,7 +297,7 @@ ORDER BY pi.id;";
 SELECT sri.isbn_snapshot AS ISBN,
        sri.title_snapshot AS 书名,
        sri.quantity AS 退货数量,
-       ROUND(sri.unit_price_cent/100.0,2) AS 原售价,
+       ROUND(sri.unit_price_cent/100.0,2) AS 成交单价,
        ROUND(sri.line_total_cent/100.0,2) AS 退款金额
 FROM sales_return_items sri
 WHERE sri.sales_return_id=@id

@@ -356,6 +356,14 @@ namespace Win7BookManagement.Infrastructure
 
                 Capture(
                     outputDirectory,
+                    "11b-dictionaries-1366x768.png",
+                    delegate { return new DictionaryManagementForm(services); },
+                    new Size(1366, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
                     "12-reports-1366x768.png",
                     delegate { return new ReportsForm(services); },
                     new Size(1366, 768),
@@ -463,6 +471,14 @@ namespace Win7BookManagement.Infrastructure
                     outputDirectory,
                     "21-suppliers-1024x768.png",
                     delegate { return new SupplierForm(services); },
+                    new Size(1024, 768),
+                    true,
+                    null);
+
+                Capture(
+                    outputDirectory,
+                    "21b-dictionaries-1024x768.png",
+                    delegate { return new DictionaryManagementForm(services); },
                     new Size(1024, 768),
                     true,
                     null);
@@ -874,7 +890,7 @@ namespace Win7BookManagement.Infrastructure
                 Application.DoEvents();
 
                 guide.StartPosition = FormStartPosition.Manual;
-                guide.Bounds = new Rectangle(Point.Empty, size);
+                guide.Bounds = main.RectangleToScreen(main.ClientRectangle);
                 guide.ShowInTaskbar = false;
                 guide.Show();
                 Application.DoEvents();
@@ -883,7 +899,7 @@ namespace Win7BookManagement.Infrastructure
 
                 SaveFormBitmap(
                     guide,
-                    size,
+                    guide.ClientSize,
                     Path.Combine(
                         outputDirectory,
                         "26-onboarding-guide-1024x768.png"));
@@ -901,7 +917,7 @@ namespace Win7BookManagement.Infrastructure
 
                 SaveFormBitmap(
                     guide,
-                    size,
+                    guide.ClientSize,
                     Path.Combine(
                         outputDirectory,
                         "27-onboarding-books-step-1024x768.png"));

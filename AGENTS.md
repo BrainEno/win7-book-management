@@ -54,6 +54,9 @@ Do not add architectural layers without a concrete need.
 - Never mutate historical inventory transaction rows to "fix" current stock. Use an explicit adjustment transaction.
 - Historical inventory for a date must be reproducible from the inventory ledger.
 - Deleting a book that has transaction history is forbidden; deactivate it instead.
+- Sales discounts are stored as integer basis points (10000 = 100.00%). Apply line discount before whole-order discount, round each unit-price stage to integer cents using AwayFromZero, and preserve the pre-discount price plus both discount snapshots.
+- `sales_order_items.unit_price_cent` is the actual final unit price paid after all discounts. Sales returns must continue to refund from that immutable snapshot.
+- Generic dictionary values are never physically deleted from historical business data. Disabling a value prevents future selection; renaming a book category must update current book master data transactionally while historical documents remain snapshot-based.
 
 ## Return invariants
 - Never edit or delete an original sales or purchase document to represent a return.
@@ -85,6 +88,7 @@ Do not add architectural layers without a concrete need.
 - Prefer AntdUI's **built-in Ant Design light theme and default state styling**. Do not hand-paint AntdUI controls with page-specific BorderColor / Radius / Hover / Selected colors unless a concrete business-state distinction requires it.
 - UiTheme exists primarily for Win7/DPI/layout safety and for native WinForms layout surfaces that AntdUI does not replace. It must not become a parallel skin system over AntdUI.
 - The main sidebar must use AntdUI.Menu rather than a custom stack of buttons, indicators, or hand-written hover/selected states.
+- Onboarding must keep the underlying interface readable. Do not dim the entire guide Form with high `Opacity`; use a readable spotlight/snapshot approach where the target remains fully visible and the guide card remains opaque.
 
 ## Offline packaging rules
 - The target customer PC must never need to search the web for DLLs.
@@ -96,6 +100,7 @@ Do not add architectural layers without a concrete need.
 - Packaging process may use Internet on the development/CI machine to fetch official build prerequisites; the generated installer must not need Internet.
 - Use Inno Setup 6.7.3 as the installer compiler. Keep `MinVersion=6.1sp1`, keep the packaging tool outside business logic, and preserve the ability to replace it later without changing application code.
 - Keep installer build reproducible through `build-installer.cmd`.
+- The BOOK DESK application icon must be reproducibly generated before compilation and embedded in the executable; installer/shortcuts/title bars must use the same icon.
 
 ## SQLite rules
 - Enable foreign keys for every connection.
