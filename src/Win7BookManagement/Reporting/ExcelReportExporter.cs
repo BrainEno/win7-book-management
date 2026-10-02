@@ -134,10 +134,15 @@ namespace Win7BookManagement.Reporting
                             table.Columns.Count - 1));
                 }
 
-                sheet.FitToPage = true;
-                sheet.PrintSetup.Landscape = table.Columns.Count >= 7;
-                sheet.PrintSetup.FitWidth = 1;
-                sheet.PrintSetup.FitHeight = 0;
+                ExcelPrintLayout.Apply(
+                    workbook,
+                    sheet,
+                    string.IsNullOrWhiteSpace(sheetName) ? "报表" : sheetName.Trim(),
+                    table.Columns.Count >= 7,
+                    1,
+                    1,
+                    Math.Max(0, table.Columns.Count - 1),
+                    Math.Max(1, table.Rows.Count + 1));
 
                 using (var stream = File.Create(path))
                     workbook.Write(stream);
