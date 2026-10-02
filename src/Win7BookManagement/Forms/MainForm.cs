@@ -210,7 +210,7 @@ namespace Win7BookManagement.Forms
             AddNavigation(core, "documents", "单据中心", "FileTextOutlined");
 
             var management = AddGroup("经营管理");
-            AddNavigation(management, "suppliers", "供应商", "UsergroupAddOutlined");
+            AddNavigation(management, "suppliers", "字典管理", "ProfileOutlined");
             AddNavigation(management, "reports", "报表与导出", "BarChartOutlined");
 
             var system = AddGroup("系统");
@@ -354,8 +354,8 @@ namespace Win7BookManagement.Forms
                     child = new InventoryForm(_services);
                     break;
                 case "suppliers":
-                    title = "供应商";
-                    child = new SupplierForm(_services);
+                    title = "字典管理";
+                    child = new DictionaryManagementForm(_services);
                     break;
                 case "reports":
                     title = "报表与导出";
@@ -521,7 +521,7 @@ namespace Win7BookManagement.Forms
                 case "inventory": return "CodeSandboxOutlined";
                 case "documents": return "FileTextOutlined";
                 case "sales": return "FileAddOutlined";
-                case "suppliers": return "UsergroupAddOutlined";
+                case "suppliers": return "ProfileOutlined";
                 case "reports": return "BarChartOutlined";
                 case "backup": return "DatabaseOutlined";
                 case "help": return "QuestionCircleOutlined";
