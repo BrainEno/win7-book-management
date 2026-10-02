@@ -134,10 +134,15 @@ namespace Win7BookManagement.Reporting
                             table.Columns.Count - 1));
                 }
 
-                sheet.FitToPage = true;
-                sheet.PrintSetup.Landscape = table.Columns.Count >= 7;
-                sheet.PrintSetup.FitWidth = 1;
-                sheet.PrintSetup.FitHeight = 0;
+                ExcelPrintLayout.Apply(
+                    workbook,
+                    sheet,
+                    string.IsNullOrWhiteSpace(sheetName) ? "报表" : sheetName.Trim(),
+                    table.Columns.Count >= 7,
+                    1,
+                    1,
+                    Math.Max(0, table.Columns.Count - 1),
+                    Math.Max(1, table.Rows.Count + 1));
 
                 using (var stream = File.Create(path))
                     workbook.Write(stream);
@@ -276,7 +281,9 @@ namespace Win7BookManagement.Reporting
             else if (name == "供应商") width = 18;
             else if (name.Contains("方式")) width = 12;
             else if (name.Contains("备注")) width = 30;
-            else if (name.Contains("数量") || name == "已退" || name == "可退") width = 11;
+            else if (name.Contains("数量") || name.Contains("册数") ||
+                     name.Contains("单数") || name == "订单数" ||
+                     name == "供应商数" || name == "已退" || name == "可退") width = 11;
             else if (IsMoneyColumn(name)) width = 14;
             else width = 15;
 
@@ -290,12 +297,23 @@ namespace Win7BookManagement.Reporting
                    name.Contains("进价") ||
                    name.Contains("成本") ||
                    name.Contains("售价") ||
-                   name.Contains("退款");
+                   name.Contains("退款") ||
+                   name.Contains("毛利") ||
+                   name.Contains("净额") ||
+                   name.Contains("折扣%") ||
+                   name == "优惠额" ||
+                   name == "销售额" ||
+                   name == "退货额" ||
+                   name == "净销售";
         }
 
         private static bool IsIntegerColumn(string name)
         {
             return name.Contains("数量") ||
+                   name.Contains("册数") ||
+                   name.Contains("单数") ||
+                   name == "订单数" ||
+                   name == "供应商数" ||
                    name == "库存" ||
                    name == "库存数量" ||
                    name == "数量变化";

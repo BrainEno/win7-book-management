@@ -573,7 +573,15 @@ namespace Win7BookManagement.Reporting
                     BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Medium);
             }
 
-            ConfigurePrint(sheet, true);
+            ExcelPrintLayout.Apply(
+                workbook,
+                sheet,
+                storeName + " " + month.ToString("yyyy-MM") + " 销售月报",
+                true,
+                0,
+                3,
+                FirstDayColumn + MaxCalendarDays * ColumnsPerDay - 1,
+                noteRowIndex);
         }
 
         private static void CreateDailyDetail(
@@ -745,7 +753,15 @@ namespace Win7BookManagement.Reporting
                     Math.Max(1, currentExcelRow - 1),
                     0,
                     TemplateDetailHeaders.Length - 1));
-            ConfigurePrint(sheet, true);
+            ExcelPrintLayout.Apply(
+                workbook,
+                sheet,
+                date.ToString("yyyy-MM-dd") + " 销售明细",
+                true,
+                1,
+                1,
+                TemplateDetailHeaders.Length - 1,
+                Math.Max(2, currentExcelRow - 1));
         }
 
         private static void WriteDetailValue(
@@ -1009,14 +1025,6 @@ namespace Win7BookManagement.Reporting
                         top, bottom);
                 }
             }
-        }
-
-        private static void ConfigurePrint(ISheet sheet, bool landscape)
-        {
-            sheet.FitToPage = true;
-            sheet.PrintSetup.Landscape = landscape;
-            sheet.PrintSetup.FitWidth = 1;
-            sheet.PrintSetup.FitHeight = 0;
         }
 
         private static void WriteSummaryCell(

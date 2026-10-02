@@ -82,8 +82,11 @@ namespace Win7BookManagement.Forms
         {
             _reportOptions.Add(new ReportOption("销售明细", "sales"));
             _reportOptions.Add(new ReportOption("销售月报（模板）", "sales_monthly"));
+            _reportOptions.Add(new ReportOption("经营日报", "operating_daily"));
+            _reportOptions.Add(new ReportOption("月度经营摘要", "operating_monthly"));
             _reportOptions.Add(new ReportOption("销售退货明细", "sales_return"));
             _reportOptions.Add(new ReportOption("采购明细", "purchase"));
+            _reportOptions.Add(new ReportOption("采购月报（工作簿）", "purchase_monthly"));
             _reportOptions.Add(new ReportOption("采购退货明细", "purchase_return"));
             _reportOptions.Add(new ReportOption("库存变动明细", "movement"));
             _reportOptions.Add(new ReportOption("指定日期库存快照", "snapshot"));
@@ -297,14 +300,27 @@ namespace Win7BookManagement.Forms
         private void UpdateDateControls()
         {
             var option = SelectedOption;
-            var snapshot = option != null && option.Key == "snapshot";
-            var monthlySales = option != null && option.Key == "sales_monthly";
-            _from.Enabled = !snapshot && !monthlySales;
-            _rangeHint.Text = snapshot
-                ? "库存快照按右侧日期结束时点计算"
-                : monthlySales
-                    ? "销售月报按右侧日期所在月份生成；导出含月度总表 + 每日明细 Sheet"
-                    : "日期范围包含开始日和结束日";
+            var key = option == null ? "" : option.Key;
+            var snapshot = key == "snapshot";
+            var daily = key == "operating_daily";
+            var monthly = key == "sales_monthly" ||
+                          key == "operating_monthly" ||
+                          key == "purchase_monthly";
+
+            _from.Enabled = !snapshot && !daily && !monthly;
+
+            if (snapshot)
+                _rangeHint.Text = "库存快照按右侧日期结束时点计算";
+            else if (daily)
+                _rangeHint.Text = "经营日报按右侧日期统计销售、退货、优惠、客单价、参考毛利与支付净额";
+            else if (key == "sales_monthly")
+                _rangeHint.Text = "销售月报按右侧日期所在月份生成；导出含月度总表 + 每日明细 Sheet";
+            else if (key == "operating_monthly")
+                _rangeHint.Text = "月度经营摘要按右侧日期所在月份统计；表格按日展开并附本月合计";
+            else if (key == "purchase_monthly")
+                _rangeHint.Text = "采购月报按右侧日期所在月份生成；含月汇总、供应商汇总与每日入库/退货明细";
+            else
+                _rangeHint.Text = "日期范围包含开始日和结束日";
         }
 
         private void Query()
@@ -314,8 +330,7 @@ namespace Win7BookManagement.Forms
                 var option = SelectedOption;
                 if (option == null) return;
 
-                if (option.Key != "snapshot" &&
-                    option.Key != "sales_monthly" &&
+                if (!IsSingleDateOrMonthReport(option.Key) &&
                     ToDate < FromDate)
                 {
                     MessageBox.Show(this, "结束日期不能早于开始日期，请重新选择日期范围。", "日期范围不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -331,8 +346,17 @@ namespace Win7BookManagement.Forms
                         var monthEnd = monthStart.AddMonths(1).AddDays(-1);
                         _current = _services.Reports.SalesDetail(monthStart, monthEnd);
                         break;
+                    case "operating_daily":
+                        _current = _services.Reports.OperatingDailySummary(ToDate);
+                        break;
+                    case "operating_monthly":
+                        _current = _services.Reports.OperatingMonthlySummary(ToDate);
+                        break;
                     case "sales_return": _current = _services.Reports.SalesReturnDetail(FromDate, ToDate); break;
                     case "purchase": _current = _services.Reports.PurchaseDetail(FromDate, ToDate); break;
+                    case "purchase_monthly":
+                        _current = _services.Reports.PurchaseMonthlySummary(ToDate);
+                        break;
                     case "purchase_return": _current = _services.Reports.PurchaseReturnDetail(FromDate, ToDate); break;
                     case "movement": _current = _services.Reports.InventoryMovements(FromDate, ToDate); break;
                     case "snapshot": _current = _services.Reports.InventorySnapshot(ToDate); break;
@@ -352,6 +376,15 @@ namespace Win7BookManagement.Forms
             {
                 MessageBox.Show(this, "查询失败：\r\n" + ex.Message, "报表查询失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private static bool IsSingleDateOrMonthReport(string key)
+        {
+            return key == "snapshot" ||
+                   key == "sales_monthly" ||
+                   key == "operating_daily" ||
+                   key == "operating_monthly" ||
+                   key == "purchase_monthly";
         }
 
         private void BuildColumns()
@@ -390,15 +423,29 @@ namespace Win7BookManagement.Forms
             if (name == "出版社") return "128";
             if (name == "分类") return "96";
             if (name == "货架位") return "92";
-            if (name.Contains("数量")) return "88";
-            if (name.Contains("价")) return "96";
-            if (name.Contains("金额")) return "108";
+            if (name == "订单数" || name == "采购单数" ||
+                name == "采购退货单数" || name == "供应商数") return "92";
+            if (name.Contains("册数") || name.Contains("数量")) return "96";
+            if (name.Contains("折扣%") || name.Contains("毛利率%")) return "118";
+            if (name.Contains("净额")) return "112";
+            if (name.Contains("价")) return "102";
+            if (name.Contains("金额") || name == "净销售" ||
+                name == "原金额" || name == "优惠额" ||
+                name.Contains("成本") || name.Contains("毛利")) return "112";
             return "120";
         }
 
         private static bool IsMoneyColumn(string name)
         {
-            return name.Contains("金额") || name.Contains("价");
+            return name.Contains("金额") ||
+                   name.Contains("价") ||
+                   name == "净销售" ||
+                   name == "原金额" ||
+                   name == "优惠额" ||
+                   name.Contains("成本") ||
+                   name.Contains("毛利") ||
+                   name.Contains("净额") ||
+                   name.Contains("折扣%");
         }
 
         private void UpdateSummary(ReportOption option)
@@ -409,6 +456,86 @@ namespace Win7BookManagement.Forms
             _returnAmountChip.Visible = false;
             _netAmountChip.Visible = false;
             _orderChip.Visible = false;
+
+            if (option.Key == "operating_daily" ||
+                option.Key == "operating_monthly")
+            {
+                var row = GetSummaryRow(option.Key == "operating_monthly");
+                var period = option.Key == "operating_daily"
+                    ? ToDate.ToString("yyyy-MM-dd")
+                    : ToDate.ToString("yyyy-MM");
+
+                var salesAmount = GetDecimal(row, "销售额");
+                var returnAmount = GetDecimal(row, "退货额");
+                var netSales = GetDecimal(row, "净销售");
+                var orderCount = GetLong(row, "订单数");
+                var netQuantity = GetLong(row, "净销售册数");
+                var averageOrder = GetDecimal(row, "客单价");
+                var originalAmount = GetDecimal(row, "原金额");
+                var discountAmount = GetDecimal(row, "优惠额");
+                var averageDiscount = GetDecimal(row, "平均成交折扣%");
+                var referenceCost = GetDecimal(row, "参考成本");
+                var referenceProfit = GetDecimal(row, "参考毛利");
+                var referenceMargin = GetDecimal(row, "参考毛利率%");
+
+                _rowChip.Text = option.Key == "operating_daily"
+                    ? "经营日  " + period
+                    : "统计天数  " + Math.Max(0, rowCount - 1);
+                _quantityChip.Visible = true;
+                _quantityChip.Text = "净销售册数  " + netQuantity;
+                _amountChip.Visible = true;
+                _amountChip.Text = "销售额  ¥" + salesAmount.ToString("0.00");
+                _returnAmountChip.Visible = true;
+                _returnAmountChip.Text = "退货额  ¥" + returnAmount.ToString("0.00");
+                _netAmountChip.Visible = true;
+                _netAmountChip.Text = "净销售  ¥" + netSales.ToString("0.00");
+                _orderChip.Visible = true;
+                _orderChip.Text = "订单  " + orderCount +
+                    " · 客单价 ¥" + averageOrder.ToString("0.00");
+
+                _summary.Text =
+                    option.Text + " · " + period +
+                    " · 原金额 ¥" + originalAmount.ToString("0.00") +
+                    " · 优惠 ¥" + discountAmount.ToString("0.00") +
+                    " · 平均成交折扣 " + averageDiscount.ToString("0.00") + "%" +
+                    " · 参考成本 ¥" + referenceCost.ToString("0.00") +
+                    " · 参考毛利 ¥" + referenceProfit.ToString("0.00") +
+                    "（" + referenceMargin.ToString("0.00") + "%）" +
+                    " · 支付净额：微信 ¥" + GetDecimal(row, "微信净额").ToString("0.00") +
+                    " / 支付宝 ¥" + GetDecimal(row, "支付宝净额").ToString("0.00") +
+                    " / 现金 ¥" + GetDecimal(row, "现金净额").ToString("0.00") +
+                    " / 其他 ¥" + GetDecimal(row, "其他净额").ToString("0.00");
+                return;
+            }
+
+            if (option.Key == "purchase_monthly")
+            {
+                var row = GetSummaryRow(true);
+                var purchaseAmount = GetDecimal(row, "采购金额");
+                var returnAmount = GetDecimal(row, "退货金额");
+                var netAmount = GetDecimal(row, "净采购金额");
+                var purchaseCount = GetLong(row, "采购单数");
+                var supplierCount = GetLong(row, "供应商数");
+                var netQuantity = GetLong(row, "净入库册数");
+
+                _rowChip.Text = "统计天数  " + Math.Max(0, rowCount - 1);
+                _quantityChip.Visible = true;
+                _quantityChip.Text = "净入库册数  " + netQuantity;
+                _amountChip.Visible = true;
+                _amountChip.Text = "采购金额  ¥" + purchaseAmount.ToString("0.00");
+                _returnAmountChip.Visible = true;
+                _returnAmountChip.Text = "退货金额  ¥" + returnAmount.ToString("0.00");
+                _netAmountChip.Visible = true;
+                _netAmountChip.Text = "净采购  ¥" + netAmount.ToString("0.00");
+                _orderChip.Visible = true;
+                _orderChip.Text = "采购单  " + purchaseCount +
+                    " · 供应商 " + supplierCount;
+
+                _summary.Text = option.Text + " · " + ToDate.ToString("yyyy-MM") +
+                    " · 净采购=已复核采购金额-按退货发生日期统计的采购退货金额" +
+                    " · 导出生成月汇总、供应商汇总及逐日采购/退货明细";
+                return;
+            }
 
             if (option.Key == "sales_monthly")
             {
@@ -470,6 +597,31 @@ namespace Win7BookManagement.Forms
                 ? option.Text + " · 截至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行"
                 : option.Text + " · " + FromDate.ToString("yyyy-MM-dd") +
                   " 至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
+        }
+
+        private DataRow GetSummaryRow(bool useLastRow)
+        {
+            if (_current == null || _current.Rows.Count == 0)
+                return null;
+            return useLastRow
+                ? _current.Rows[_current.Rows.Count - 1]
+                : _current.Rows[0];
+        }
+
+        private static long GetLong(DataRow row, string column)
+        {
+            return row == null || !row.Table.Columns.Contains(column) ||
+                   row[column] == DBNull.Value
+                ? 0L
+                : Convert.ToInt64(row[column]);
+        }
+
+        private static decimal GetDecimal(DataRow row, string column)
+        {
+            return row == null || !row.Table.Columns.Contains(column) ||
+                   row[column] == DBNull.Value
+                ? 0m
+                : Convert.ToDecimal(row[column]);
         }
 
         private static string QuantityColumnName(string key)
@@ -552,6 +704,11 @@ namespace Win7BookManagement.Forms
                     ExportSalesMonthly();
                     return;
                 }
+                if (option.Key == "purchase_monthly")
+                {
+                    ExportPurchaseMonthly();
+                    return;
+                }
 
                 if (_current == null) Query();
                 if (_current == null || _current.Rows.Count == 0)
@@ -561,7 +718,9 @@ namespace Win7BookManagement.Forms
                 }
 
                 var title = option.Text;
-                var fileName = title + "_" + ToDate.ToString("yyyyMMdd") + ".xlsx";
+                var fileName = option.Key == "operating_monthly"
+                    ? title + "_" + ToDate.ToString("yyyyMM") + ".xlsx"
+                    : title + "_" + ToDate.ToString("yyyyMMdd") + ".xlsx";
 
                 using (var dialog = new SaveFileDialog())
                 {
@@ -614,6 +773,44 @@ namespace Win7BookManagement.Forms
                     "• 销售月报表：销售额、销售退货、净销售以及各收款方式的收款 / 退款 / 净额\r\n" +
                     "• 每日明细：按时间和单号排序，同一单号的单据级字段自动合并\r\n" +
                     "• 参考成本口径与当月 / 累计退货数量均写入明细，便于复核\r\n\r\n" +
+                    dialog.FileName,
+                    "Excel 已生成",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+        }
+
+        private void ExportPurchaseMonthly()
+        {
+            var month = new DateTime(ToDate.Year, ToDate.Month, 1);
+            var fileName = "采购月报_" + month.ToString("yyyyMM") + ".xlsx";
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                dialog.DefaultExt = "xlsx";
+                dialog.AddExtension = true;
+                dialog.InitialDirectory = AppPaths.ExportDirectory;
+                dialog.FileName = fileName;
+
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                var detail = _services.Reports.PurchaseMonthlyExportDetail(month);
+                var returnDetail = _services.Reports.PurchaseMonthlyReturnExportDetail(month);
+                _services.PurchaseMonthlyExcel.Export(
+                    detail,
+                    returnDetail,
+                    dialog.FileName,
+                    month,
+                    _services.Settings.GetReportStoreName());
+
+                MessageBox.Show(
+                    this,
+                    "采购月报已生成。\r\n\r\n包含：\r\n" +
+                    "• 采购月报表：按日汇总采购入库、采购退货与净采购\r\n" +
+                    "• 供应商汇总：按供应商核对采购金额、退货金额与净采购金额\r\n" +
+                    "• 每日明细：采购入库与采购退货分区，同一单号字段自动合并\r\n" +
+                    "• 已配置 A4、横向打印、页边距、重复表头、打印区域与页码\r\n\r\n" +
                     dialog.FileName,
                     "Excel 已生成",
                     MessageBoxButtons.OK,

@@ -119,10 +119,29 @@ Required exports:
 - Template-style monthly sales workbook.
 - Sales return detail.
 - Purchase detail.
+- Template-style monthly purchase workbook.
 - Purchase return detail.
+- Operating daily summary.
+- Operating monthly summary.
 - Inventory snapshot.
 - Inventory movement detail.
 Exports must be valid .xlsx files and must not require Microsoft Excel.
+
+Print-grade workbook invariants:
+- All exported workbooks use A4 paper, explicit margins, fit-to-one-page-width scaling, a bounded print area, page header/footer and page numbers.
+- Repeating table-header rows are configured for multi-page detail exports. Wide operational tables use landscape orientation; compact summaries may use portrait.
+- Print settings are part of automated export tests and must not depend on Microsoft Excel being installed.
+
+Operating summary invariants:
+- Daily/monthly operating summaries distinguish gross sales, sales returns and net sales by business date.
+- Show original amount, discount amount, order count, sales/return/net quantity, average order value, weighted effective discount, payment-channel net receipts and sale-time frozen reference cost/profit.
+- Reference profit remains an operational estimate, never an accounting-profit claim.
+
+Monthly purchase workbook invariants:
+- Purchase month is based on the purchase document business date; purchase returns are deducted by return date.
+- First sheet shows daily purchase, purchase-return and net-purchase metrics plus a month total.
+- Include a supplier summary and one detail sheet for every calendar day in the month.
+- Daily detail keeps purchase receiving and purchase-return sections distinct and vertically merges order-level fields across multi-line documents.
 
 Monthly sales workbook invariants:
 - First sheet is a readable month matrix with four frozen leading columns and up to 31 four-column day groups: day-shift quantity / received amount for white and night shifts.
