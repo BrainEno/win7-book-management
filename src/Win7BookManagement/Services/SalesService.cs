@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Globalization;
 using Win7BookManagement.Database;
+using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Services
