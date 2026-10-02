@@ -477,7 +477,7 @@ namespace Win7BookManagement.Infrastructure
                             genericSheet.GetRow(1).GetCell(0).StringCellValue != "日期" ||
                             genericSheet.GetColumnWidth(0) < 4000 ||
                             genericSheet.GetRow(1).HeightInPoints < 28F ||
-                            genericSheet.PrintSetup.PaperSize != (short)PaperSize.A4 ||
+                            genericSheet.PrintSetup.PaperSize != 9 ||
                             genericSheet.RepeatingRows == null ||
                             genericSheet.RepeatingRows.FormatAsString() != "2:2" ||
                             string.IsNullOrWhiteSpace(genericWorkbook.GetPrintArea(0)) ||
@@ -566,7 +566,7 @@ namespace Win7BookManagement.Infrastructure
                             Math.Abs(summarySheet.GetRow(28).GetCell(3).NumericCellValue - 14.40) > 0.001 ||
                             summarySheet.GetRow(6).GetCell(1).StringCellValue != "独立出版书籍" ||
                             summarySheet.GetRow(6).GetCell(2).NumericCellValue != 2 ||
-                            summarySheet.PrintSetup.PaperSize != (short)PaperSize.A4 ||
+                            summarySheet.PrintSetup.PaperSize != 9 ||
                             summarySheet.RepeatingRows == null ||
                             summarySheet.RepeatingRows.FormatAsString() != "1:4" ||
                             string.IsNullOrWhiteSpace(monthlyWorkbook.GetPrintArea(
@@ -655,7 +655,7 @@ namespace Win7BookManagement.Infrastructure
                             Math.Abs(todaySummaryRow.GetCell(8).NumericCellValue - 30.00) > 0.001 ||
                             totalRow == null ||
                             totalRow.GetCell(0).StringCellValue != "本月合计" ||
-                            purchaseSummary.PrintSetup.PaperSize != (short)PaperSize.A4 ||
+                            purchaseSummary.PrintSetup.PaperSize != 9 ||
                             purchaseSummary.RepeatingRows == null ||
                             purchaseSummary.RepeatingRows.FormatAsString() != "2:2")
                             throw new InvalidOperationException(
