@@ -195,7 +195,7 @@ namespace Win7BookManagement.Forms
                 new AntdUI.Column("ReturnableQuantity", "可退") { Width = "72", ReadOnly = true }
             };
             if (!isSale) columns.Add(_stockColumn);
-            columns.Add(new AntdUI.Column("UnitPriceYuan", isSale ? "原售价" : "原进价") { Width = "96", ReadOnly = true, DisplayFormat = "0.00" });
+            columns.Add(new AntdUI.Column("UnitPriceYuan", isSale ? "成交单价" : "原进价") { Width = "96", ReadOnly = true, DisplayFormat = "0.00" });
             columns.Add(new AntdUI.Column("ReturnQuantity", "本次退货")
             {
                 Width = "108",
