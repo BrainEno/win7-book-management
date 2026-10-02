@@ -390,6 +390,129 @@ WHERE po.purchased_at >= @from AND po.purchased_at < @to
 ORDER BY po.purchased_at, po.id, pi.id;", fromDate, toDate);
         }
 
+        public DataTable PurchaseMonthlySummary(DateTime month)
+        {
+            var monthStart = new DateTime(month.Year, month.Month, 1);
+            var monthEnd = monthStart.AddMonths(1);
+            var table = CreatePurchaseMonthlySummaryTable();
+
+            using (var connection = _factory.Open())
+            {
+                for (var date = monthStart; date < monthEnd; date = date.AddDays(1))
+                {
+                    AppendPurchaseSummaryRow(
+                        connection,
+                        table,
+                        date,
+                        date.AddDays(1),
+                        date.ToString("yyyy-MM-dd"));
+                }
+
+                AppendPurchaseSummaryRow(
+                    connection,
+                    table,
+                    monthStart,
+                    monthEnd,
+                    "本月合计");
+            }
+
+            return table;
+        }
+
+        private static DataTable CreatePurchaseMonthlySummaryTable()
+        {
+            var table = new DataTable();
+            table.Columns.Add("日期", typeof(string));
+            table.Columns.Add("采购单数", typeof(long));
+            table.Columns.Add("入库册数", typeof(long));
+            table.Columns.Add("采购金额", typeof(decimal));
+            table.Columns.Add("采购退货单数", typeof(long));
+            table.Columns.Add("退货册数", typeof(long));
+            table.Columns.Add("退货金额", typeof(decimal));
+            table.Columns.Add("净入库册数", typeof(long));
+            table.Columns.Add("净采购金额", typeof(decimal));
+            table.Columns.Add("供应商数", typeof(long));
+            return table;
+        }
+
+        private static void AppendPurchaseSummaryRow(
+            SQLiteConnection connection,
+            DataTable table,
+            DateTime from,
+            DateTime to,
+            string label)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT
+  COALESCE((SELECT COUNT(*) FROM purchase_orders
+            WHERE status='reviewed' AND purchased_at>=@from AND purchased_at<@to), 0)
+    AS purchase_order_count,
+  COALESCE((SELECT SUM(pi.quantity)
+            FROM purchase_order_items pi
+            JOIN purchase_orders po ON po.id=pi.purchase_order_id
+            WHERE po.status='reviewed' AND po.purchased_at>=@from AND po.purchased_at<@to), 0)
+    AS purchase_quantity,
+  COALESCE((SELECT SUM(total_cent) FROM purchase_orders
+            WHERE status='reviewed' AND purchased_at>=@from AND purchased_at<@to), 0)
+    AS purchase_cent,
+  COALESCE((SELECT COUNT(*) FROM purchase_returns
+            WHERE returned_at>=@from AND returned_at<@to), 0)
+    AS return_order_count,
+  COALESCE((SELECT SUM(pri.quantity)
+            FROM purchase_return_items pri
+            JOIN purchase_returns pr ON pr.id=pri.purchase_return_id
+            WHERE pr.returned_at>=@from AND pr.returned_at<@to), 0)
+    AS return_quantity,
+  COALESCE((SELECT SUM(total_cent) FROM purchase_returns
+            WHERE returned_at>=@from AND returned_at<@to), 0)
+    AS return_cent,
+  COALESCE((
+    SELECT COUNT(*) FROM (
+      SELECT CASE
+               WHEN TRIM(supplier_name_snapshot)='' THEN '不区分'
+               ELSE supplier_name_snapshot
+             END AS supplier_name
+      FROM purchase_orders
+      WHERE status='reviewed' AND purchased_at>=@from AND purchased_at<@to
+      UNION
+      SELECT CASE
+               WHEN TRIM(supplier_name_snapshot)='' THEN '不区分'
+               ELSE supplier_name_snapshot
+             END
+      FROM purchase_returns
+      WHERE returned_at>=@from AND returned_at<@to
+    )
+  ), 0) AS supplier_count;";
+                command.Parameters.AddWithValue("@from", FormatDate(from));
+                command.Parameters.AddWithValue("@to", FormatDate(to));
+
+                using (var reader = command.ExecuteReader())
+                {
+                    if (!reader.Read()) return;
+
+                    var purchaseQty = Convert.ToInt64(reader["purchase_quantity"]);
+                    var purchaseCent = Convert.ToInt64(reader["purchase_cent"]);
+                    var returnQty = Convert.ToInt64(reader["return_quantity"]);
+                    var returnCent = Convert.ToInt64(reader["return_cent"]);
+
+                    var row = table.NewRow();
+                    row["日期"] = label;
+                    row["采购单数"] = Convert.ToInt64(reader["purchase_order_count"]);
+                    row["入库册数"] = purchaseQty;
+                    row["采购金额"] = ToYuan(purchaseCent);
+                    row["采购退货单数"] = Convert.ToInt64(reader["return_order_count"]);
+                    row["退货册数"] = returnQty;
+                    row["退货金额"] = ToYuan(returnCent);
+                    row["净入库册数"] = purchaseQty - returnQty;
+                    row["净采购金额"] = ToYuan(purchaseCent - returnCent);
+                    row["供应商数"] = Convert.ToInt64(reader["supplier_count"]);
+                    table.Rows.Add(row);
+                }
+            }
+        }
+
         public DataTable PurchaseMonthlyExportDetail(DateTime month)
         {
             var fromDate = new DateTime(month.Year, month.Month, 1);
