@@ -114,12 +114,22 @@ Do not add architectural layers without a concrete need.
 ## Excel/reporting rules
 Required exports:
 - Sales detail.
+- Template-style monthly sales workbook.
 - Sales return detail.
 - Purchase detail.
 - Purchase return detail.
 - Inventory snapshot.
 - Inventory movement detail.
 Exports must be valid .xlsx files and must not require Microsoft Excel.
+
+Monthly sales workbook invariants:
+- First sheet is a readable month matrix with four frozen leading columns and up to 31 four-column day groups: day-shift quantity / received amount for white and night shifts.
+- Preserve the approved template's core visual grammar: Songti, yellow structural cells, light-blue received-amount cells, explicit widths/heights, merged headers/sections, thin inner borders and stronger group/order separators.
+- Every calendar day in the target month has its own detail sheet, even when it has no sales.
+- Daily detail rows are sorted by operation time then order; order-level cells are vertically merged across multi-line orders.
+- The first 30 daily-detail columns stay compatible with the approved template; system-specific payment/category fields may be appended, never inserted into those 30 positions.
+- Monthly summary uses final order/line amounts, not cash tendered amount. Cash amount received and change remain order-level detail fields.
+- Report shift boundary and report store name come from app settings, not hard-coded UI text.
 
 ## Testing expectations
 At minimum, verify:
