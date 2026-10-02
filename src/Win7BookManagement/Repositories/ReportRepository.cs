@@ -23,7 +23,10 @@ SELECT so.sold_at AS 日期,
        si.isbn_snapshot AS ISBN,
        si.title_snapshot AS 书名,
        si.quantity AS 数量,
-       ROUND(si.unit_price_cent / 100.0, 2) AS 单价,
+       ROUND(si.base_unit_price_cent / 100.0, 2) AS 原单价,
+       ROUND(si.line_discount_basis_points / 100.0, 2) AS [单品折扣%],
+       ROUND(so.order_discount_basis_points / 100.0, 2) AS [整单折扣%],
+       ROUND(si.unit_price_cent / 100.0, 2) AS 实收单价,
        ROUND(si.line_total_cent / 100.0, 2) AS 金额
 FROM sales_orders so
 JOIN sales_order_items si ON si.sales_order_id = so.id
