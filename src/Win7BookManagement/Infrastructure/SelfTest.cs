@@ -638,6 +638,10 @@ namespace Win7BookManagement.Infrastructure
 
                         var purchaseSummary =
                             purchaseWorkbook.GetSheet("采购月报表");
+                        if (purchaseSummary == null)
+                            throw new InvalidOperationException(
+                                "采购月报汇总 Sheet 缺失。");
+
                         var todaySummaryRow =
                             purchaseSummary.GetRow(DateTime.Today.Day + 1);
                         var totalRow =
@@ -645,8 +649,7 @@ namespace Win7BookManagement.Infrastructure
                                 DateTime.DaysInMonth(
                                     DateTime.Today.Year,
                                     DateTime.Today.Month) + 2);
-                        if (purchaseSummary == null ||
-                            todaySummaryRow == null ||
+                        if (todaySummaryRow == null ||
                             Math.Abs(todaySummaryRow.GetCell(3).NumericCellValue - 40.00) > 0.001 ||
                             Math.Abs(todaySummaryRow.GetCell(6).NumericCellValue - 10.00) > 0.001 ||
                             Math.Abs(todaySummaryRow.GetCell(8).NumericCellValue - 30.00) > 0.001 ||
