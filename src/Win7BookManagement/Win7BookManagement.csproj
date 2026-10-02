@@ -105,6 +105,7 @@
     <Compile Include="Program.cs" />
 
     <Compile Include="Reporting\ExcelReportExporter.cs" />
+    <Compile Include="Reporting\SalesMonthlyExcelExporter.cs" />
 
     <Compile Include="Repositories\BookRepository.cs" />
     <Compile Include="Repositories\DashboardRepository.cs" />

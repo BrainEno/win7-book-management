@@ -78,6 +78,7 @@ namespace Win7BookManagement.Forms
         private void ConfigureFilters()
         {
             _reportOptions.Add(new ReportOption("销售明细", "sales"));
+            _reportOptions.Add(new ReportOption("销售月报（模板）", "sales_monthly"));
             _reportOptions.Add(new ReportOption("销售退货明细", "sales_return"));
             _reportOptions.Add(new ReportOption("采购明细", "purchase"));
             _reportOptions.Add(new ReportOption("采购退货明细", "purchase_return"));
@@ -285,8 +286,13 @@ namespace Win7BookManagement.Forms
         {
             var option = SelectedOption;
             var snapshot = option != null && option.Key == "snapshot";
-            _from.Enabled = !snapshot;
-            _rangeHint.Text = snapshot ? "库存快照按右侧日期结束时点计算" : "日期范围包含开始日和结束日";
+            var monthlySales = option != null && option.Key == "sales_monthly";
+            _from.Enabled = !snapshot && !monthlySales;
+            _rangeHint.Text = snapshot
+                ? "库存快照按右侧日期结束时点计算"
+                : monthlySales
+                    ? "销售月报按右侧日期所在月份生成；导出含月度总表 + 每日明细 Sheet"
+                    : "日期范围包含开始日和结束日";
         }
 
         private void Query()
@@ -306,6 +312,11 @@ namespace Win7BookManagement.Forms
                 switch (option.Key)
                 {
                     case "sales": _current = _services.Reports.SalesDetail(FromDate, ToDate); break;
+                    case "sales_monthly":
+                        var monthStart = new DateTime(ToDate.Year, ToDate.Month, 1);
+                        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+                        _current = _services.Reports.SalesDetail(monthStart, monthEnd);
+                        break;
                     case "sales_return": _current = _services.Reports.SalesReturnDetail(FromDate, ToDate); break;
                     case "purchase": _current = _services.Reports.PurchaseDetail(FromDate, ToDate); break;
                     case "purchase_return": _current = _services.Reports.PurchaseReturnDetail(FromDate, ToDate); break;
@@ -404,9 +415,20 @@ namespace Win7BookManagement.Forms
                 _amountChip.Text = label + "  ¥" + amount.ToString("0.00");
             }
 
-            _summary.Text = option.Key == "snapshot"
-                ? option.Text + " · 截至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行"
-                : option.Text + " · " + FromDate.ToString("yyyy-MM-dd") + " 至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
+            if (option.Key == "snapshot")
+            {
+                _summary.Text = option.Text + " · 截至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
+            }
+            else if (option.Key == "sales_monthly")
+            {
+                _summary.Text = option.Text + " · " + ToDate.ToString("yyyy-MM") +
+                    " · " + rowCount + " 行销售明细 · 导出时生成月度总表与逐日明细";
+            }
+            else
+            {
+                _summary.Text = option.Text + " · " + FromDate.ToString("yyyy-MM-dd") +
+                    " 至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
+            }
         }
 
         private static string QuantityColumnName(string key)
@@ -414,6 +436,7 @@ namespace Win7BookManagement.Forms
             switch (key)
             {
                 case "sales":
+                case "sales_monthly":
                 case "purchase": return "数量";
                 case "sales_return":
                 case "purchase_return": return "退货数量";
@@ -428,6 +451,7 @@ namespace Win7BookManagement.Forms
             switch (key)
             {
                 case "sales":
+                case "sales_monthly":
                 case "purchase": return "金额";
                 case "sales_return": return "退款金额";
                 case "purchase_return": return "退货金额";
@@ -479,6 +503,15 @@ namespace Win7BookManagement.Forms
         {
             try
             {
+                var option = SelectedOption;
+                if (option == null) return;
+
+                if (option.Key == "sales_monthly")
+                {
+                    ExportSalesMonthly();
+                    return;
+                }
+
                 if (_current == null) Query();
                 if (_current == null || _current.Rows.Count == 0)
                 {
@@ -486,8 +519,7 @@ namespace Win7BookManagement.Forms
                     return;
                 }
 
-                var option = SelectedOption;
-                var title = option == null ? "报表" : option.Text;
+                var title = option.Text;
                 var fileName = title + "_" + ToDate.ToString("yyyyMMdd") + ".xlsx";
 
                 using (var dialog = new SaveFileDialog())
@@ -506,6 +538,41 @@ namespace Win7BookManagement.Forms
             catch (Exception ex)
             {
                 MessageBox.Show(this, "导出失败：\r\n" + ex.Message, "无法导出 Excel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void ExportSalesMonthly()
+        {
+            var month = new DateTime(ToDate.Year, ToDate.Month, 1);
+            var fileName = "销售月报_" + month.ToString("yyyyMM") + ".xlsx";
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                dialog.DefaultExt = "xlsx";
+                dialog.AddExtension = true;
+                dialog.InitialDirectory = AppPaths.ExportDirectory;
+                dialog.FileName = fileName;
+
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                var detail = _services.Reports.SalesMonthlyExportDetail(month);
+                _services.SalesMonthlyExcel.Export(
+                    detail,
+                    dialog.FileName,
+                    month,
+                    _services.Settings.GetReportStoreName(),
+                    _services.Settings.GetReportNightShiftStartHour());
+
+                MessageBox.Show(
+                    this,
+                    "销售月报已生成。\r\n\r\n包含：\r\n" +
+                    "• 销售月报表：按日期、白班/晚班、业务项目和收款方式汇总\r\n" +
+                    "• 每日明细：按时间和单号排序，同一单号的单据级字段自动合并\r\n\r\n" +
+                    dialog.FileName,
+                    "Excel 已生成",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
         }
 

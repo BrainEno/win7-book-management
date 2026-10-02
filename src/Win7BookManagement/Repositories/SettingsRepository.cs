@@ -8,6 +8,8 @@ namespace Win7BookManagement.Repositories
         public const string LowStockThresholdKey = "low_stock_threshold";
         public const string OnboardingCompletedKey = "onboarding_completed";
         public const string HomeGuideExpandedKey = "home_guide_expanded";
+        public const string ReportStoreNameKey = "report_store_name";
+        public const string ReportNightShiftStartHourKey = "report_night_shift_start_hour";
 
         private readonly DatabaseConnectionFactory _factory;
 
@@ -75,6 +77,33 @@ VALUES(@key, @value, @updatedAt);";
             if (threshold < 0 || threshold > 9999)
                 throw new InvalidOperationException("低库存阈值必须在 0 到 9999 之间。");
             SetInt(LowStockThresholdKey, threshold);
+        }
+
+        public string GetReportStoreName()
+        {
+            return GetString(ReportStoreNameKey, "目田书店").Trim();
+        }
+
+        public void SetReportStoreName(string value)
+        {
+            var normalized = (value ?? "").Trim();
+            if (normalized.Length == 0)
+                throw new InvalidOperationException("报表店名不能为空。");
+            if (normalized.Length > 60)
+                throw new InvalidOperationException("报表店名不能超过 60 个字符。");
+            SetString(ReportStoreNameKey, normalized);
+        }
+
+        public int GetReportNightShiftStartHour()
+        {
+            return GetInt(ReportNightShiftStartHourKey, 14);
+        }
+
+        public void SetReportNightShiftStartHour(int hour)
+        {
+            if (hour < 0 || hour > 23)
+                throw new InvalidOperationException("晚班开始小时必须在 0 到 23 之间。");
+            SetInt(ReportNightShiftStartHourKey, hour);
         }
 
         public bool IsOnboardingCompleted()

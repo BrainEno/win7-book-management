@@ -35,6 +35,87 @@ WHERE so.sold_at >= @from AND so.sold_at < @to
 ORDER BY so.sold_at, so.id, si.id;", fromDate, toDate);
         }
 
+        public DataTable SalesMonthlyExportDetail(DateTime month)
+        {
+            var fromDate = new DateTime(month.Year, month.Month, 1);
+            var toDate = fromDate.AddMonths(1);
+
+            return Fill(@"
+SELECT so.id AS order_id,
+       si.id AS item_id,
+       so.sold_at AS sold_at,
+       so.order_no AS order_no,
+       COALESCE(NULLIF(b.self_code, ''), si.isbn_snapshot) AS self_code,
+       si.isbn_snapshot AS isbn,
+       si.title_snapshot AS title,
+       COALESCE(b.author, '') AS author,
+       COALESCE(b.publisher, '') AS publisher,
+       COALESCE(b.category, '') AS category,
+       COALESCE(b.publication_year, '') AS publication_year,
+       si.quantity AS quantity,
+       si.base_unit_price_cent AS base_unit_price_cent,
+       si.line_discount_basis_points AS line_discount_basis_points,
+       si.line_discounted_unit_price_cent AS line_discounted_unit_price_cent,
+       so.order_discount_basis_points AS order_discount_basis_points,
+       si.unit_price_cent AS final_unit_price_cent,
+       si.line_total_cent AS line_total_cent,
+       so.total_cent AS order_total_cent,
+       CASE WHEN TRIM(so.payment_method)='' THEN '未记录' ELSE so.payment_method END AS payment_method,
+       so.amount_received_cent AS amount_received_cent,
+       so.change_cent AS change_cent,
+       so.note AS order_note,
+       COALESCE(b.list_price_cent, 0) AS list_price_cent,
+       COALESCE(
+         (
+           SELECT pi.unit_cost_cent
+           FROM purchase_order_items pi
+           JOIN purchase_orders po ON po.id=pi.purchase_order_id
+           WHERE pi.book_id=si.book_id
+             AND po.status='reviewed'
+             AND po.purchased_at<=so.sold_at
+           ORDER BY po.purchased_at DESC, po.id DESC, pi.id DESC
+           LIMIT 1
+         ),
+         b.default_purchase_price_cent,
+         0
+       ) AS cost_ref_cent,
+       COALESCE(
+         (
+           SELECT po.supplier_name_snapshot
+           FROM purchase_order_items pi
+           JOIN purchase_orders po ON po.id=pi.purchase_order_id
+           WHERE pi.book_id=si.book_id
+             AND po.status='reviewed'
+             AND po.purchased_at<=so.sold_at
+           ORDER BY po.purchased_at DESC, po.id DESC, pi.id DESC
+           LIMIT 1
+         ),
+         ''
+       ) AS supplier_name,
+       COALESCE(
+         (
+           SELECT SUM(it.quantity)
+           FROM inventory_transactions it
+           WHERE it.book_id=si.book_id
+             AND it.occurred_at<=so.sold_at
+         ),
+         0
+       ) AS stock_at_sale,
+       COALESCE(
+         (
+           SELECT SUM(sri.quantity)
+           FROM sales_return_items sri
+           WHERE sri.source_sales_order_item_id=si.id
+         ),
+         0
+       ) AS returned_quantity
+FROM sales_orders so
+JOIN sales_order_items si ON si.sales_order_id=so.id
+LEFT JOIN books b ON b.id=si.book_id
+WHERE so.sold_at>=@from AND so.sold_at<@to
+ORDER BY so.sold_at, so.id, si.id;", fromDate, toDate.AddDays(-1));
+        }
+
         public DataTable PurchaseDetail(DateTime fromDate, DateTime toDate)
         {
             return Fill(@"
