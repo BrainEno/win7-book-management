@@ -30,6 +30,7 @@ namespace Win7BookManagement.Forms
         private UiSpecSectionPanel _filterSection;
         private TableLayoutPanel _actionRow;
         private TableLayoutPanel _filterRow;
+        private TableLayoutPanel _searchActionRow;
         private TableLayoutPanel _typeField;
         private TableLayoutPanel _fromField;
         private TableLayoutPanel _toField;
@@ -148,12 +149,13 @@ namespace Win7BookManagement.Forms
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 MinimumSize = new Size(0, BookDeskUiSpec.DocumentsFilterStandardHeight),
                 ColumnCount = 1,
-                RowCount = 4,
+                RowCount = 5,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(BookDeskUiSpec.Standard.ToolbarPadding),
                 Margin = Padding.Empty
             };
             _filterSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _filterSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _filterSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _filterSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _filterSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -181,7 +183,7 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 5,
+                ColumnCount = 3,
                 RowCount = 1,
                 Margin = new Padding(0, 8, 0, 0),
                 Padding = Padding.Empty
@@ -189,8 +191,6 @@ namespace Win7BookManagement.Forms
             _filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, BookDeskUiSpec.DocumentsTypeStandardWidth));
             _filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, BookDeskUiSpec.DocumentsDateStandardWidth));
             _filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, BookDeskUiSpec.DocumentsDateStandardWidth));
-            _filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _filterRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             _typeField = CreateFilterField("类型", _type);
             _fromField = CreateFilterField("从", _from);
@@ -200,14 +200,31 @@ namespace Win7BookManagement.Forms
             _filterRow.Controls.Add(_typeField, 0, 0);
             _filterRow.Controls.Add(_fromField, 1, 0);
             _filterRow.Controls.Add(_toField, 2, 0);
-            _filterRow.Controls.Add(_searchField, 3, 0);
+
+            _searchActionRow = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = new Padding(0, 8, 0, 0),
+                Padding = Padding.Empty
+            };
+            _searchActionRow.ColumnStyles.Add(new ColumnStyle(
+                SizeType.Absolute,
+                BookDeskUiSpec.DocumentsSearchStandardWidth));
+            _searchActionRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _searchActionRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             _queryButton = UiTheme.CreateAntdButton("查询", true);
             _queryButton.Width = BookDeskUiSpec.DocumentsQueryWidth;
             _queryButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             _queryButton.Margin = new Padding(0, 22, 0, 0);
             _queryButton.Click += delegate { ReloadDocuments(); };
-            _filterRow.Controls.Add(_queryButton, 4, 0);
+
+            _searchActionRow.Controls.Add(_searchField, 0, 0);
+            _searchActionRow.Controls.Add(_queryButton, 2, 0);
 
             _filterHint = new Label
             {
@@ -235,8 +252,9 @@ namespace Win7BookManagement.Forms
 
             _filterSection.Controls.Add(_actionRow, 0, 0);
             _filterSection.Controls.Add(_filterRow, 0, 1);
-            _filterSection.Controls.Add(_filterHint, 0, 2);
-            _filterSection.Controls.Add(_chips, 0, 3);
+            _filterSection.Controls.Add(_searchActionRow, 0, 2);
+            _filterSection.Controls.Add(_filterHint, 0, 3);
+            _filterSection.Controls.Add(_chips, 0, 4);
             return _filterSection;
         }
 
@@ -567,7 +585,7 @@ namespace Win7BookManagement.Forms
                     : BookDeskUiSpec.DocumentsQueryWidth,
                 profile);
 
-            if (_filterRow != null && _filterRow.ColumnStyles.Count >= 5)
+            if (_filterRow != null && _filterRow.ColumnStyles.Count >= 3)
             {
                 _filterRow.ColumnStyles[0].Width = compact
                     ? BookDeskUiSpec.DocumentsTypeCompactWidth
@@ -581,6 +599,14 @@ namespace Win7BookManagement.Forms
                 _filterRow.Margin = new Padding(0, compact ? 6 : 8, 0, 0);
             }
 
+            if (_searchActionRow != null && _searchActionRow.ColumnStyles.Count >= 3)
+            {
+                _searchActionRow.ColumnStyles[0].Width = compact
+                    ? BookDeskUiSpec.DocumentsSearchCompactWidth
+                    : BookDeskUiSpec.DocumentsSearchStandardWidth;
+                _searchActionRow.Margin = new Padding(0, compact ? 6 : 8, 0, 0);
+            }
+
             SetFilterControl(_type, controlHeight, profile);
             SetFilterControl(_from, controlHeight, profile);
             SetFilterControl(_to, controlHeight, profile);
@@ -589,6 +615,11 @@ namespace Win7BookManagement.Forms
                 compact
                     ? BookDeskUiSpec.DocumentsSearchCompactMinimumWidth
                     : BookDeskUiSpec.DocumentsSearchMinimumWidth,
+                controlHeight);
+            _search.MaximumSize = new Size(
+                compact
+                    ? BookDeskUiSpec.DocumentsSearchCompactWidth
+                    : BookDeskUiSpec.DocumentsSearchStandardWidth,
                 controlHeight);
 
             if (_queryButton != null)
