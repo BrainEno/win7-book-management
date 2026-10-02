@@ -18,15 +18,50 @@ namespace Win7BookManagement.Services
 
         public string Checkout(IList<TransactionLineInput> lines, string note)
         {
+            return Checkout(lines, note, 10000);
+        }
+
+        public string Checkout(
+            IList<TransactionLineInput> lines,
+            string note,
+            int orderDiscountBasisPoints)
+        {
             if (lines == null || lines.Count == 0)
                 throw new InvalidOperationException("销售单至少需要一项图书。");
+            if (orderDiscountBasisPoints < 0 || orderDiscountBasisPoints > 10000)
+                throw new InvalidOperationException("整单折扣必须在 0% 到 100% 之间。");
 
+            long subtotalCent = 0;
+            long lineDiscountCent = 0;
+            long orderDiscountCent = 0;
             long totalCent = 0;
+
             foreach (var line in lines)
             {
-                if (line.Quantity <= 0) throw new InvalidOperationException("销售数量必须大于 0。");
-                if (line.UnitPriceCent < 0) throw new InvalidOperationException("售价不能为负数。");
-                totalCent = checked(totalCent + checked((long)line.Quantity * line.UnitPriceCent));
+                if (line.Quantity <= 0)
+                    throw new InvalidOperationException("销售数量必须大于 0。");
+
+                var baseUnitPriceCent = ResolveBaseUnitPrice(line);
+                if (baseUnitPriceCent < 0)
+                    throw new InvalidOperationException("售价不能为负数。");
+                if (line.DiscountBasisPoints < 0 || line.DiscountBasisPoints > 10000)
+                    throw new InvalidOperationException("单品折扣必须在 0% 到 100% 之间。");
+
+                var lineDiscountedUnitPriceCent =
+                    ApplyBasisPoints(baseUnitPriceCent, line.DiscountBasisPoints);
+                var finalUnitPriceCent =
+                    ApplyBasisPoints(lineDiscountedUnitPriceCent, orderDiscountBasisPoints);
+
+                subtotalCent = checked(
+                    subtotalCent + checked((long)line.Quantity * baseUnitPriceCent));
+                lineDiscountCent = checked(
+                    lineDiscountCent +
+                    checked((long)line.Quantity * (baseUnitPriceCent - lineDiscountedUnitPriceCent)));
+                orderDiscountCent = checked(
+                    orderDiscountCent +
+                    checked((long)line.Quantity * (lineDiscountedUnitPriceCent - finalUnitPriceCent)));
+                totalCent = checked(
+                    totalCent + checked((long)line.Quantity * finalUnitPriceCent));
             }
 
             var now = DateTime.Now;
@@ -43,11 +78,21 @@ namespace Win7BookManagement.Services
                     {
                         command.Transaction = transaction;
                         command.CommandText = @"
-INSERT INTO sales_orders(order_no, sold_at, total_cent, note, created_at)
-VALUES(@no, @at, @total, @note, @at);
+INSERT INTO sales_orders
+(order_no, sold_at, subtotal_cent, line_discount_cent,
+ order_discount_basis_points, order_discount_cent,
+ total_cent, note, created_at)
+VALUES
+(@no, @at, @subtotal, @lineDiscount,
+ @orderDiscountBasisPoints, @orderDiscount,
+ @total, @note, @at);
 SELECT last_insert_rowid();";
                         command.Parameters.AddWithValue("@no", orderNo);
                         command.Parameters.AddWithValue("@at", timestamp);
+                        command.Parameters.AddWithValue("@subtotal", subtotalCent);
+                        command.Parameters.AddWithValue("@lineDiscount", lineDiscountCent);
+                        command.Parameters.AddWithValue("@orderDiscountBasisPoints", orderDiscountBasisPoints);
+                        command.Parameters.AddWithValue("@orderDiscount", orderDiscountCent);
                         command.Parameters.AddWithValue("@total", totalCent);
                         command.Parameters.AddWithValue("@note", (note ?? "").Trim());
                         orderId = Convert.ToInt64(command.ExecuteScalar());
@@ -77,20 +122,34 @@ SELECT last_insert_rowid();";
                         if (stock < line.Quantity)
                             throw new InvalidOperationException(title + " 库存不足，当前库存：" + stock + "。");
 
-                        var lineTotal = checked((long)line.Quantity * line.UnitPriceCent);
+                        var baseUnitPriceCent = ResolveBaseUnitPrice(line);
+                        var lineDiscountedUnitPriceCent =
+                            ApplyBasisPoints(baseUnitPriceCent, line.DiscountBasisPoints);
+                        var finalUnitPriceCent =
+                            ApplyBasisPoints(lineDiscountedUnitPriceCent, orderDiscountBasisPoints);
+                        var lineTotal = checked((long)line.Quantity * finalUnitPriceCent);
+
                         using (var itemCommand = connection.CreateCommand())
                         {
                             itemCommand.Transaction = transaction;
                             itemCommand.CommandText = @"
 INSERT INTO sales_order_items
-(sales_order_id, book_id, isbn_snapshot, title_snapshot, quantity, unit_price_cent, line_total_cent)
-VALUES(@orderId, @bookId, @isbn, @title, @qty, @unit, @total);";
+(sales_order_id, book_id, isbn_snapshot, title_snapshot, quantity,
+ base_unit_price_cent, line_discount_basis_points, line_discounted_unit_price_cent,
+ unit_price_cent, line_total_cent)
+VALUES
+(@orderId, @bookId, @isbn, @title, @qty,
+ @baseUnit, @lineDiscountBasisPoints, @lineDiscountedUnit,
+ @unit, @total);";
                             itemCommand.Parameters.AddWithValue("@orderId", orderId);
                             itemCommand.Parameters.AddWithValue("@bookId", line.BookId);
                             itemCommand.Parameters.AddWithValue("@isbn", isbn);
                             itemCommand.Parameters.AddWithValue("@title", title);
                             itemCommand.Parameters.AddWithValue("@qty", line.Quantity);
-                            itemCommand.Parameters.AddWithValue("@unit", line.UnitPriceCent);
+                            itemCommand.Parameters.AddWithValue("@baseUnit", baseUnitPriceCent);
+                            itemCommand.Parameters.AddWithValue("@lineDiscountBasisPoints", line.DiscountBasisPoints);
+                            itemCommand.Parameters.AddWithValue("@lineDiscountedUnit", lineDiscountedUnitPriceCent);
+                            itemCommand.Parameters.AddWithValue("@unit", finalUnitPriceCent);
                             itemCommand.Parameters.AddWithValue("@total", lineTotal);
                             itemCommand.ExecuteNonQuery();
                         }
@@ -109,8 +168,17 @@ WHERE id=@id AND stock_quantity>=@qty;";
                                 throw new InvalidOperationException(title + " 库存不足，销售已取消。");
                         }
 
-                        InsertLedger(connection, transaction, line.BookId, isbn, title, -line.Quantity,
-                            orderId, orderNo, timestamp, note);
+                        InsertLedger(
+                            connection,
+                            transaction,
+                            line.BookId,
+                            isbn,
+                            title,
+                            -line.Quantity,
+                            orderId,
+                            orderNo,
+                            timestamp,
+                            note);
                     }
 
                     transaction.Commit();
@@ -122,6 +190,28 @@ WHERE id=@id AND stock_quantity>=@qty;";
                     throw;
                 }
             }
+        }
+
+        private static long ResolveBaseUnitPrice(TransactionLineInput line)
+        {
+            if (line == null) return 0;
+            if (line.BaseUnitPriceCent > 0 || line.UnitPriceCent == 0)
+                return line.BaseUnitPriceCent;
+            return line.UnitPriceCent;
+        }
+
+        private static long ApplyBasisPoints(long amountCent, int basisPoints)
+        {
+            if (amountCent <= 0 || basisPoints <= 0)
+                return 0;
+            if (basisPoints >= 10000)
+                return amountCent;
+
+            return decimal.ToInt64(
+                decimal.Round(
+                    amountCent * (basisPoints / 10000m),
+                    0,
+                    MidpointRounding.AwayFromZero));
         }
 
         private static void InsertLedger(
