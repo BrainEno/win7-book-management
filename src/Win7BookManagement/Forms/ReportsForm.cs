@@ -605,7 +605,8 @@ namespace Win7BookManagement.Forms
                     dialog.FileName,
                     month,
                     _services.Settings.GetReportStoreName(),
-                    _services.Settings.GetReportNightShiftStartHour());
+                    _services.Settings.GetReportNightShiftStartHour(),
+                    _services.Settings.GetReportCategoryMapping());
 
                 MessageBox.Show(
                     this,
