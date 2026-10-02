@@ -79,7 +79,7 @@
     <Compile Include="Forms\PurchaseHistoryDialog.cs" />
     <Compile Include="Forms\ReportsForm.cs" />
     <Compile Include="Forms\ReturnDialog.cs" />
-    <Compile Include="Forms\\SalesCheckoutDialog.cs" />\n    <Compile Include="Forms\\SalesDraftDialog.cs" />\n    <Compile Include="Forms\SalesForm.cs" />
+    <Compile Include="Forms\SalesForm.cs" />
     <Compile Include="Forms\SettingsForm.cs" />
     <Compile Include="Forms\SupplierForm.cs" />
 
