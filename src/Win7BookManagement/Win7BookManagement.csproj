@@ -106,6 +106,7 @@
 
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />
+    <Compile Include="Reporting\PurchaseMonthlyExcelExporter.cs" />
     <Compile Include="Reporting\SalesMonthlyExcelExporter.cs" />
 
     <Compile Include="Repositories\BookRepository.cs" />
