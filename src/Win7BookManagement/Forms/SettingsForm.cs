@@ -10,6 +10,8 @@ namespace Win7BookManagement.Forms
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.InputNumber _lowStock = new AntdUI.InputNumber();
+        private readonly AntdUI.Input _reportStoreName = UiTheme.CreateAntdInput("例如：目田书店");
+        private readonly AntdUI.InputNumber _nightShiftStartHour = new AntdUI.InputNumber();
         private readonly Label _dataPath = new Label();
 
         public SettingsForm(ApplicationServices services)
@@ -22,7 +24,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 2,
+                RowCount = 3,
                 BackColor = UiTheme.Background,
                 Padding = Padding.Empty,
                 Margin = Padding.Empty
@@ -30,9 +32,11 @@ namespace Win7BookManagement.Forms
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             root.Controls.Add(CreateStockSection(), 0, 0);
-            root.Controls.Add(CreateDataSection(), 0, 1);
+            root.Controls.Add(CreateReportSection(), 0, 1);
+            root.Controls.Add(CreateDataSection(), 0, 2);
             Controls.Add(root);
 
             UiTheme.Apply(this);
@@ -40,6 +44,8 @@ namespace Win7BookManagement.Forms
             Shown += delegate
             {
                 _lowStock.Value = _services.Settings.GetLowStockThreshold();
+                _reportStoreName.Text = _services.Settings.GetReportStoreName();
+                _nightShiftStartHour.Value = _services.Settings.GetReportNightShiftStartHour();
                 _dataPath.Text = _services.Database.DatabasePath;
             };
         }
@@ -121,6 +127,102 @@ namespace Win7BookManagement.Forms
 
             var save = UiTheme.CreateAntdButton("保存设置", true);
             save.Width = 104;
+            save.Margin = Padding.Empty;
+            save.Click += delegate { Save(); };
+            row.Controls.Add(save);
+
+            section.Controls.Add(row, 0, 2);
+            return section;
+        }
+
+        private Control CreateReportSection()
+        {
+            var section = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 1,
+                RowCount = 3,
+                BackColor = UiTheme.Surface,
+                Padding = new Padding(18, 16, 18, 16),
+                Margin = new Padding(0, 0, 0, 12),
+                BorderStyle = BorderStyle.None
+            };
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            section.Controls.Add(new Label
+            {
+                Text = "销售月报设置",
+                AutoSize = true,
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                Margin = new Padding(0, 0, 0, 6)
+            }, 0, 0);
+
+            section.Controls.Add(new Label
+            {
+                Text = "销售月报会按模版生成月度总表和每天的明细 Sheet。班次按操作时间自动归入白班 / 晚班；默认 14:00 起计入晚班，可按门店实际交班时间调整。",
+                AutoSize = true,
+                MaximumSize = new Size(900, 0),
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8.5F),
+                Margin = new Padding(0, 0, 0, 12)
+            }, 0, 1);
+
+            var row = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = UiTheme.Surface,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
+            };
+
+            row.Controls.Add(new Label
+            {
+                Text = "报表店名",
+                AutoSize = true,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 10, 0)
+            });
+
+            _reportStoreName.Width = 210;
+            _reportStoreName.Height = UiTheme.InputHeight;
+            _reportStoreName.Margin = new Padding(0, 3, 18, 3);
+            row.Controls.Add(_reportStoreName);
+
+            row.Controls.Add(new Label
+            {
+                Text = "晚班开始",
+                AutoSize = true,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 10, 0)
+            });
+
+            _nightShiftStartHour.Minimum = 0;
+            _nightShiftStartHour.Maximum = 23;
+            _nightShiftStartHour.DecimalPlaces = 0;
+            _nightShiftStartHour.Width = 88;
+            _nightShiftStartHour.Height = UiTheme.InputHeight;
+            _nightShiftStartHour.Margin = new Padding(0, 3, 6, 3);
+            row.Controls.Add(_nightShiftStartHour);
+
+            row.Controls.Add(new Label
+            {
+                Text = ":00",
+                AutoSize = true,
+                ForeColor = UiTheme.TextSecondary,
+                Margin = new Padding(0, 10, 16, 0)
+            });
+
+            var save = UiTheme.CreateAntdButton("保存报表设置", true);
+            save.Width = 124;
             save.Margin = Padding.Empty;
             save.Click += delegate { Save(); };
             row.Controls.Add(save);
@@ -214,7 +316,9 @@ namespace Win7BookManagement.Forms
             try
             {
                 _services.Settings.SetLowStockThreshold(Decimal.ToInt32(_lowStock.Value));
-                MessageBox.Show(this, "设置已保存。工作台和库存页会立即使用新的低库存阈值。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _services.Settings.SetReportStoreName(_reportStoreName.Text);
+                _services.Settings.SetReportNightShiftStartHour(Decimal.ToInt32(_nightShiftStartHour.Value));
+                MessageBox.Show(this, "设置已保存。库存提醒与销售月报会立即使用新的设置。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
