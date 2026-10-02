@@ -234,9 +234,27 @@ namespace Win7BookManagement.Forms
                     _main.ClientSize.Width,
                     _main.ClientSize.Height,
                     System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
-                _main.DrawToBitmap(
-                    next,
-                    new Rectangle(Point.Empty, _main.ClientSize));
+
+                // Form.DrawToBitmap may include the non-client title bar even
+                // when the target bitmap uses ClientSize. The guide itself is
+                // positioned over the client area, so render the actual child
+                // controls at their client coordinates instead. This prevents
+                // a duplicate title bar and keeps spotlight geometry aligned
+                // with MainForm.GetNavigationScreenBounds().
+                using (var graphics = Graphics.FromImage(next))
+                    graphics.Clear(_main.BackColor);
+
+                foreach (Control child in _main.Controls)
+                {
+                    if (!child.Visible ||
+                        child.Width <= 0 ||
+                        child.Height <= 0)
+                    {
+                        continue;
+                    }
+
+                    child.DrawToBitmap(next, child.Bounds);
+                }
 
                 var old = _backgroundSnapshot;
                 _backgroundSnapshot = next;
