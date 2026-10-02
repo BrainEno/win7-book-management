@@ -17,6 +17,8 @@ namespace Win7BookManagement.Forms
         private readonly BindingList<ReturnableDocumentLine> _lines;
         private readonly AntdUI.Table _grid = new AntdUI.Table();
         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("填写退货原因或备注（可选）");
+        private readonly AntdUI.Select _refundMethod = new AntdUI.Select();
+        private readonly List<string> _refundValues = new List<string>();
         private readonly Label _lineCount = new Label();
         private readonly Label _quantityTotal = new Label();
         private readonly Label _total = new Label();
@@ -74,7 +76,7 @@ namespace Win7BookManagement.Forms
             root.Controls.Add(CreateHeader(isSale), 0, 0);
             root.Controls.Add(CreateQuickActions(isSale), 0, 1);
             root.Controls.Add(CreateGrid(isSale), 0, 2);
-            root.Controls.Add(CreateNoteSection(), 0, 3);
+            root.Controls.Add(CreateReturnMetaSection(isSale), 0, 3);
             root.Controls.Add(CreateFooter(), 0, 4);
             Controls.Add(root);
 
@@ -238,33 +240,122 @@ namespace Win7BookManagement.Forms
             return host;
         }
 
-        private Control CreateNoteSection()
+        private Control CreateReturnMetaSection(bool isSale)
         {
             var section = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 68,
-                ColumnCount = 2,
+                AutoSize = true,
+                ColumnCount = isSale ? 4 : 2,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(16, 11, 16, 11),
                 Margin = new Padding(0, 10, 0, 0)
             };
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            section.Controls.Add(new Label
+
+            if (isSale)
             {
-                Text = "退货原因 / 备注",
-                AutoSize = true,
-                Anchor = AnchorStyles.Left,
-                ForeColor = UiTheme.TextSecondary,
-                Font = UiTheme.Font(8.5F, FontStyle.Bold),
-                Margin = new Padding(0, 0, 14, 0)
-            }, 0, 0);
-            _note.Dock = DockStyle.Fill;
-            _note.Margin = new Padding(0, 2, 0, 2);
-            section.Controls.Add(_note, 1, 0);
+                section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+                section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+                section.Controls.Add(new Label
+                {
+                    Text = "退款方式",
+                    AutoSize = true,
+                    Anchor = AnchorStyles.Left,
+                    ForeColor = UiTheme.TextSecondary,
+                    Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                    Margin = new Padding(0, 0, 10, 0)
+                }, 0, 0);
+
+                var values = _services.Dictionaries.GetActiveValues(DictionaryKeys.PaymentMethod);
+                foreach (var value in values)
+                {
+                    if (!string.IsNullOrWhiteSpace(value))
+                        _refundValues.Add(value.Trim());
+                }
+
+                var suggested = _services.Returns.GetSuggestedRefundMethod(_sourceDocumentId);
+                if (!string.IsNullOrWhiteSpace(suggested) &&
+                    !_refundValues.Exists(delegate(string item)
+                    {
+                        return string.Equals(item, suggested, StringComparison.OrdinalIgnoreCase);
+                    }))
+                {
+                    _refundValues.Insert(0, suggested);
+                }
+
+                if (_refundValues.Count == 0)
+                {
+                    _refundValues.Add("微信");
+                    _refundValues.Add("支付宝");
+                    _refundValues.Add("现金");
+                }
+
+                foreach (var value in _refundValues)
+                    _refundMethod.Items.Add(value);
+
+                var selectedIndex = 0;
+                for (var i = 0; i < _refundValues.Count; i++)
+                {
+                    if (string.Equals(_refundValues[i], suggested, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectedIndex = i;
+                        break;
+                    }
+                }
+                _refundMethod.SelectedIndex = selectedIndex;
+                _refundMethod.DropDownArrow = true;
+                _refundMethod.Dock = DockStyle.Fill;
+                _refundMethod.MinimumSize = new Size(0, UiTheme.InputHeight);
+                _refundMethod.Margin = new Padding(0, 2, 18, 2);
+                section.Controls.Add(_refundMethod, 1, 0);
+
+                section.Controls.Add(new Label
+                {
+                    Text = "退货原因 / 备注",
+                    AutoSize = true,
+                    Anchor = AnchorStyles.Left,
+                    ForeColor = UiTheme.TextSecondary,
+                    Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                    Margin = new Padding(0, 0, 14, 0)
+                }, 2, 0);
+                _note.Dock = DockStyle.Fill;
+                _note.Margin = new Padding(0, 2, 0, 2);
+                section.Controls.Add(_note, 3, 0);
+            }
+            else
+            {
+                section.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                section.Controls.Add(new Label
+                {
+                    Text = "退货原因 / 备注",
+                    AutoSize = true,
+                    Anchor = AnchorStyles.Left,
+                    ForeColor = UiTheme.TextSecondary,
+                    Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                    Margin = new Padding(0, 0, 14, 0)
+                }, 0, 0);
+                _note.Dock = DockStyle.Fill;
+                _note.Margin = new Padding(0, 2, 0, 2);
+                section.Controls.Add(_note, 1, 0);
+            }
+
             return section;
+        }
+
+        private string SelectedRefundMethod
+        {
+            get
+            {
+                var index = _refundMethod.SelectedIndex;
+                return index >= 0 && index < _refundValues.Count
+                    ? _refundValues[index]
+                    : "";
+            }
         }
 
         private Control CreateFooter()
@@ -396,15 +487,23 @@ namespace Win7BookManagement.Forms
                 var confirmation = MessageBox.Show(
                     this,
                     _kind == "sale"
-                        ? "确认创建销售退货单并把相应库存加回吗？\r\n原销售单和历史价格不会被修改。"
+                        ? "确认创建销售退货单并把相应库存加回吗？\r\n退款方式：" +
+                          SelectedRefundMethod + "\r\n原销售单和历史价格不会被修改。"
                         : "确认创建采购退货单并扣减相应库存吗？\r\n原采购单和历史进价不会被修改。",
                     "确认退货",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
                 if (confirmation != DialogResult.Yes) return;
 
+                if (_kind == "sale" && string.IsNullOrWhiteSpace(SelectedRefundMethod))
+                    throw new InvalidOperationException("请选择退款方式。");
+
                 var returnNo = _kind == "sale"
-                    ? _services.Returns.CreateSalesReturn(_sourceDocumentId, inputs, _note.Text)
+                    ? _services.Returns.CreateSalesReturn(
+                        _sourceDocumentId,
+                        inputs,
+                        _note.Text,
+                        SelectedRefundMethod)
                     : _services.Returns.CreatePurchaseReturn(_sourceDocumentId, inputs, _note.Text);
 
                 MessageBox.Show(this, "退货完成。\r\n退货单号：" + returnNo, "退货成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
