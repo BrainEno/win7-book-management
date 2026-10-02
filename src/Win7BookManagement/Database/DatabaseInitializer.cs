@@ -479,12 +479,7 @@ SET self_code_snapshot = COALESCE(
       (SELECT b.publication_year FROM books b WHERE b.id=sales_order_items.book_id), ''),
     list_price_snapshot_cent = COALESCE(
       (SELECT b.list_price_cent FROM books b WHERE b.id=sales_order_items.book_id), 0)
-WHERE self_code_snapshot=''
-   OR author_snapshot=''
-   OR publisher_snapshot=''
-   OR category_snapshot=''
-   OR publication_year_snapshot=''
-   OR list_price_snapshot_cent=0;
+WHERE cost_ref_source_snapshot='';
 
 UPDATE sales_order_items
 SET cost_ref_snapshot_cent = COALESCE(
