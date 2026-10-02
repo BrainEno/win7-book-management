@@ -181,6 +181,197 @@ SELECT
   END AS average_order_cent;", fromDate, toDate.AddDays(-1));
         }
 
+        public DataTable OperatingDailySummary(DateTime date)
+        {
+            var table = CreateOperatingSummaryTable();
+            using (var connection = _factory.Open())
+            {
+                AppendOperatingSummaryRow(
+                    connection,
+                    table,
+                    date.Date,
+                    date.Date.AddDays(1),
+                    date.ToString("yyyy-MM-dd"));
+            }
+            return table;
+        }
+
+        public DataTable OperatingMonthlySummary(DateTime month)
+        {
+            var monthStart = new DateTime(month.Year, month.Month, 1);
+            var monthEnd = monthStart.AddMonths(1);
+            var table = CreateOperatingSummaryTable();
+
+            using (var connection = _factory.Open())
+            {
+                for (var date = monthStart; date < monthEnd; date = date.AddDays(1))
+                {
+                    AppendOperatingSummaryRow(
+                        connection,
+                        table,
+                        date,
+                        date.AddDays(1),
+                        date.ToString("yyyy-MM-dd"));
+                }
+
+                AppendOperatingSummaryRow(
+                    connection,
+                    table,
+                    monthStart,
+                    monthEnd,
+                    "本月合计");
+            }
+
+            return table;
+        }
+
+        private static DataTable CreateOperatingSummaryTable()
+        {
+            var table = new DataTable();
+            table.Columns.Add("日期", typeof(string));
+            table.Columns.Add("订单数", typeof(long));
+            table.Columns.Add("销售册数", typeof(long));
+            table.Columns.Add("退货册数", typeof(long));
+            table.Columns.Add("净销售册数", typeof(long));
+            table.Columns.Add("原金额", typeof(decimal));
+            table.Columns.Add("优惠额", typeof(decimal));
+            table.Columns.Add("销售额", typeof(decimal));
+            table.Columns.Add("退货额", typeof(decimal));
+            table.Columns.Add("净销售", typeof(decimal));
+            table.Columns.Add("客单价", typeof(decimal));
+            table.Columns.Add("平均成交折扣%", typeof(decimal));
+            table.Columns.Add("参考成本", typeof(decimal));
+            table.Columns.Add("参考毛利", typeof(decimal));
+            table.Columns.Add("参考毛利率%", typeof(decimal));
+            table.Columns.Add("微信净额", typeof(decimal));
+            table.Columns.Add("支付宝净额", typeof(decimal));
+            table.Columns.Add("现金净额", typeof(decimal));
+            table.Columns.Add("其他净额", typeof(decimal));
+            return table;
+        }
+
+        private static void AppendOperatingSummaryRow(
+            SQLiteConnection connection,
+            DataTable table,
+            DateTime from,
+            DateTime to,
+            string label)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT
+  COALESCE((SELECT COUNT(*) FROM sales_orders
+            WHERE sold_at>=@from AND sold_at<@to), 0) AS order_count,
+  COALESCE((SELECT SUM(si.quantity)
+            FROM sales_order_items si
+            JOIN sales_orders so ON so.id=si.sales_order_id
+            WHERE so.sold_at>=@from AND so.sold_at<@to), 0) AS sales_quantity,
+  COALESCE((SELECT SUM(sri.quantity)
+            FROM sales_return_items sri
+            JOIN sales_returns sr ON sr.id=sri.sales_return_id
+            WHERE sr.returned_at>=@from AND sr.returned_at<@to), 0) AS return_quantity,
+  COALESCE((SELECT SUM(subtotal_cent) FROM sales_orders
+            WHERE sold_at>=@from AND sold_at<@to), 0) AS subtotal_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_orders
+            WHERE sold_at>=@from AND sold_at<@to), 0) AS sales_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_returns
+            WHERE returned_at>=@from AND returned_at<@to), 0) AS return_cent,
+  COALESCE((SELECT SUM(si.cost_ref_snapshot_cent * si.quantity)
+            FROM sales_order_items si
+            JOIN sales_orders so ON so.id=si.sales_order_id
+            WHERE so.sold_at>=@from AND so.sold_at<@to), 0) AS sales_cost_cent,
+  COALESCE((SELECT SUM(si.cost_ref_snapshot_cent * sri.quantity)
+            FROM sales_return_items sri
+            JOIN sales_returns sr ON sr.id=sri.sales_return_id
+            JOIN sales_order_items si ON si.id=sri.source_sales_order_item_id
+            WHERE sr.returned_at>=@from AND sr.returned_at<@to), 0) AS return_cost_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_orders
+            WHERE sold_at>=@from AND sold_at<@to AND payment_method='微信'), 0)
+    - COALESCE((SELECT SUM(total_cent) FROM sales_returns
+                WHERE returned_at>=@from AND returned_at<@to AND refund_method='微信'), 0)
+    AS wechat_net_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_orders
+            WHERE sold_at>=@from AND sold_at<@to AND payment_method='支付宝'), 0)
+    - COALESCE((SELECT SUM(total_cent) FROM sales_returns
+                WHERE returned_at>=@from AND returned_at<@to AND refund_method='支付宝'), 0)
+    AS alipay_net_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_orders
+            WHERE sold_at>=@from AND sold_at<@to AND payment_method='现金'), 0)
+    - COALESCE((SELECT SUM(total_cent) FROM sales_returns
+                WHERE returned_at>=@from AND returned_at<@to AND refund_method='现金'), 0)
+    AS cash_net_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_orders
+            WHERE sold_at>=@from AND sold_at<@to
+              AND payment_method NOT IN ('微信','支付宝','现金')), 0)
+    - COALESCE((SELECT SUM(total_cent) FROM sales_returns
+                WHERE returned_at>=@from AND returned_at<@to
+                  AND refund_method NOT IN ('微信','支付宝','现金')), 0)
+    AS other_net_cent;";
+                command.Parameters.AddWithValue("@from", FormatDate(from));
+                command.Parameters.AddWithValue("@to", FormatDate(to));
+
+                using (var reader = command.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return;
+
+                    var orderCount = Convert.ToInt64(reader["order_count"]);
+                    var salesQuantity = Convert.ToInt64(reader["sales_quantity"]);
+                    var returnQuantity = Convert.ToInt64(reader["return_quantity"]);
+                    var subtotalCent = Convert.ToInt64(reader["subtotal_cent"]);
+                    var salesCent = Convert.ToInt64(reader["sales_cent"]);
+                    var returnCent = Convert.ToInt64(reader["return_cent"]);
+                    var salesCostCent = Convert.ToInt64(reader["sales_cost_cent"]);
+                    var returnCostCent = Convert.ToInt64(reader["return_cost_cent"]);
+                    var netSalesCent = salesCent - returnCent;
+                    var netCostCent = salesCostCent - returnCostCent;
+                    var referenceProfitCent = netSalesCent - netCostCent;
+
+                    var row = table.NewRow();
+                    row["日期"] = label;
+                    row["订单数"] = orderCount;
+                    row["销售册数"] = salesQuantity;
+                    row["退货册数"] = returnQuantity;
+                    row["净销售册数"] = salesQuantity - returnQuantity;
+                    row["原金额"] = ToYuan(subtotalCent);
+                    row["优惠额"] = ToYuan(subtotalCent - salesCent);
+                    row["销售额"] = ToYuan(salesCent);
+                    row["退货额"] = ToYuan(returnCent);
+                    row["净销售"] = ToYuan(netSalesCent);
+                    row["客单价"] = orderCount == 0
+                        ? 0m
+                        : ToYuan((long)Math.Round(
+                            salesCent * 1.0 / orderCount,
+                            MidpointRounding.AwayFromZero));
+                    row["平均成交折扣%"] = subtotalCent <= 0
+                        ? 0m
+                        : Math.Round(
+                            salesCent * 100m / subtotalCent,
+                            2,
+                            MidpointRounding.AwayFromZero);
+                    row["参考成本"] = ToYuan(netCostCent);
+                    row["参考毛利"] = ToYuan(referenceProfitCent);
+                    row["参考毛利率%"] = netSalesCent == 0
+                        ? 0m
+                        : Math.Round(
+                            referenceProfitCent * 100m / netSalesCent,
+                            2,
+                            MidpointRounding.AwayFromZero);
+                    row["微信净额"] = ToYuan(Convert.ToInt64(reader["wechat_net_cent"]));
+                    row["支付宝净额"] = ToYuan(Convert.ToInt64(reader["alipay_net_cent"]));
+                    row["现金净额"] = ToYuan(Convert.ToInt64(reader["cash_net_cent"]));
+                    row["其他净额"] = ToYuan(Convert.ToInt64(reader["other_net_cent"]));
+                    table.Rows.Add(row);
+                }
+            }
+        }
+
+        private static decimal ToYuan(long cent)
+        {
+            return cent / 100m;
+        }
+
         public DataTable PurchaseDetail(DateTime fromDate, DateTime toDate)
         {
             return Fill(@"
