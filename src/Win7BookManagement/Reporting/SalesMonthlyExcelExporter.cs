@@ -121,6 +121,7 @@ namespace Win7BookManagement.Reporting
             IWorkbook workbook,
             StyleFactory styles,
             IList<MonthlySalesRow> rows,
+            IList<MonthlyReturnRow> returns,
             DateTime month,
             string storeName,
             int nightShiftStartHour)
@@ -341,172 +342,166 @@ namespace Win7BookManagement.Reporting
             sheet.AddMergedRegion(new CellRangeAddress(8, 16, 0, 0));
             sheet.AddMergedRegion(new CellRangeAddress(18, 24, 0, 0));
 
-            var totalRowIndex = 26;
-            GetRow(sheet, totalRowIndex).HeightInPoints = 17.1F;
-            MergeAndStyle(
-                sheet, styles, totalRowIndex, totalRowIndex, 0, 1, "合计",
-                FillTone.Yellow, true, 9, false, HorizontalAlignment.Center,
-                BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Medium);
-
+            var salesQuantityByDayShift = new long[MaxCalendarDays, 2];
+            var salesAmountByDayShift = new long[MaxCalendarDays, 2];
             long grandQuantity = 0;
             long grandAmount = 0;
-            for (var i = 0; i < BusinessLines.Length; i++)
-            {
-                for (var day = 0; day < MaxCalendarDays; day++)
-                {
-                    for (var shift = 0; shift < 2; shift++)
-                    {
-                        grandQuantity += quantity[i, day, shift];
-                        grandAmount += amount[i, day, shift];
-                    }
-                }
-            }
-
-            WriteSummaryNumber(
-                sheet, styles, totalRowIndex, 2, grandQuantity,
-                FillTone.Yellow, true, "0",
-                BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Medium, BorderStyle.Medium);
-            WriteSummaryNumber(
-                sheet, styles, totalRowIndex, 3, grandAmount / 100.0,
-                FillTone.Yellow, true, "0.00",
-                BorderStyle.Thin, BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Medium);
-
             for (var day = 0; day < MaxCalendarDays; day++)
             {
-                var start = FirstDayColumn + day * ColumnsPerDay;
                 for (var shift = 0; shift < 2; shift++)
                 {
-                    long dayQty = 0;
-                    long dayAmount = 0;
                     for (var i = 0; i < BusinessLines.Length; i++)
                     {
-                        dayQty += quantity[i, day, shift];
-                        dayAmount += amount[i, day, shift];
+                        salesQuantityByDayShift[day, shift] += quantity[i, day, shift];
+                        salesAmountByDayShift[day, shift] += amount[i, day, shift];
                     }
-
-                    var qtyCol = start + shift * 2;
-                    var amountCol = qtyCol + 1;
-                    WriteSummaryNumber(
-                        sheet, styles, totalRowIndex, qtyCol, day < daysInMonth ? dayQty : 0,
-                        FillTone.Yellow, true, "0",
-                        shift == 0 ? BorderStyle.Medium : BorderStyle.Thin,
-                        BorderStyle.Thin,
-                        BorderStyle.Medium,
-                        BorderStyle.Medium);
-                    WriteSummaryNumber(
-                        sheet, styles, totalRowIndex, amountCol, day < daysInMonth ? dayAmount / 100.0 : 0,
-                        FillTone.Yellow, true, "0.00",
-                        BorderStyle.Thin,
-                        shift == 1 ? BorderStyle.Medium : BorderStyle.Thin,
-                        BorderStyle.Medium,
-                        BorderStyle.Medium);
+                    grandQuantity += salesQuantityByDayShift[day, shift];
+                    grandAmount += salesAmountByDayShift[day, shift];
                 }
             }
 
-            var paymentMethods = BuildPaymentMethods(orderMap.Values);
-            var paymentStartRow = 27;
+            var returnQuantityByDayShift = new long[MaxCalendarDays, 2];
+            var returnAmountByDayShift = new long[MaxCalendarDays, 2];
+            var returnOrderMap = new Dictionary<long, MonthlyReturnOrder>();
+            long grandReturnQuantity = 0;
+            long grandReturnAmount = 0;
+
+            foreach (var returned in returns)
+            {
+                var dayIndex = returned.ReturnedAt.Day - 1;
+                var shift = returned.ReturnedAt.Hour >= nightShiftStartHour ? 1 : 0;
+                returnQuantityByDayShift[dayIndex, shift] += returned.Quantity;
+                returnAmountByDayShift[dayIndex, shift] += returned.LineTotalCent;
+                grandReturnQuantity += returned.Quantity;
+                grandReturnAmount += returned.LineTotalCent;
+
+                MonthlyReturnOrder returnOrder;
+                if (!returnOrderMap.TryGetValue(returned.ReturnId, out returnOrder))
+                {
+                    returnOrder = new MonthlyReturnOrder
+                    {
+                        ReturnId = returned.ReturnId,
+                        ReturnNo = returned.ReturnNo,
+                        ReturnedAt = returned.ReturnedAt,
+                        RefundMethod = returned.RefundMethod,
+                        TotalCent = 0,
+                        Note = returned.ReturnNote
+                    };
+                    returnOrderMap.Add(returned.ReturnId, returnOrder);
+                }
+                returnOrder.TotalCent += returned.LineTotalCent;
+
+                if (!string.IsNullOrWhiteSpace(returned.ReturnNote) &&
+                    returnOrder.TotalCent == returned.LineTotalCent)
+                {
+                    notesByDay[dayIndex].Add(
+                        "退货 " + returned.ReturnedAt.ToString("HH:mm") + " " +
+                        returned.ReturnNo + "：" + returned.ReturnNote.Trim());
+                }
+            }
+
+            var netQuantityByDayShift = new long[MaxCalendarDays, 2];
+            var netAmountByDayShift = new long[MaxCalendarDays, 2];
+            for (var day = 0; day < MaxCalendarDays; day++)
+            {
+                for (var shift = 0; shift < 2; shift++)
+                {
+                    netQuantityByDayShift[day, shift] =
+                        salesQuantityByDayShift[day, shift] - returnQuantityByDayShift[day, shift];
+                    netAmountByDayShift[day, shift] =
+                        salesAmountByDayShift[day, shift] - returnAmountByDayShift[day, shift];
+                }
+            }
+
+            var totalRowIndex = 26;
+            WriteMatrixRow(
+                sheet, styles, totalRowIndex, "销售合计",
+                grandQuantity, grandAmount,
+                salesQuantityByDayShift, salesAmountByDayShift,
+                daysInMonth, true, BorderStyle.Medium, BorderStyle.Medium);
+
+            var returnRowIndex = totalRowIndex + 1;
+            WriteMatrixRow(
+                sheet, styles, returnRowIndex, "销售退货",
+                grandReturnQuantity, grandReturnAmount,
+                returnQuantityByDayShift, returnAmountByDayShift,
+                daysInMonth, false, BorderStyle.Thin, BorderStyle.Thin);
+
+            var netRowIndex = returnRowIndex + 1;
+            WriteMatrixRow(
+                sheet, styles, netRowIndex, "净销售",
+                grandQuantity - grandReturnQuantity,
+                grandAmount - grandReturnAmount,
+                netQuantityByDayShift, netAmountByDayShift,
+                daysInMonth, true, BorderStyle.Thin, BorderStyle.Medium);
+
+            var paymentMethods = BuildPaymentMethods(orderMap.Values, returnOrderMap.Values);
+            var paymentStartRow = netRowIndex + 1;
             for (var paymentIndex = 0; paymentIndex < paymentMethods.Count; paymentIndex++)
             {
-                var paymentRow = paymentStartRow + paymentIndex;
-                GetRow(sheet, paymentRow).HeightInPoints = 17.1F;
                 var paymentMethod = paymentMethods[paymentIndex];
+                var saleAmountByDayShift = new long[MaxCalendarDays, 2];
+                var refundAmountByDayShift = new long[MaxCalendarDays, 2];
+                long saleMonthAmount = 0;
+                long refundMonthAmount = 0;
 
-                WriteSummaryCell(
-                    sheet, styles, paymentRow, 0, "",
-                    FillTone.Yellow, false, false,
-                    BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin, BorderStyle.Thin);
-                WriteSummaryCell(
-                    sheet, styles, paymentRow, 1, paymentMethod,
-                    FillTone.Yellow, false, false,
-                    BorderStyle.Thin, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin);
-
-                long paymentMonthAmount = 0;
-                var paymentByDayShift = new long[MaxCalendarDays, 2];
                 foreach (var order in orderMap.Values)
                 {
                     if (!string.Equals(order.PaymentMethod, paymentMethod, StringComparison.OrdinalIgnoreCase))
                         continue;
-
                     var dayIndex = order.SoldAt.Day - 1;
                     var shift = order.SoldAt.Hour >= nightShiftStartHour ? 1 : 0;
-                    paymentByDayShift[dayIndex, shift] += order.TotalCent;
-                    paymentMonthAmount += order.TotalCent;
+                    saleAmountByDayShift[dayIndex, shift] += order.TotalCent;
+                    saleMonthAmount += order.TotalCent;
                 }
 
-                WriteSummaryNumber(
-                    sheet, styles, paymentRow, 2, 0,
-                    FillTone.Yellow, true, "0",
-                    BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin, BorderStyle.Thin);
-                WriteSummaryNumber(
-                    sheet, styles, paymentRow, 3, paymentMonthAmount / 100.0,
-                    FillTone.Yellow, true, "0.00",
-                    BorderStyle.Thin, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin);
+                foreach (var returnOrder in returnOrderMap.Values)
+                {
+                    if (!string.Equals(returnOrder.RefundMethod, paymentMethod, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    var dayIndex = returnOrder.ReturnedAt.Day - 1;
+                    var shift = returnOrder.ReturnedAt.Hour >= nightShiftStartHour ? 1 : 0;
+                    refundAmountByDayShift[dayIndex, shift] += returnOrder.TotalCent;
+                    refundMonthAmount += returnOrder.TotalCent;
+                }
 
+                var netPaymentByDayShift = new long[MaxCalendarDays, 2];
                 for (var day = 0; day < MaxCalendarDays; day++)
                 {
-                    var start = FirstDayColumn + day * ColumnsPerDay;
                     for (var shift = 0; shift < 2; shift++)
                     {
-                        var qtyCol = start + shift * 2;
-                        var amountCol = qtyCol + 1;
-                        WriteSummaryNumber(
-                            sheet, styles, paymentRow, qtyCol, 0,
-                            FillTone.None, false, "0",
-                            shift == 0 ? BorderStyle.Medium : BorderStyle.Thin,
-                            BorderStyle.Thin,
-                            BorderStyle.Thin,
-                            BorderStyle.Thin);
-                        WriteSummaryNumber(
-                            sheet, styles, paymentRow, amountCol,
-                            day < daysInMonth ? paymentByDayShift[day, shift] / 100.0 : 0,
-                            FillTone.Blue, false, "0.00",
-                            BorderStyle.Thin,
-                            shift == 1 ? BorderStyle.Medium : BorderStyle.Thin,
-                            BorderStyle.Thin,
-                            BorderStyle.Thin);
+                        netPaymentByDayShift[day, shift] =
+                            saleAmountByDayShift[day, shift] - refundAmountByDayShift[day, shift];
                     }
                 }
+
+                var baseRow = paymentStartRow + paymentIndex * 3;
+                WriteMatrixRow(
+                    sheet, styles, baseRow, paymentMethod + "收款",
+                    0, saleMonthAmount,
+                    null, saleAmountByDayShift,
+                    daysInMonth, false, BorderStyle.Thin, BorderStyle.Thin);
+                WriteMatrixRow(
+                    sheet, styles, baseRow + 1, paymentMethod + "退款",
+                    0, refundMonthAmount,
+                    null, refundAmountByDayShift,
+                    daysInMonth, false, BorderStyle.Thin, BorderStyle.Thin);
+                WriteMatrixRow(
+                    sheet, styles, baseRow + 2, paymentMethod + "净额",
+                    0, saleMonthAmount - refundMonthAmount,
+                    null, netPaymentByDayShift,
+                    daysInMonth, true, BorderStyle.Thin, BorderStyle.Thin);
             }
 
             var reservedLabels = new[] { "微店收入", "刷会员卡小计", "未收款小计" };
-            var reservedStartRow = paymentStartRow + paymentMethods.Count;
+            var reservedStartRow = paymentStartRow + paymentMethods.Count * 3;
             for (var reservedIndex = 0; reservedIndex < reservedLabels.Length; reservedIndex++)
             {
                 var rowIndex = reservedStartRow + reservedIndex;
-                GetRow(sheet, rowIndex).HeightInPoints = 17.1F;
-                MergeAndStyle(
-                    sheet, styles, rowIndex, rowIndex, 0, 1, reservedLabels[reservedIndex],
-                    FillTone.Yellow, false, 9, false, HorizontalAlignment.Center,
-                    BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin);
-                WriteSummaryNumber(
-                    sheet, styles, rowIndex, 2, 0,
-                    FillTone.Yellow, true, "0",
-                    BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin, BorderStyle.Thin);
-                WriteSummaryNumber(
-                    sheet, styles, rowIndex, 3, 0,
-                    FillTone.Yellow, true, "0.00",
-                    BorderStyle.Thin, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin);
-
-                for (var day = 0; day < MaxCalendarDays; day++)
-                {
-                    var start = FirstDayColumn + day * ColumnsPerDay;
-                    for (var shift = 0; shift < 2; shift++)
-                    {
-                        var qtyCol = start + shift * 2;
-                        var amountCol = qtyCol + 1;
-                        WriteSummaryNumber(
-                            sheet, styles, rowIndex, qtyCol, 0,
-                            FillTone.None, false, "0",
-                            shift == 0 ? BorderStyle.Medium : BorderStyle.Thin,
-                            BorderStyle.Thin, BorderStyle.Thin, BorderStyle.Thin);
-                        WriteSummaryNumber(
-                            sheet, styles, rowIndex, amountCol, 0,
-                            FillTone.Blue, false, "0.00",
-                            BorderStyle.Thin,
-                            shift == 1 ? BorderStyle.Medium : BorderStyle.Thin,
-                            BorderStyle.Thin, BorderStyle.Thin);
-                    }
-                }
+                WriteMatrixRow(
+                    sheet, styles, rowIndex, reservedLabels[reservedIndex],
+                    0, 0, null, new long[MaxCalendarDays, 2],
+                    daysInMonth, false, BorderStyle.Thin, BorderStyle.Thin);
             }
 
             var staffRowIndex = reservedStartRow + reservedLabels.Length;
@@ -526,9 +521,9 @@ namespace Win7BookManagement.Reporting
 
             for (var day = 0; day < MaxCalendarDays; day++)
             {
-                var start = FirstDayColumn + day * ColumnsPerDay;
+                var column = FirstDayColumn + day * ColumnsPerDay;
                 MergeAndStyle(
-                    sheet, styles, staffRowIndex, staffRowIndex, start, start + 3, "",
+                    sheet, styles, staffRowIndex, staffRowIndex, column, column + 3, "",
                     FillTone.None, false, 9, false, HorizontalAlignment.Center,
                     BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Thin);
             }
@@ -542,21 +537,25 @@ namespace Win7BookManagement.Reporting
             MergeAndStyle(
                 sheet, styles, noteRowIndex, noteRowIndex, 2, 3,
                 "班次：00:00–" + (nightShiftStartHour - 1 + 24) % 24 + ":59 白班；" +
-                nightShiftStartHour.ToString("00") + ":00 起晚班。",
+                nightShiftStartHour.ToString("00") + ":00 起晚班。" + Environment.NewLine +
+                "净销售=销售额-按退货发生日期统计的销售退货额。" + Environment.NewLine +
+                "参考成本为销售发生时最近一次已复核采购价；若无采购记录则取当时默认进价，仅用于经营分析，不作为财务核算依据。",
                 FillTone.Yellow, false, 8, true, HorizontalAlignment.Left,
                 BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Medium);
 
             for (var day = 0; day < MaxCalendarDays; day++)
             {
-                var start = FirstDayColumn + day * ColumnsPerDay;
+                var column = FirstDayColumn + day * ColumnsPerDay;
                 var noteText = day < daysInMonth
                     ? string.Join(Environment.NewLine, notesByDay[day].ToArray())
                     : "";
                 MergeAndStyle(
-                    sheet, styles, noteRowIndex, noteRowIndex, start, start + 3, noteText,
+                    sheet, styles, noteRowIndex, noteRowIndex, column, column + 3, noteText,
                     FillTone.None, false, 9, true, HorizontalAlignment.Left,
                     BorderStyle.Medium, BorderStyle.Medium, BorderStyle.Thin, BorderStyle.Medium);
             }
+
+            ConfigurePrint(sheet, true);
         }
 
         private static void CreateDailyDetail(
@@ -641,16 +640,16 @@ namespace Win7BookManagement.Reporting
                     var purchaseDiscount = listPriceCent > 0
                         ? source.CostRefCent * 100.0 / listPriceCent
                         : 0.0;
-                    var marker = source.ReturnedQuantity <= 0
+                    var marker = source.ReturnedQuantityToMonthEnd <= 0
                         ? "no"
-                        : source.ReturnedQuantity >= source.Quantity ? "已退" : "部分退";
+                        : source.ReturnedQuantityToMonthEnd >= source.Quantity ? "已退" : "部分退";
 
                     WriteDetailValue(sheet, styles, rowIndex, 0, firstInOrder ? (object)orderSequence : null, "0", topBorder, bottomBorder);
                     WriteDetailValue(sheet, styles, rowIndex, 1, firstInOrder ? source.OrderNo : null, "@", topBorder, bottomBorder);
                     WriteDetailValue(sheet, styles, rowIndex, 2, source.SelfCode, "@", topBorder, bottomBorder);
                     WriteDetailValue(sheet, styles, rowIndex, 3, source.Title, "@", topBorder, bottomBorder, HorizontalAlignment.Left);
                     WriteDetailValue(sheet, styles, rowIndex, 4, source.Quantity, "0", topBorder, bottomBorder);
-                    WriteDetailValue(sheet, styles, rowIndex, 5, source.StockAtSale, "0", topBorder, bottomBorder);
+                    WriteDetailValue(sheet, styles, rowIndex, 5, source.StockAfterSale, "0", topBorder, bottomBorder);
                     WriteDetailValue(sheet, styles, rowIndex, 6, source.BaseUnitPriceCent / 100.0, "0.00", topBorder, bottomBorder);
                     WriteDetailValue(sheet, styles, rowIndex, 7, source.FinalUnitPriceCent / 100.0, "0.00", topBorder, bottomBorder);
                     WriteDetailValue(sheet, styles, rowIndex, 8, source.LineDiscountBasisPoints / 100.0, "0.00", topBorder, bottomBorder);
@@ -681,6 +680,9 @@ namespace Win7BookManagement.Reporting
                     WriteDetailValue(sheet, styles, rowIndex, 33, firstInOrder ? (object)(source.ChangeCent / 100.0) : null, "0.00", topBorder, bottomBorder);
                     WriteDetailValue(sheet, styles, rowIndex, 34, firstInOrder ? source.OrderNote : null, "@", topBorder, bottomBorder, HorizontalAlignment.Left, true);
                     WriteDetailValue(sheet, styles, rowIndex, 35, source.Category, "@", topBorder, bottomBorder, HorizontalAlignment.Left);
+                    WriteDetailValue(sheet, styles, rowIndex, 36, source.ReturnedQuantityInMonth, "0", topBorder, bottomBorder);
+                    WriteDetailValue(sheet, styles, rowIndex, 37, source.ReturnedQuantityToMonthEnd, "0", topBorder, bottomBorder);
+                    WriteDetailValue(sheet, styles, rowIndex, 38, source.CostRefSource, "@", topBorder, bottomBorder, HorizontalAlignment.Left);
                 }
 
                 if (groupLastExcelRow > groupFirstExcelRow)
@@ -725,6 +727,7 @@ namespace Win7BookManagement.Reporting
                     Math.Max(1, currentExcelRow - 1),
                     0,
                     TemplateDetailHeaders.Length - 1));
+            ConfigurePrint(sheet, true);
         }
 
         private static void WriteDetailValue(
