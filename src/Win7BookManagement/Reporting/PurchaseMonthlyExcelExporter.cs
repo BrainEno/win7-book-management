@@ -493,7 +493,9 @@ namespace Win7BookManagement.Reporting
                         "0", top, bottom);
                     WriteDetail(
                         sheet, styles, excelRow, 12,
-                        first ? (object)source.ReviewedAt : null,
+                        first && source.ReviewedAt.HasValue
+                            ? (object)source.ReviewedAt.Value
+                            : null,
                         "yyyy-mm-dd hh:mm:ss", top, bottom);
                     WriteDetail(
                         sheet, styles, excelRow, 13,
