@@ -59,6 +59,20 @@ namespace Win7BookManagement.Reporting
             12, 13, 16
         };
 
+        public static IList<string> GetBusinessLineNames()
+        {
+            var result = new List<string>();
+            for (var i = 0; i < BusinessLines.Length; i++)
+            {
+                var value = string.IsNullOrWhiteSpace(BusinessLines[i].Label)
+                    ? BusinessLines[i].Group
+                    : BusinessLines[i].Label;
+                if (!string.IsNullOrWhiteSpace(value) && !result.Contains(value))
+                    result.Add(value);
+            }
+            return result;
+        }
+
         public void Export(
             DataTable detail,
             DataTable returnDetail,
