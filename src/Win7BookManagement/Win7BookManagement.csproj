@@ -104,6 +104,7 @@
 
     <Compile Include="Program.cs" />
 
+    <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />
     <Compile Include="Reporting\SalesMonthlyExcelExporter.cs" />
 
