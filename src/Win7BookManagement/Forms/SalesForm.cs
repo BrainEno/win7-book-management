@@ -716,8 +716,20 @@ namespace Win7BookManagement.Forms
                         settlement.PaymentMethod,
                         settlement.AmountReceivedCent);
 
+                    var draftCleanupWarning = "";
                     if (_currentDraftId.HasValue)
-                        _services.Sales.DeleteDraft(_currentDraftId.Value);
+                    {
+                        try
+                        {
+                            _services.Sales.DeleteDraft(_currentDraftId.Value);
+                        }
+                        catch (Exception cleanupEx)
+                        {
+                            draftCleanupWarning =
+                                "\r\n\r\n提示：销售已经成功，但原挂单未能自动删除：" +
+                                cleanupEx.Message;
+                        }
+                    }
 
                     var message =
                         "销售完成。\r\n单号：" + orderNo +
@@ -732,6 +744,7 @@ namespace Win7BookManagement.Forms
                             "\r\n找零：¥" + Money.ToYuan(settlement.ChangeCent).ToString("0.00");
                     }
 
+                    message += draftCleanupWarning;
                     MessageBox.Show(this, message, "结账成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     ResetOrder();
                 }
