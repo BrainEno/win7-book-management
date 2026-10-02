@@ -538,16 +538,18 @@ namespace Win7BookManagement.Forms
             // The ui-spec requires all columns to remain visible at 1366x768.
             // Below the supported 1280px shell minimum, progressively remove
             // secondary metadata before allowing a table scrollbar.
-            var fullColumns = gridWidth >= 1040;
-            _selfCodeColumn.Visible = gridWidth >= 900;
-            _isbnColumn.Visible = gridWidth >= 700;
-            _authorColumn.Visible = gridWidth >= 760;
-            _publisherColumn.Visible = fullColumns;
-            _categoryColumn.Visible = gridWidth >= 900;
-            _publicationColumn.Visible = fullColumns;
-            _bindingColumn.Visible = fullColumns;
-            _shelfColumn.Visible = gridWidth >= 900;
-            _activeColumn.Visible = gridWidth >= 900;
+            // Keep the metadata people need to identify a book visible first.
+            // ISBN / author / publisher / category are higher priority than
+            // internal code, edition-style metadata and status on Win7-era screens.
+            _selfCodeColumn.Visible = gridWidth >= 1200;
+            _isbnColumn.Visible = gridWidth >= 650;
+            _authorColumn.Visible = gridWidth >= 720;
+            _publisherColumn.Visible = gridWidth >= 780;
+            _categoryColumn.Visible = gridWidth >= 780;
+            _publicationColumn.Visible = gridWidth >= 1350;
+            _bindingColumn.Visible = gridWidth >= 1450;
+            _shelfColumn.Visible = gridWidth >= 1250;
+            _activeColumn.Visible = gridWidth >= 1500;
 
             _grid.LoadLayout();
         }
@@ -638,15 +640,15 @@ namespace Win7BookManagement.Forms
         private sealed class BookRow
         {
             public Book Source { get; private set; }
-            public string SelfCode { get { return Source.SelfCode; } }
-            public string Isbn { get { return Source.Isbn; } }
-            public string Title { get { return Source.Title; } }
-            public string Author { get { return Source.Author; } }
-            public string Publisher { get { return Source.Publisher; } }
-            public string Category { get { return Source.Category; } }
-            public string PublicationYear { get { return Source.PublicationYear; } }
-            public string Binding { get { return Source.Binding; } }
-            public string ShelfCode { get { return Source.ShelfCode; } }
+            public string SelfCode { get { return EmptyAsDash(Source.SelfCode); } }
+            public string Isbn { get { return EmptyAsDash(Source.Isbn); } }
+            public string Title { get { return EmptyAsDash(Source.Title); } }
+            public string Author { get { return EmptyAsDash(Source.Author); } }
+            public string Publisher { get { return EmptyAsDash(Source.Publisher); } }
+            public string Category { get { return EmptyAsDash(Source.Category); } }
+            public string PublicationYear { get { return EmptyAsDash(Source.PublicationYear); } }
+            public string Binding { get { return EmptyAsDash(Source.Binding); } }
+            public string ShelfCode { get { return EmptyAsDash(Source.ShelfCode); } }
             public decimal SalePriceYuan { get { return Source.SalePriceYuan; } }
             public int StockQuantity { get { return Source.StockQuantity; } }
             public AntdUI.CellTag[] ActiveStatus { get; private set; }
