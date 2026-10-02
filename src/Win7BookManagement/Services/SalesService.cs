@@ -142,21 +142,38 @@ SELECT last_insert_rowid();";
 
                     foreach (var line in lines)
                     {
+                        string selfCode;
                         string isbn;
                         string title;
+                        string author;
+                        string publisher;
+                        string category;
+                        string publicationYear;
+                        long listPriceCent;
+                        long defaultPurchasePriceCent;
                         int stock;
                         using (var bookCommand = connection.CreateCommand())
                         {
                             bookCommand.Transaction = transaction;
-                            bookCommand.CommandText =
-                                "SELECT isbn, title, stock_quantity FROM books WHERE id=@id AND is_active=1;";
+                            bookCommand.CommandText = @"
+SELECT self_code, isbn, title, author, publisher, category, publication_year,
+       list_price_cent, default_purchase_price_cent, stock_quantity
+FROM books
+WHERE id=@id AND is_active=1;";
                             bookCommand.Parameters.AddWithValue("@id", line.BookId);
                             using (var reader = bookCommand.ExecuteReader())
                             {
                                 if (!reader.Read())
                                     throw new InvalidOperationException("销售图书不存在或已停用。");
+                                selfCode = Convert.ToString(reader["self_code"]);
                                 isbn = Convert.ToString(reader["isbn"]);
                                 title = Convert.ToString(reader["title"]);
+                                author = Convert.ToString(reader["author"]);
+                                publisher = Convert.ToString(reader["publisher"]);
+                                category = Convert.ToString(reader["category"]);
+                                publicationYear = Convert.ToString(reader["publication_year"]);
+                                listPriceCent = Convert.ToInt64(reader["list_price_cent"]);
+                                defaultPurchasePriceCent = Convert.ToInt64(reader["default_purchase_price_cent"]);
                                 stock = Convert.ToInt32(reader["stock_quantity"]);
                             }
                         }
@@ -171,22 +188,44 @@ SELECT last_insert_rowid();";
                             ApplyBasisPoints(lineDiscountedUnitPriceCent, orderDiscountBasisPoints);
                         var lineTotal = checked((long)line.Quantity * finalUnitPriceCent);
 
+                        var costReference = LoadCostReference(
+                            connection,
+                            transaction,
+                            line.BookId,
+                            timestamp,
+                            defaultPurchasePriceCent);
+
                         using (var itemCommand = connection.CreateCommand())
                         {
                             itemCommand.Transaction = transaction;
                             itemCommand.CommandText = @"
 INSERT INTO sales_order_items
-(sales_order_id, book_id, isbn_snapshot, title_snapshot, quantity,
- base_unit_price_cent, line_discount_basis_points, line_discounted_unit_price_cent,
+(sales_order_id, book_id,
+ self_code_snapshot, isbn_snapshot, title_snapshot,
+ author_snapshot, publisher_snapshot, category_snapshot, publication_year_snapshot,
+ list_price_snapshot_cent, cost_ref_snapshot_cent, cost_ref_source_snapshot, supplier_snapshot,
+ quantity, base_unit_price_cent, line_discount_basis_points, line_discounted_unit_price_cent,
  unit_price_cent, line_total_cent)
 VALUES
-(@orderId, @bookId, @isbn, @title, @qty,
- @baseUnit, @lineDiscountBasisPoints, @lineDiscountedUnit,
+(@orderId, @bookId,
+ @selfCode, @isbn, @title,
+ @author, @publisher, @category, @publicationYear,
+ @listPrice, @costRef, @costSource, @supplier,
+ @qty, @baseUnit, @lineDiscountBasisPoints, @lineDiscountedUnit,
  @unit, @total);";
                             itemCommand.Parameters.AddWithValue("@orderId", orderId);
                             itemCommand.Parameters.AddWithValue("@bookId", line.BookId);
+                            itemCommand.Parameters.AddWithValue("@selfCode", selfCode);
                             itemCommand.Parameters.AddWithValue("@isbn", isbn);
                             itemCommand.Parameters.AddWithValue("@title", title);
+                            itemCommand.Parameters.AddWithValue("@author", author);
+                            itemCommand.Parameters.AddWithValue("@publisher", publisher);
+                            itemCommand.Parameters.AddWithValue("@category", category);
+                            itemCommand.Parameters.AddWithValue("@publicationYear", publicationYear);
+                            itemCommand.Parameters.AddWithValue("@listPrice", listPriceCent);
+                            itemCommand.Parameters.AddWithValue("@costRef", costReference.CostCent);
+                            itemCommand.Parameters.AddWithValue("@costSource", costReference.Source);
+                            itemCommand.Parameters.AddWithValue("@supplier", costReference.Supplier);
                             itemCommand.Parameters.AddWithValue("@qty", line.Quantity);
                             itemCommand.Parameters.AddWithValue("@baseUnit", baseUnitPriceCent);
                             itemCommand.Parameters.AddWithValue("@lineDiscountBasisPoints", line.DiscountBasisPoints);
@@ -535,6 +574,72 @@ ORDER BY i.id;";
                     transaction.Rollback();
                     throw;
                 }
+            }
+        }
+
+        private static CostReference LoadCostReference(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction,
+            long bookId,
+            string soldAt,
+            long defaultPurchasePriceCent)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT pi.unit_cost_cent, po.supplier_name_snapshot
+FROM purchase_order_items pi
+JOIN purchase_orders po ON po.id=pi.purchase_order_id
+WHERE pi.book_id=@bookId
+  AND po.status='reviewed'
+  AND po.purchased_at<=@soldAt
+ORDER BY po.purchased_at DESC, po.id DESC, pi.id DESC
+LIMIT 1;";
+                command.Parameters.AddWithValue("@bookId", bookId);
+                command.Parameters.AddWithValue("@soldAt", soldAt);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new CostReference
+                        {
+                            CostCent = Convert.ToInt64(reader["unit_cost_cent"]),
+                            Source = "最近采购价",
+                            Supplier = Convert.ToString(reader["supplier_name_snapshot"])
+                        };
+                    }
+                }
+            }
+
+            if (defaultPurchasePriceCent > 0)
+            {
+                return new CostReference
+                {
+                    CostCent = defaultPurchasePriceCent,
+                    Source = "默认进价",
+                    Supplier = ""
+                };
+            }
+
+            return new CostReference
+            {
+                CostCent = 0,
+                Source = "未设置",
+                Supplier = ""
+            };
+        }
+
+        private sealed class CostReference
+        {
+            public long CostCent { get; set; }
+            public string Source { get; set; }
+            public string Supplier { get; set; }
+
+            public CostReference()
+            {
+                Source = "";
+                Supplier = "";
             }
         }
 
