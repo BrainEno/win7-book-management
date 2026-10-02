@@ -135,7 +135,8 @@ Monthly sales workbook invariants:
 - Monthly summary uses final order/line amounts, not cash tendered amount. Cash amount received and change remain order-level detail fields.
 - Reference cost is an operational estimate frozen at sale time: use the most recent reviewed purchase cost at or before the sale, otherwise the then-current default purchase price. Label it explicitly as reference cost; it is not an accounting-cost method.
 - Generic report exports must use readable fixed widths, frozen headers, filters, explicit numeric/date formats and visible table borders rather than raw AutoSize-only output.
-- Report shift boundary and report store name come from app settings, not hard-coded UI text.
+- Report shift boundary, report store name and optional system-category → monthly-business-line mapping come from app settings, not hard-coded UI text.
+- Category mapping entries use one `system category=monthly line` pair per line. Invalid targets must be rejected by the settings UI; unmapped values may use the documented fallback matcher.
 
 ## Testing expectations
 At minimum, verify:
