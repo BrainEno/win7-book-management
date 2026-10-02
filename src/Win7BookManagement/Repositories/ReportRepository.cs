@@ -390,6 +390,71 @@ WHERE po.purchased_at >= @from AND po.purchased_at < @to
 ORDER BY po.purchased_at, po.id, pi.id;", fromDate, toDate);
         }
 
+        public DataTable PurchaseMonthlyExportDetail(DateTime month)
+        {
+            var fromDate = new DateTime(month.Year, month.Month, 1);
+            var toDate = fromDate.AddMonths(1);
+
+            return Fill(@"
+SELECT po.id AS purchase_id,
+       pi.id AS item_id,
+       po.purchased_at AS purchased_at,
+       po.reviewed_at AS reviewed_at,
+       po.order_no AS order_no,
+       po.supplier_name_snapshot AS supplier_name,
+       po.note AS order_note,
+       pi.book_id AS book_id,
+       pi.isbn_snapshot AS isbn,
+       pi.title_snapshot AS title,
+       pi.quantity AS quantity,
+       pi.unit_cost_cent AS unit_cost_cent,
+       pi.line_total_cent AS line_total_cent,
+       COALESCE((
+         SELECT SUM(pri.quantity)
+         FROM purchase_return_items pri
+         JOIN purchase_returns pr ON pr.id=pri.purchase_return_id
+         WHERE pri.source_purchase_order_item_id=pi.id
+           AND pr.returned_at>=@from AND pr.returned_at<@to
+       ), 0) AS returned_quantity_in_month,
+       COALESCE((
+         SELECT SUM(pri.quantity)
+         FROM purchase_return_items pri
+         JOIN purchase_returns pr ON pr.id=pri.purchase_return_id
+         WHERE pri.source_purchase_order_item_id=pi.id
+           AND pr.returned_at<@to
+       ), 0) AS returned_quantity_to_month_end
+FROM purchase_orders po
+JOIN purchase_order_items pi ON pi.purchase_order_id=po.id
+WHERE po.status='reviewed'
+  AND po.purchased_at>=@from AND po.purchased_at<@to
+ORDER BY po.purchased_at, po.id, pi.id;", fromDate, toDate.AddDays(-1));
+        }
+
+        public DataTable PurchaseMonthlyReturnExportDetail(DateTime month)
+        {
+            var fromDate = new DateTime(month.Year, month.Month, 1);
+            var toDate = fromDate.AddMonths(1);
+
+            return Fill(@"
+SELECT pr.id AS return_id,
+       pri.id AS return_item_id,
+       pr.returned_at AS returned_at,
+       pr.return_no AS return_no,
+       pr.source_order_no_snapshot AS source_order_no,
+       pr.supplier_name_snapshot AS supplier_name,
+       pr.note AS return_note,
+       pri.book_id AS book_id,
+       pri.isbn_snapshot AS isbn,
+       pri.title_snapshot AS title,
+       pri.quantity AS quantity,
+       pri.unit_cost_cent AS unit_cost_cent,
+       pri.line_total_cent AS line_total_cent
+FROM purchase_returns pr
+JOIN purchase_return_items pri ON pri.purchase_return_id=pr.id
+WHERE pr.returned_at>=@from AND pr.returned_at<@to
+ORDER BY pr.returned_at, pr.id, pri.id;", fromDate, toDate.AddDays(-1));
+        }
+
         public DataTable SalesReturnDetail(DateTime fromDate, DateTime toDate)
         {
             return Fill(@"
