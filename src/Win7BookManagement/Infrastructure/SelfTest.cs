@@ -418,6 +418,25 @@ namespace Win7BookManagement.Infrastructure
                 if (!File.Exists(excelPath) || new FileInfo(excelPath).Length == 0)
                     throw new InvalidOperationException("退货 Excel 导出自检失败。");
 
+                using (var genericStream = File.OpenRead(excelPath))
+                {
+                    var genericWorkbook = new XSSFWorkbook(genericStream);
+                    try
+                    {
+                        var genericSheet = genericWorkbook.GetSheet("销售退货明细");
+                        if (genericSheet == null ||
+                            genericSheet.GetRow(0).GetCell(0).StringCellValue != "销售退货明细" ||
+                            genericSheet.GetRow(1).GetCell(0).StringCellValue != "日期" ||
+                            genericSheet.GetColumnWidth(0) < 4000 ||
+                            genericSheet.GetRow(1).HeightInPoints < 28F)
+                            throw new InvalidOperationException("通用 Excel 标题 / 表头 / 列宽样式自检失败。");
+                    }
+                    finally
+                    {
+                        genericWorkbook.Close();
+                    }
+                }
+
                 services.Settings.SetReportStoreName("目田书店");
                 services.Settings.SetReportNightShiftStartHour(14);
                 services.Settings.SetReportCategoryMapping("测试分类=独立出版书籍");
