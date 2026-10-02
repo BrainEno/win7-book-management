@@ -305,7 +305,8 @@ namespace Win7BookManagement.Infrastructure
                     {
                         new ReturnLineInput { SourceItemId = saleReturnable[0].SourceItemId, Quantity = 1 }
                     },
-                    "sale return");
+                    "sale return",
+                    "微信");
 
                 if (services.Books.GetById(bookId).StockQuantity != 8)
                     throw new InvalidOperationException("销售退货没有正确加回库存。");
@@ -340,8 +341,10 @@ namespace Win7BookManagement.Infrastructure
 
                 var saleReturnDocs = services.Documents.Search("sale_return", DateTime.Today, DateTime.Today, "");
                 var purchaseReturnDocs = services.Documents.Search("purchase_return", DateTime.Today, DateTime.Today, "");
-                if (saleReturnDocs.Rows.Count != 1 || purchaseReturnDocs.Rows.Count != 1)
-                    throw new InvalidOperationException("退货单据查询自检失败。");
+                if (saleReturnDocs.Rows.Count != 1 ||
+                    purchaseReturnDocs.Rows.Count != 1 ||
+                    Convert.ToString(saleReturnDocs.Rows[0]["退款方式"]) != "微信")
+                    throw new InvalidOperationException("退货单据 / 退款方式查询自检失败。");
 
                 var saleItems = services.Documents.GetItems("sale", saleId);
                 if (saleItems.Rows.Count != 1 ||
@@ -386,8 +389,12 @@ namespace Win7BookManagement.Infrastructure
                     Convert.ToDecimal(sales.Rows[0]["单品折扣%"]) != 90.00m ||
                     Convert.ToDecimal(sales.Rows[0]["整单折扣%"]) != 80.00m ||
                     Convert.ToDecimal(sales.Rows[0]["实收单价"]) != 14.40m ||
-                    Convert.ToString(sales.Rows[0]["收款方式"]) != "现金")
-                    throw new InvalidOperationException("销售折扣 / 收款方式 / 退货报表自检失败。");
+                    Convert.ToString(sales.Rows[0]["收款方式"]) != "现金" ||
+                    Convert.ToString(sales.Rows[0]["作者"]) != "Test" ||
+                    Convert.ToString(sales.Rows[0]["出版社"]) != "测试出版社" ||
+                    Convert.ToString(sales.Rows[0]["分类"]) != "测试分类" ||
+                    Convert.ToString(saleReturns.Rows[0]["退款方式"]) != "微信")
+                    throw new InvalidOperationException("销售折扣 / 历史快照 / 收退款方式报表自检失败。");
 
                 var snapshot = services.Reports.InventorySnapshot(DateTime.Today);
                 var selfPublishedSnapshotFound = false;
@@ -413,10 +420,42 @@ namespace Win7BookManagement.Infrastructure
 
                 services.Settings.SetReportStoreName("目田书店");
                 services.Settings.SetReportNightShiftStartHour(14);
+
+                storedBook.Author = "后改作者";
+                storedBook.Publisher = "后改出版社";
+                storedBook.Category = "后改分类";
+                services.Books.Update(storedBook);
+
+                var monthlySummary = services.Reports.SalesMonthlySummary(DateTime.Today);
+                if (monthlySummary.Rows.Count != 1 ||
+                    Convert.ToInt64(monthlySummary.Rows[0]["gross_sales_cent"]) != 2880 ||
+                    Convert.ToInt64(monthlySummary.Rows[0]["return_amount_cent"]) != 1440 ||
+                    Convert.ToInt64(monthlySummary.Rows[0]["net_sales_cent"]) != 1440 ||
+                    Convert.ToInt64(monthlySummary.Rows[0]["sales_quantity"]) != 2 ||
+                    Convert.ToInt64(monthlySummary.Rows[0]["return_quantity"]) != 1 ||
+                    Convert.ToInt64(monthlySummary.Rows[0]["order_count"]) != 1)
+                    throw new InvalidOperationException("销售月报净销售口径自检失败。");
+
                 var monthlyDetail = services.Reports.SalesMonthlyExportDetail(DateTime.Today);
+                if (monthlyDetail.Rows.Count != 1 ||
+                    Convert.ToString(monthlyDetail.Rows[0]["author"]) != "Test" ||
+                    Convert.ToString(monthlyDetail.Rows[0]["publisher"]) != "测试出版社" ||
+                    Convert.ToString(monthlyDetail.Rows[0]["category"]) != "测试分类" ||
+                    Convert.ToString(monthlyDetail.Rows[0]["cost_ref_source"]) != "最近采购价" ||
+                    Convert.ToInt32(monthlyDetail.Rows[0]["returned_quantity_in_month"]) != 1 ||
+                    Convert.ToInt32(monthlyDetail.Rows[0]["returned_quantity_to_month_end"]) != 1)
+                    throw new InvalidOperationException("销售历史快照 / 参考成本 / 月内退货口径自检失败。");
+
+                var monthlyReturns = services.Reports.SalesMonthlyReturnExportDetail(DateTime.Today);
+                if (monthlyReturns.Rows.Count != 1 ||
+                    Convert.ToString(monthlyReturns.Rows[0]["refund_method"]) != "微信" ||
+                    Convert.ToInt64(monthlyReturns.Rows[0]["line_total_cent"]) != 1440)
+                    throw new InvalidOperationException("销售月报退款明细自检失败。");
+
                 var monthlyExcelPath = Path.Combine(root, "sales-monthly.xlsx");
                 services.SalesMonthlyExcel.Export(
                     monthlyDetail,
+                    monthlyReturns,
                     monthlyExcelPath,
                     DateTime.Today,
                     services.Settings.GetReportStoreName(),
@@ -443,8 +482,14 @@ namespace Win7BookManagement.Infrastructure
                             summarySheet.GetRow(0).GetCell(0).StringCellValue !=
                                 "目田书店 " + DateTime.Today.Month + "月份销售报表" ||
                             summarySheet.GetRow(3).HeightInPoints < 30F ||
-                            summarySheet.GetColumnWidth(1) < 3000)
-                            throw new InvalidOperationException("销售月报主表结构 / 合并 / 列宽自检失败。");
+                            summarySheet.GetColumnWidth(1) < 3000 ||
+                            summarySheet.GetRow(26).GetCell(0).StringCellValue != "销售合计" ||
+                            Math.Abs(summarySheet.GetRow(26).GetCell(3).NumericCellValue - 28.80) > 0.001 ||
+                            summarySheet.GetRow(27).GetCell(0).StringCellValue != "销售退货" ||
+                            Math.Abs(summarySheet.GetRow(27).GetCell(3).NumericCellValue - 14.40) > 0.001 ||
+                            summarySheet.GetRow(28).GetCell(0).StringCellValue != "净销售" ||
+                            Math.Abs(summarySheet.GetRow(28).GetCell(3).NumericCellValue - 14.40) > 0.001)
+                            throw new InvalidOperationException("销售月报主表结构 / 净销售 / 合并 / 列宽自检失败。");
 
                         var daySheet = monthlyWorkbook.GetSheet(DateTime.Today.ToString("MMdd"));
                         if (daySheet == null ||
@@ -454,8 +499,12 @@ namespace Win7BookManagement.Infrastructure
                             daySheet.GetRow(2).GetCell(30).StringCellValue != "现金" ||
                             Math.Abs(daySheet.GetRow(2).GetCell(31).NumericCellValue - 28.80) > 0.001 ||
                             Math.Abs(daySheet.GetRow(2).GetCell(32).NumericCellValue - 30.00) > 0.001 ||
-                            Math.Abs(daySheet.GetRow(2).GetCell(33).NumericCellValue - 1.20) > 0.001)
-                            throw new InvalidOperationException("销售月报每日明细 / 收款快照自检失败。");
+                            Math.Abs(daySheet.GetRow(2).GetCell(33).NumericCellValue - 1.20) > 0.001 ||
+                            daySheet.GetRow(1).GetCell(36).StringCellValue != "当月退货数量" ||
+                            daySheet.GetRow(2).GetCell(36).NumericCellValue != 1 ||
+                            daySheet.GetRow(2).GetCell(37).NumericCellValue != 1 ||
+                            daySheet.GetRow(2).GetCell(38).StringCellValue != "最近采购价")
+                            throw new InvalidOperationException("销售月报每日明细 / 收款 / 退货 / 参考成本快照自检失败。");
                     }
                     finally
                     {
