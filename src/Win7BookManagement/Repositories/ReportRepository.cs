@@ -22,6 +22,9 @@ SELECT so.sold_at AS 日期,
        so.order_no AS 销售单号,
        si.isbn_snapshot AS ISBN,
        si.title_snapshot AS 书名,
+       si.author_snapshot AS 作者,
+       si.publisher_snapshot AS 出版社,
+       si.category_snapshot AS 分类,
        si.quantity AS 数量,
        ROUND(si.base_unit_price_cent / 100.0, 2) AS 原单价,
        ROUND(si.line_discount_basis_points / 100.0, 2) AS [单品折扣%],
@@ -45,13 +48,13 @@ SELECT so.id AS order_id,
        si.id AS item_id,
        so.sold_at AS sold_at,
        so.order_no AS order_no,
-       COALESCE(NULLIF(b.self_code, ''), si.isbn_snapshot) AS self_code,
+       COALESCE(NULLIF(si.self_code_snapshot, ''), si.isbn_snapshot) AS self_code,
        si.isbn_snapshot AS isbn,
        si.title_snapshot AS title,
-       COALESCE(b.author, '') AS author,
-       COALESCE(b.publisher, '') AS publisher,
-       COALESCE(b.category, '') AS category,
-       COALESCE(b.publication_year, '') AS publication_year,
+       si.author_snapshot AS author,
+       si.publisher_snapshot AS publisher,
+       si.category_snapshot AS category,
+       si.publication_year_snapshot AS publication_year,
        si.quantity AS quantity,
        si.base_unit_price_cent AS base_unit_price_cent,
        si.line_discount_basis_points AS line_discount_basis_points,
@@ -64,34 +67,10 @@ SELECT so.id AS order_id,
        so.amount_received_cent AS amount_received_cent,
        so.change_cent AS change_cent,
        so.note AS order_note,
-       COALESCE(b.list_price_cent, 0) AS list_price_cent,
-       COALESCE(
-         (
-           SELECT pi.unit_cost_cent
-           FROM purchase_order_items pi
-           JOIN purchase_orders po ON po.id=pi.purchase_order_id
-           WHERE pi.book_id=si.book_id
-             AND po.status='reviewed'
-             AND po.purchased_at<=so.sold_at
-           ORDER BY po.purchased_at DESC, po.id DESC, pi.id DESC
-           LIMIT 1
-         ),
-         b.default_purchase_price_cent,
-         0
-       ) AS cost_ref_cent,
-       COALESCE(
-         (
-           SELECT po.supplier_name_snapshot
-           FROM purchase_order_items pi
-           JOIN purchase_orders po ON po.id=pi.purchase_order_id
-           WHERE pi.book_id=si.book_id
-             AND po.status='reviewed'
-             AND po.purchased_at<=so.sold_at
-           ORDER BY po.purchased_at DESC, po.id DESC, pi.id DESC
-           LIMIT 1
-         ),
-         ''
-       ) AS supplier_name,
+       si.list_price_snapshot_cent AS list_price_cent,
+       si.cost_ref_snapshot_cent AS cost_ref_cent,
+       si.cost_ref_source_snapshot AS cost_ref_source,
+       si.supplier_snapshot AS supplier_name,
        COALESCE(
          (
            SELECT SUM(it.quantity)
@@ -100,20 +79,106 @@ SELECT so.id AS order_id,
              AND it.occurred_at<=so.sold_at
          ),
          0
-       ) AS stock_at_sale,
+       ) AS stock_after_sale,
        COALESCE(
          (
            SELECT SUM(sri.quantity)
            FROM sales_return_items sri
+           JOIN sales_returns sr ON sr.id=sri.sales_return_id
            WHERE sri.source_sales_order_item_id=si.id
+             AND sr.returned_at>=@from AND sr.returned_at<@to
          ),
          0
-       ) AS returned_quantity
+       ) AS returned_quantity_in_month,
+       COALESCE(
+         (
+           SELECT SUM(sri.quantity)
+           FROM sales_return_items sri
+           JOIN sales_returns sr ON sr.id=sri.sales_return_id
+           WHERE sri.source_sales_order_item_id=si.id
+             AND sr.returned_at<@to
+         ),
+         0
+       ) AS returned_quantity_to_month_end
 FROM sales_orders so
 JOIN sales_order_items si ON si.sales_order_id=so.id
-LEFT JOIN books b ON b.id=si.book_id
 WHERE so.sold_at>=@from AND so.sold_at<@to
 ORDER BY so.sold_at, so.id, si.id;", fromDate, toDate.AddDays(-1));
+        }
+
+        public DataTable SalesMonthlyReturnExportDetail(DateTime month)
+        {
+            var fromDate = new DateTime(month.Year, month.Month, 1);
+            var toDate = fromDate.AddMonths(1);
+
+            return Fill(@"
+SELECT sr.id AS return_id,
+       sri.id AS return_item_id,
+       sr.returned_at AS returned_at,
+       sr.return_no AS return_no,
+       sr.source_order_no_snapshot AS source_order_no,
+       sri.source_sales_order_item_id AS source_item_id,
+       sri.book_id AS book_id,
+       sri.isbn_snapshot AS isbn,
+       sri.title_snapshot AS title,
+       sri.quantity AS quantity,
+       sri.unit_price_cent AS unit_price_cent,
+       sri.line_total_cent AS line_total_cent,
+       CASE WHEN TRIM(sr.refund_method)='' THEN '未记录' ELSE sr.refund_method END AS refund_method,
+       sr.note AS return_note
+FROM sales_returns sr
+JOIN sales_return_items sri ON sri.sales_return_id=sr.id
+WHERE sr.returned_at>=@from AND sr.returned_at<@to
+ORDER BY sr.returned_at, sr.id, sri.id;", fromDate, toDate.AddDays(-1));
+        }
+
+        public DataTable SalesMonthlySummary(DateTime month)
+        {
+            var fromDate = new DateTime(month.Year, month.Month, 1);
+            var toDate = fromDate.AddMonths(1);
+
+            return Fill(@"
+SELECT
+  COALESCE((SELECT SUM(total_cent) FROM sales_orders WHERE sold_at>=@from AND sold_at<@to), 0)
+    AS gross_sales_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_returns WHERE returned_at>=@from AND returned_at<@to), 0)
+    AS return_amount_cent,
+  COALESCE((SELECT SUM(total_cent) FROM sales_orders WHERE sold_at>=@from AND sold_at<@to), 0)
+    - COALESCE((SELECT SUM(total_cent) FROM sales_returns WHERE returned_at>=@from AND returned_at<@to), 0)
+    AS net_sales_cent,
+  COALESCE((
+    SELECT SUM(si.quantity)
+    FROM sales_order_items si
+    JOIN sales_orders so ON so.id=si.sales_order_id
+    WHERE so.sold_at>=@from AND so.sold_at<@to
+  ), 0) AS sales_quantity,
+  COALESCE((
+    SELECT SUM(sri.quantity)
+    FROM sales_return_items sri
+    JOIN sales_returns sr ON sr.id=sri.sales_return_id
+    WHERE sr.returned_at>=@from AND sr.returned_at<@to
+  ), 0) AS return_quantity,
+  COALESCE((
+    SELECT SUM(si.quantity)
+    FROM sales_order_items si
+    JOIN sales_orders so ON so.id=si.sales_order_id
+    WHERE so.sold_at>=@from AND so.sold_at<@to
+  ), 0)
+  - COALESCE((
+    SELECT SUM(sri.quantity)
+    FROM sales_return_items sri
+    JOIN sales_returns sr ON sr.id=sri.sales_return_id
+    WHERE sr.returned_at>=@from AND sr.returned_at<@to
+  ), 0) AS net_quantity,
+  COALESCE((SELECT COUNT(*) FROM sales_orders WHERE sold_at>=@from AND sold_at<@to), 0)
+    AS order_count,
+  CASE
+    WHEN COALESCE((SELECT COUNT(*) FROM sales_orders WHERE sold_at>=@from AND sold_at<@to), 0)=0 THEN 0
+    ELSE ROUND(
+      COALESCE((SELECT SUM(total_cent) FROM sales_orders WHERE sold_at>=@from AND sold_at<@to), 0) * 1.0 /
+      (SELECT COUNT(*) FROM sales_orders WHERE sold_at>=@from AND sold_at<@to)
+    )
+  END AS average_order_cent;", fromDate, toDate.AddDays(-1));
         }
 
         public DataTable PurchaseDetail(DateTime fromDate, DateTime toDate)
@@ -144,7 +209,8 @@ SELECT sr.returned_at AS 日期,
        sri.title_snapshot AS 书名,
        sri.quantity AS 退货数量,
        ROUND(sri.unit_price_cent / 100.0, 2) AS 成交单价,
-       ROUND(sri.line_total_cent / 100.0, 2) AS 退款金额
+       ROUND(sri.line_total_cent / 100.0, 2) AS 退款金额,
+       CASE WHEN TRIM(sr.refund_method)='' THEN '未记录' ELSE sr.refund_method END AS 退款方式
 FROM sales_returns sr
 JOIN sales_return_items sri ON sri.sales_return_id = sr.id
 WHERE sr.returned_at >= @from AND sr.returned_at < @to
