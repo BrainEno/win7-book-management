@@ -134,7 +134,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <PreBuildEvent>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)..\..\scripts\generate-app-icon.ps1" -OutputPath "$(ProjectDir)Resources\BookDesk.ico"</PreBuildEvent>
+    <PreBuildEvent>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\scripts\generate-app-icon.ps1" -OutputPath "$(MSBuildProjectDirectory)\Resources\BookDesk.ico"</PreBuildEvent>
   </PropertyGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
