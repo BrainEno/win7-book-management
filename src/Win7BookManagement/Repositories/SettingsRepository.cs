@@ -10,6 +10,7 @@ namespace Win7BookManagement.Repositories
         public const string HomeGuideExpandedKey = "home_guide_expanded";
         public const string ReportStoreNameKey = "report_store_name";
         public const string ReportNightShiftStartHourKey = "report_night_shift_start_hour";
+        public const string ReportCategoryMappingKey = "report_category_mapping";
 
         private readonly DatabaseConnectionFactory _factory;
 
@@ -92,6 +93,19 @@ VALUES(@key, @value, @updatedAt);";
             if (normalized.Length > 60)
                 throw new InvalidOperationException("报表店名不能超过 60 个字符。");
             SetString(ReportStoreNameKey, normalized);
+        }
+
+        public string GetReportCategoryMapping()
+        {
+            return GetString(ReportCategoryMappingKey, "");
+        }
+
+        public void SetReportCategoryMapping(string value)
+        {
+            var normalized = (value ?? "").Trim();
+            if (normalized.Length > 4000)
+                throw new InvalidOperationException("月报分类映射内容过长，请控制在 4000 个字符以内。");
+            SetString(ReportCategoryMappingKey, normalized);
         }
 
         public int GetReportNightShiftStartHour()
