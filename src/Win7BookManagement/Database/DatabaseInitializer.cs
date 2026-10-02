@@ -199,6 +199,23 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS dictionary_values (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dictionary_key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    note TEXT NOT NULL DEFAULT '',
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_dictionary_values_key_value
+ON dictionary_values(dictionary_key, value COLLATE NOCASE);
+
+CREATE INDEX IF NOT EXISTS ix_dictionary_values_key_active_sort
+ON dictionary_values(dictionary_key, is_active, sort_order, value);
+
 CREATE INDEX IF NOT EXISTS ix_inventory_book_time
 ON inventory_transactions(book_id, occurred_at);
 
@@ -224,6 +241,8 @@ ON purchase_return_items(source_purchase_order_item_id);
 
                     EnsureBookMetadataColumns(connection, transaction);
                     EnsurePurchaseWorkflowColumns(connection, transaction);
+                    EnsureSalesDiscountColumns(connection, transaction);
+                    EnsureDictionarySchema(connection, transaction);
 
                     using (var bookIndexes = connection.CreateCommand())
                     {
@@ -261,11 +280,11 @@ WHERE updated_at IS NULL OR trim(updated_at)='';";
                         version.Transaction = transaction;
                         version.CommandText = @"
 INSERT INTO schema_info(version)
-SELECT 5 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+SELECT 7 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
 
 UPDATE schema_info
-SET version = 5
-WHERE version < 5;
+SET version = 7
+WHERE version < 7;
 
 INSERT OR IGNORE INTO app_settings(key, value, updated_at)
 VALUES('low_stock_threshold', '3', @now);";
@@ -307,6 +326,93 @@ VALUES('low_stock_threshold', '3', @now);";
                 "ALTER TABLE purchase_orders ADD COLUMN reviewed_at TEXT NULL;");
             EnsureColumn(connection, transaction, "purchase_orders", "updated_at",
                 "ALTER TABLE purchase_orders ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';");
+        }
+
+        private static void EnsureSalesDiscountColumns(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction)
+        {
+            EnsureColumn(connection, transaction, "sales_orders", "subtotal_cent",
+                "ALTER TABLE sales_orders ADD COLUMN subtotal_cent INTEGER NOT NULL DEFAULT 0 CHECK(subtotal_cent >= 0);");
+            EnsureColumn(connection, transaction, "sales_orders", "line_discount_cent",
+                "ALTER TABLE sales_orders ADD COLUMN line_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discount_cent >= 0);");
+            EnsureColumn(connection, transaction, "sales_orders", "order_discount_basis_points",
+                "ALTER TABLE sales_orders ADD COLUMN order_discount_basis_points INTEGER NOT NULL DEFAULT 10000 CHECK(order_discount_basis_points >= 0 AND order_discount_basis_points <= 10000);");
+            EnsureColumn(connection, transaction, "sales_orders", "order_discount_cent",
+                "ALTER TABLE sales_orders ADD COLUMN order_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(order_discount_cent >= 0);");
+
+            EnsureColumn(connection, transaction, "sales_order_items", "base_unit_price_cent",
+                "ALTER TABLE sales_order_items ADD COLUMN base_unit_price_cent INTEGER NOT NULL DEFAULT 0 CHECK(base_unit_price_cent >= 0);");
+            EnsureColumn(connection, transaction, "sales_order_items", "line_discount_basis_points",
+                "ALTER TABLE sales_order_items ADD COLUMN line_discount_basis_points INTEGER NOT NULL DEFAULT 10000 CHECK(line_discount_basis_points >= 0 AND line_discount_basis_points <= 10000);");
+            EnsureColumn(connection, transaction, "sales_order_items", "line_discounted_unit_price_cent",
+                "ALTER TABLE sales_order_items ADD COLUMN line_discounted_unit_price_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discounted_unit_price_cent >= 0);");
+
+            using (var normalize = connection.CreateCommand())
+            {
+                normalize.Transaction = transaction;
+                normalize.CommandText = @"
+UPDATE sales_order_items
+SET base_unit_price_cent = unit_price_cent
+WHERE base_unit_price_cent = 0 AND unit_price_cent > 0;
+
+UPDATE sales_order_items
+SET line_discounted_unit_price_cent = unit_price_cent
+WHERE line_discounted_unit_price_cent = 0 AND unit_price_cent > 0;
+
+UPDATE sales_orders
+SET subtotal_cent = total_cent
+WHERE subtotal_cent = 0 AND total_cent > 0;";
+                normalize.ExecuteNonQuery();
+            }
+        }
+
+        private static void EnsureDictionarySchema(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction)
+        {
+            using (var schema = connection.CreateCommand())
+            {
+                schema.Transaction = transaction;
+                schema.CommandText = @"
+CREATE TABLE IF NOT EXISTS dictionary_values (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dictionary_key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    note TEXT NOT NULL DEFAULT '',
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_dictionary_values_key_value
+ON dictionary_values(dictionary_key, value COLLATE NOCASE);
+
+CREATE INDEX IF NOT EXISTS ix_dictionary_values_key_active_sort
+ON dictionary_values(dictionary_key, is_active, sort_order, value);";
+                schema.ExecuteNonQuery();
+            }
+
+            using (var seed = connection.CreateCommand())
+            {
+                seed.Transaction = transaction;
+                seed.CommandText = @"
+INSERT OR IGNORE INTO dictionary_values
+(dictionary_key, value, sort_order, note, is_active, created_at, updated_at)
+SELECT 'book_category',
+       TRIM(category),
+       0,
+       '由现有图书资料自动导入',
+       1,
+       @now,
+       @now
+FROM books
+WHERE TRIM(category) <> ''
+GROUP BY TRIM(category);";
+                seed.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                seed.ExecuteNonQuery();
+            }
         }
 
         private static void EnsureColumn(
