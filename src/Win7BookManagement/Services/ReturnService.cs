@@ -18,6 +18,15 @@ namespace Win7BookManagement.Services
 
         public string CreateSalesReturn(long sourceSalesOrderId, IList<ReturnLineInput> lines, string note)
         {
+            return CreateSalesReturn(sourceSalesOrderId, lines, note, null);
+        }
+
+        public string CreateSalesReturn(
+            long sourceSalesOrderId,
+            IList<ReturnLineInput> lines,
+            string note,
+            string refundMethod)
+        {
             ValidateLines(lines);
 
             var now = DateTime.Now;
@@ -29,11 +38,28 @@ namespace Win7BookManagement.Services
             {
                 try
                 {
-                    var sourceOrderNo = GetRequiredString(
-                        connection, transaction,
-                        "SELECT order_no FROM sales_orders WHERE id=@id;",
-                        sourceSalesOrderId,
-                        "原销售单不存在。");
+                    string sourceOrderNo;
+                    string sourcePaymentMethod;
+                    using (var sourceCommand = connection.CreateCommand())
+                    {
+                        sourceCommand.Transaction = transaction;
+                        sourceCommand.CommandText =
+                            "SELECT order_no, payment_method FROM sales_orders WHERE id=@id;";
+                        sourceCommand.Parameters.AddWithValue("@id", sourceSalesOrderId);
+                        using (var reader = sourceCommand.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                                throw new InvalidOperationException("原销售单不存在。");
+                            sourceOrderNo = Convert.ToString(reader["order_no"]);
+                            sourcePaymentMethod = Convert.ToString(reader["payment_method"]);
+                        }
+                    }
+
+                    var normalizedRefundMethod = string.IsNullOrWhiteSpace(refundMethod)
+                        ? (sourcePaymentMethod ?? "").Trim()
+                        : refundMethod.Trim();
+                    if (normalizedRefundMethod.Length == 0)
+                        normalizedRefundMethod = "未记录";
 
                     var prepared = new List<PreparedLine>();
                     long totalCent = 0;
@@ -63,12 +89,14 @@ namespace Win7BookManagement.Services
                         command.Transaction = transaction;
                         command.CommandText = @"
 INSERT INTO sales_returns
-(return_no, source_sales_order_id, source_order_no_snapshot, returned_at, total_cent, note, created_at)
-VALUES(@no, @sourceId, @sourceNo, @at, @total, @note, @at);
+(return_no, source_sales_order_id, source_order_no_snapshot, refund_method,
+ returned_at, total_cent, note, created_at)
+VALUES(@no, @sourceId, @sourceNo, @refundMethod, @at, @total, @note, @at);
 SELECT last_insert_rowid();";
                         command.Parameters.AddWithValue("@no", returnNo);
                         command.Parameters.AddWithValue("@sourceId", sourceSalesOrderId);
                         command.Parameters.AddWithValue("@sourceNo", sourceOrderNo);
+                        command.Parameters.AddWithValue("@refundMethod", normalizedRefundMethod);
                         command.Parameters.AddWithValue("@at", timestamp);
                         command.Parameters.AddWithValue("@total", totalCent);
                         command.Parameters.AddWithValue("@note", (note ?? "").Trim());
@@ -120,6 +148,21 @@ VALUES(@returnId, @sourceItemId, @bookId, @isbn, @title, @qty, @unit, @total);";
                     transaction.Rollback();
                     throw;
                 }
+            }
+        }
+
+        public string GetSuggestedRefundMethod(long sourceSalesOrderId)
+        {
+            using (var connection = _factory.Open())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText =
+                    "SELECT payment_method FROM sales_orders WHERE id=@id LIMIT 1;";
+                command.Parameters.AddWithValue("@id", sourceSalesOrderId);
+                var value = command.ExecuteScalar();
+                return value == null || value == DBNull.Value
+                    ? ""
+                    : Convert.ToString(value).Trim();
             }
         }
 
