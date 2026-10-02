@@ -420,6 +420,7 @@ namespace Win7BookManagement.Infrastructure
 
                 services.Settings.SetReportStoreName("目田书店");
                 services.Settings.SetReportNightShiftStartHour(14);
+                services.Settings.SetReportCategoryMapping("测试分类=独立出版书籍");
 
                 var bookForSnapshotMutation = services.Books.GetById(bookId);
                 bookForSnapshotMutation.Author = "后改作者";
@@ -460,7 +461,8 @@ namespace Win7BookManagement.Infrastructure
                     monthlyExcelPath,
                     DateTime.Today,
                     services.Settings.GetReportStoreName(),
-                    services.Settings.GetReportNightShiftStartHour());
+                    services.Settings.GetReportNightShiftStartHour(),
+                    services.Settings.GetReportCategoryMapping());
 
                 if (!File.Exists(monthlyExcelPath) ||
                     new FileInfo(monthlyExcelPath).Length == 0)
@@ -489,8 +491,10 @@ namespace Win7BookManagement.Infrastructure
                             summarySheet.GetRow(27).GetCell(0).StringCellValue != "销售退货" ||
                             Math.Abs(summarySheet.GetRow(27).GetCell(3).NumericCellValue - 14.40) > 0.001 ||
                             summarySheet.GetRow(28).GetCell(0).StringCellValue != "净销售" ||
-                            Math.Abs(summarySheet.GetRow(28).GetCell(3).NumericCellValue - 14.40) > 0.001)
-                            throw new InvalidOperationException("销售月报主表结构 / 净销售 / 合并 / 列宽自检失败。");
+                            Math.Abs(summarySheet.GetRow(28).GetCell(3).NumericCellValue - 14.40) > 0.001 ||
+                            summarySheet.GetRow(6).GetCell(1).StringCellValue != "独立出版书籍" ||
+                            summarySheet.GetRow(6).GetCell(2).NumericCellValue != 2)
+                            throw new InvalidOperationException("销售月报主表结构 / 净销售 / 分类映射 / 合并 / 列宽自检失败。");
 
                         var daySheet = monthlyWorkbook.GetSheet(DateTime.Today.ToString("MMdd"));
                         if (daySheet == null ||
