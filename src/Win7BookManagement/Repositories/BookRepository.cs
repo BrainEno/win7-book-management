@@ -236,6 +236,7 @@ ORDER BY category COLLATE NOCASE;";
             {
                 EnsureSelfCode(connection, book);
                 EnsureUniqueIdentifiers(connection, book, 0);
+                EnsureCategoryDictionaryValue(connection, book.Category);
 
                 using (var command = connection.CreateCommand())
                 {
@@ -265,6 +266,7 @@ SELECT last_insert_rowid();";
             {
                 EnsureSelfCode(connection, book);
                 EnsureUniqueIdentifiers(connection, book, book.Id);
+                EnsureCategoryDictionaryValue(connection, book.Category);
 
                 using (var command = connection.CreateCommand())
                 {
@@ -335,6 +337,28 @@ WHERE id=@id;";
                 }
 
                 nextNumber += 1;
+            }
+        }
+
+        private static void EnsureCategoryDictionaryValue(
+            SQLiteConnection connection,
+            string category)
+        {
+            var value = (category ?? "").Trim();
+            if (value.Length == 0)
+                return;
+
+            var now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+INSERT OR IGNORE INTO dictionary_values
+(dictionary_key, value, sort_order, note, is_active, created_at, updated_at)
+VALUES(@key, @value, 0, '', 1, @now, @now);";
+                command.Parameters.AddWithValue("@key", DictionaryKeys.BookCategory);
+                command.Parameters.AddWithValue("@value", value);
+                command.Parameters.AddWithValue("@now", now);
+                command.ExecuteNonQuery();
             }
         }
 
