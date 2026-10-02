@@ -4,6 +4,8 @@ using System.Data.SQLite;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 using Win7BookManagement.Forms;
 using Win7BookManagement.Models;
 using Win7BookManagement.Services;
@@ -408,6 +410,58 @@ namespace Win7BookManagement.Infrastructure
                 services.Excel.Export(saleReturns, excelPath, "销售退货明细");
                 if (!File.Exists(excelPath) || new FileInfo(excelPath).Length == 0)
                     throw new InvalidOperationException("退货 Excel 导出自检失败。");
+
+                services.Settings.SetReportStoreName("目田书店");
+                services.Settings.SetReportNightShiftStartHour(14);
+                var monthlyDetail = services.Reports.SalesMonthlyExportDetail(DateTime.Today);
+                var monthlyExcelPath = Path.Combine(root, "sales-monthly.xlsx");
+                services.SalesMonthlyExcel.Export(
+                    monthlyDetail,
+                    monthlyExcelPath,
+                    DateTime.Today,
+                    services.Settings.GetReportStoreName(),
+                    services.Settings.GetReportNightShiftStartHour());
+
+                if (!File.Exists(monthlyExcelPath) ||
+                    new FileInfo(monthlyExcelPath).Length == 0)
+                    throw new InvalidOperationException("销售月报 Excel 导出自检失败。");
+
+                using (var monthlyStream = File.OpenRead(monthlyExcelPath))
+                {
+                    var monthlyWorkbook = new XSSFWorkbook(monthlyStream);
+                    try
+                    {
+                        var expectedSheets = DateTime.DaysInMonth(
+                            DateTime.Today.Year,
+                            DateTime.Today.Month) + 1;
+                        if (monthlyWorkbook.NumberOfSheets != expectedSheets)
+                            throw new InvalidOperationException("销售月报 Sheet 数量自检失败。");
+
+                        var summarySheet = monthlyWorkbook.GetSheet("销售月报表");
+                        if (summarySheet == null ||
+                            summarySheet.NumMergedRegions < 100 ||
+                            summarySheet.GetRow(0).GetCell(0).StringCellValue !=
+                                "目田书店 " + DateTime.Today.Month + "月份销售报表" ||
+                            summarySheet.GetRow(3).HeightInPoints < 30F ||
+                            summarySheet.GetColumnWidth(1) < 3000)
+                            throw new InvalidOperationException("销售月报主表结构 / 合并 / 列宽自检失败。");
+
+                        var daySheet = monthlyWorkbook.GetSheet(DateTime.Today.ToString("MMdd"));
+                        if (daySheet == null ||
+                            daySheet.GetRow(1).GetCell(0).StringCellValue != "序号" ||
+                            daySheet.GetRow(1).GetCell(29).StringCellValue != "作者" ||
+                            daySheet.GetRow(1).GetCell(30).StringCellValue != "收款方式" ||
+                            daySheet.GetRow(2).GetCell(30).StringCellValue != "现金" ||
+                            Math.Abs(daySheet.GetRow(2).GetCell(31).NumericCellValue - 28.80) > 0.001 ||
+                            Math.Abs(daySheet.GetRow(2).GetCell(32).NumericCellValue - 30.00) > 0.001 ||
+                            Math.Abs(daySheet.GetRow(2).GetCell(33).NumericCellValue - 1.20) > 0.001)
+                            throw new InvalidOperationException("销售月报每日明细 / 收款快照自检失败。");
+                    }
+                    finally
+                    {
+                        monthlyWorkbook.Close();
+                    }
+                }
 
                 var backupPath = Path.Combine(root, "backup.db");
                 services.Backup.CreateBackup(backupPath);
