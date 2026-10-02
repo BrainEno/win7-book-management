@@ -107,9 +107,31 @@ SELECT last_insert_rowid();";
 
             Validate(item);
             using (var connection = _factory.Open())
-            using (var command = connection.CreateCommand())
+            using (var transaction = connection.BeginTransaction())
             {
-                command.CommandText = @"
+                try
+                {
+                    string oldKey;
+                    string oldValue;
+                    using (var current = connection.CreateCommand())
+                    {
+                        current.Transaction = transaction;
+                        current.CommandText =
+                            "SELECT dictionary_key, value FROM dictionary_values WHERE id=@id LIMIT 1;";
+                        current.Parameters.AddWithValue("@id", item.Id);
+                        using (var reader = current.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                                throw new InvalidOperationException("未找到要修改的字典值.");
+                            oldKey = Convert.ToString(reader["dictionary_key"]);
+                            oldValue = Convert.ToString(reader["value"]);
+                        }
+                    }
+
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.Transaction = transaction;
+                        command.CommandText = @"
 UPDATE dictionary_values
 SET dictionary_key=@key,
     value=@value,
@@ -118,18 +140,46 @@ SET dictionary_key=@key,
     is_active=@active,
     updated_at=@now
 WHERE id=@id;";
-                AddParameters(command, item);
-                command.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                command.Parameters.AddWithValue("@id", item.Id);
+                        AddParameters(command, item);
+                        command.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                        command.Parameters.AddWithValue("@id", item.Id);
 
-                try
-                {
-                    if (command.ExecuteNonQuery() != 1)
-                        throw new InvalidOperationException("未找到要修改的字典值。");
+                        try
+                        {
+                            if (command.ExecuteNonQuery() != 1)
+                                throw new InvalidOperationException("未找到要修改的字典值。");
+                        }
+                        catch (SQLiteException ex)
+                        {
+                            throw TranslateUniqueError(item, ex);
+                        }
+                    }
+
+                    if (string.Equals(oldKey, DictionaryKeys.BookCategory, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(item.DictionaryKey, DictionaryKeys.BookCategory, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(oldValue, item.Value, StringComparison.Ordinal))
+                    {
+                        using (var books = connection.CreateCommand())
+                        {
+                            books.Transaction = transaction;
+                            books.CommandText = @"
+UPDATE books
+SET category=@newValue,
+    updated_at=@now
+WHERE category=@oldValue COLLATE NOCASE;";
+                            books.Parameters.AddWithValue("@newValue", item.Value);
+                            books.Parameters.AddWithValue("@oldValue", oldValue);
+                            books.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                            books.ExecuteNonQuery();
+                        }
+                    }
+
+                    transaction.Commit();
                 }
-                catch (SQLiteException ex)
+                catch
                 {
-                    throw TranslateUniqueError(item, ex);
+                    transaction.Rollback();
+                    throw;
                 }
             }
         }
