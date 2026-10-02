@@ -27,7 +27,10 @@ SELECT so.sold_at AS 日期,
        ROUND(si.line_discount_basis_points / 100.0, 2) AS [单品折扣%],
        ROUND(so.order_discount_basis_points / 100.0, 2) AS [整单折扣%],
        ROUND(si.unit_price_cent / 100.0, 2) AS 实收单价,
-       ROUND(si.line_total_cent / 100.0, 2) AS 金额
+       ROUND(si.line_total_cent / 100.0, 2) AS 金额,
+       CASE WHEN TRIM(so.payment_method)='' THEN '未记录' ELSE so.payment_method END AS 收款方式,
+       ROUND(so.amount_received_cent / 100.0, 2) AS 实收金额,
+       ROUND(so.change_cent / 100.0, 2) AS 找零金额
 FROM sales_orders so
 JOIN sales_order_items si ON si.sales_order_id = so.id
 WHERE so.sold_at >= @from AND so.sold_at < @to
