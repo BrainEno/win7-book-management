@@ -396,6 +396,54 @@ namespace Win7BookManagement.Infrastructure
                     Convert.ToString(saleReturns.Rows[0]["退款方式"]) != "微信")
                     throw new InvalidOperationException("销售折扣 / 历史快照 / 收退款方式报表自检失败。");
 
+                var operatingDaily = services.Reports.OperatingDailySummary(DateTime.Today);
+                var operatingMonthly = services.Reports.OperatingMonthlySummary(DateTime.Today);
+                if (operatingDaily.Rows.Count != 1 ||
+                    Convert.ToInt64(operatingDaily.Rows[0]["订单数"]) != 1 ||
+                    Convert.ToInt64(operatingDaily.Rows[0]["销售册数"]) != 2 ||
+                    Convert.ToInt64(operatingDaily.Rows[0]["退货册数"]) != 1 ||
+                    Convert.ToInt64(operatingDaily.Rows[0]["净销售册数"]) != 1 ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["原金额"]) != 40.00m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["优惠额"]) != 11.20m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["销售额"]) != 28.80m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["退货额"]) != 14.40m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["净销售"]) != 14.40m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["客单价"]) != 28.80m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["平均成交折扣%"]) != 72.00m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["参考成本"]) != 10.00m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["参考毛利"]) != 4.40m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["参考毛利率%"]) != 30.56m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["微信净额"]) != -14.40m ||
+                    Convert.ToDecimal(operatingDaily.Rows[0]["现金净额"]) != 28.80m)
+                    throw new InvalidOperationException("经营日报口径自检失败。");
+
+                var expectedOperatingRows =
+                    DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month) + 1;
+                var operatingMonthTotal =
+                    operatingMonthly.Rows[operatingMonthly.Rows.Count - 1];
+                if (operatingMonthly.Rows.Count != expectedOperatingRows ||
+                    Convert.ToString(operatingMonthTotal["日期"]) != "本月合计" ||
+                    Convert.ToDecimal(operatingMonthTotal["净销售"]) != 14.40m ||
+                    Convert.ToDecimal(operatingMonthTotal["参考毛利"]) != 4.40m)
+                    throw new InvalidOperationException("月度经营摘要自检失败。");
+
+                var purchaseMonthlySummary =
+                    services.Reports.PurchaseMonthlySummary(DateTime.Today);
+                var purchaseMonthTotal =
+                    purchaseMonthlySummary.Rows[purchaseMonthlySummary.Rows.Count - 1];
+                if (purchaseMonthlySummary.Rows.Count != expectedOperatingRows ||
+                    Convert.ToString(purchaseMonthTotal["日期"]) != "本月合计" ||
+                    Convert.ToInt64(purchaseMonthTotal["采购单数"]) != 1 ||
+                    Convert.ToInt64(purchaseMonthTotal["入库册数"]) != 4 ||
+                    Convert.ToDecimal(purchaseMonthTotal["采购金额"]) != 40.00m ||
+                    Convert.ToInt64(purchaseMonthTotal["采购退货单数"]) != 1 ||
+                    Convert.ToInt64(purchaseMonthTotal["退货册数"]) != 1 ||
+                    Convert.ToDecimal(purchaseMonthTotal["退货金额"]) != 10.00m ||
+                    Convert.ToInt64(purchaseMonthTotal["净入库册数"]) != 3 ||
+                    Convert.ToDecimal(purchaseMonthTotal["净采购金额"]) != 30.00m ||
+                    Convert.ToInt64(purchaseMonthTotal["供应商数"]) != 1)
+                    throw new InvalidOperationException("采购月度摘要口径自检失败。");
+
                 var snapshot = services.Reports.InventorySnapshot(DateTime.Today);
                 var selfPublishedSnapshotFound = false;
                 foreach (System.Data.DataRow row in snapshot.Rows)
@@ -428,8 +476,13 @@ namespace Win7BookManagement.Infrastructure
                             genericSheet.GetRow(0).GetCell(0).StringCellValue != "销售退货明细" ||
                             genericSheet.GetRow(1).GetCell(0).StringCellValue != "日期" ||
                             genericSheet.GetColumnWidth(0) < 4000 ||
-                            genericSheet.GetRow(1).HeightInPoints < 28F)
-                            throw new InvalidOperationException("通用 Excel 标题 / 表头 / 列宽样式自检失败。");
+                            genericSheet.GetRow(1).HeightInPoints < 28F ||
+                            genericSheet.PrintSetup.PaperSize != (short)PaperSize.A4 ||
+                            genericSheet.RepeatingRows == null ||
+                            genericSheet.RepeatingRows.FormatAsString() != "2:2" ||
+                            string.IsNullOrWhiteSpace(genericWorkbook.GetPrintArea(0)) ||
+                            genericSheet.Footer.Right.IndexOf("&P", StringComparison.Ordinal) < 0)
+                            throw new InvalidOperationException("通用 Excel 标题 / 表头 / 列宽 / 打印设置自检失败。");
                     }
                     finally
                     {
@@ -512,8 +565,13 @@ namespace Win7BookManagement.Infrastructure
                             summarySheet.GetRow(28).GetCell(0).StringCellValue != "净销售" ||
                             Math.Abs(summarySheet.GetRow(28).GetCell(3).NumericCellValue - 14.40) > 0.001 ||
                             summarySheet.GetRow(6).GetCell(1).StringCellValue != "独立出版书籍" ||
-                            summarySheet.GetRow(6).GetCell(2).NumericCellValue != 2)
-                            throw new InvalidOperationException("销售月报主表结构 / 净销售 / 分类映射 / 合并 / 列宽自检失败。");
+                            summarySheet.GetRow(6).GetCell(2).NumericCellValue != 2 ||
+                            summarySheet.PrintSetup.PaperSize != (short)PaperSize.A4 ||
+                            summarySheet.RepeatingRows == null ||
+                            summarySheet.RepeatingRows.FormatAsString() != "1:4" ||
+                            string.IsNullOrWhiteSpace(monthlyWorkbook.GetPrintArea(
+                                monthlyWorkbook.GetSheetIndex(summarySheet))))
+                            throw new InvalidOperationException("销售月报主表结构 / 净销售 / 分类映射 / 合并 / 列宽 / 打印设置自检失败。");
 
                         var daySheet = monthlyWorkbook.GetSheet(DateTime.Today.ToString("MMdd"));
                         if (daySheet == null ||
@@ -533,6 +591,100 @@ namespace Win7BookManagement.Infrastructure
                     finally
                     {
                         monthlyWorkbook.Close();
+                    }
+                }
+
+                var purchaseMonthlyDetail =
+                    services.Reports.PurchaseMonthlyExportDetail(DateTime.Today);
+                var purchaseMonthlyReturns =
+                    services.Reports.PurchaseMonthlyReturnExportDetail(DateTime.Today);
+                if (purchaseMonthlyDetail.Rows.Count != 1 ||
+                    purchaseMonthlyReturns.Rows.Count != 1 ||
+                    Convert.ToInt32(
+                        purchaseMonthlyDetail.Rows[0]["returned_quantity_in_month"]) != 1 ||
+                    Convert.ToInt32(
+                        purchaseMonthlyDetail.Rows[0]["returned_quantity_to_month_end"]) != 1 ||
+                    Convert.ToInt64(
+                        purchaseMonthlyReturns.Rows[0]["line_total_cent"]) != 1000)
+                    throw new InvalidOperationException("采购月报明细查询自检失败。");
+
+                var purchaseMonthlyExcelPath =
+                    Path.Combine(root, "purchase-monthly.xlsx");
+                services.PurchaseMonthlyExcel.Export(
+                    purchaseMonthlyDetail,
+                    purchaseMonthlyReturns,
+                    purchaseMonthlyExcelPath,
+                    DateTime.Today,
+                    services.Settings.GetReportStoreName());
+
+                if (!File.Exists(purchaseMonthlyExcelPath) ||
+                    new FileInfo(purchaseMonthlyExcelPath).Length == 0)
+                    throw new InvalidOperationException("采购月报 Excel 导出自检失败。");
+
+                using (var purchaseMonthlyStream =
+                    File.OpenRead(purchaseMonthlyExcelPath))
+                {
+                    var purchaseWorkbook =
+                        new XSSFWorkbook(purchaseMonthlyStream);
+                    try
+                    {
+                        var expectedSheets =
+                            DateTime.DaysInMonth(
+                                DateTime.Today.Year,
+                                DateTime.Today.Month) + 2;
+                        if (purchaseWorkbook.NumberOfSheets != expectedSheets)
+                            throw new InvalidOperationException(
+                                "采购月报 Sheet 数量自检失败。");
+
+                        var purchaseSummary =
+                            purchaseWorkbook.GetSheet("采购月报表");
+                        var todaySummaryRow =
+                            purchaseSummary.GetRow(DateTime.Today.Day + 1);
+                        var totalRow =
+                            purchaseSummary.GetRow(
+                                DateTime.DaysInMonth(
+                                    DateTime.Today.Year,
+                                    DateTime.Today.Month) + 2);
+                        if (purchaseSummary == null ||
+                            todaySummaryRow == null ||
+                            Math.Abs(todaySummaryRow.GetCell(3).NumericCellValue - 40.00) > 0.001 ||
+                            Math.Abs(todaySummaryRow.GetCell(6).NumericCellValue - 10.00) > 0.001 ||
+                            Math.Abs(todaySummaryRow.GetCell(8).NumericCellValue - 30.00) > 0.001 ||
+                            totalRow == null ||
+                            totalRow.GetCell(0).StringCellValue != "本月合计" ||
+                            purchaseSummary.PrintSetup.PaperSize != (short)PaperSize.A4 ||
+                            purchaseSummary.RepeatingRows == null ||
+                            purchaseSummary.RepeatingRows.FormatAsString() != "2:2")
+                            throw new InvalidOperationException(
+                                "采购月报汇总 / 打印设置自检失败。");
+
+                        var supplierSheet =
+                            purchaseWorkbook.GetSheet("供应商汇总");
+                        if (supplierSheet == null ||
+                            supplierSheet.GetRow(2).GetCell(0).StringCellValue != "测试供应商" ||
+                            Math.Abs(supplierSheet.GetRow(2).GetCell(3).NumericCellValue - 40.00) > 0.001 ||
+                            Math.Abs(supplierSheet.GetRow(2).GetCell(5).NumericCellValue - 10.00) > 0.001 ||
+                            Math.Abs(supplierSheet.GetRow(2).GetCell(6).NumericCellValue - 30.00) > 0.001)
+                            throw new InvalidOperationException(
+                                "采购月报供应商汇总自检失败。");
+
+                        var purchaseDay =
+                            purchaseWorkbook.GetSheet(
+                                DateTime.Today.ToString("MMdd"));
+                        if (purchaseDay == null ||
+                            purchaseDay.GetRow(1).GetCell(0).StringCellValue != "采购入库明细" ||
+                            purchaseDay.GetRow(2).GetCell(2).StringCellValue != "采购单号" ||
+                            purchaseDay.GetRow(3).GetCell(3).StringCellValue != "测试供应商" ||
+                            Math.Abs(purchaseDay.GetRow(3).GetCell(8).NumericCellValue - 40.00) > 0.001 ||
+                            purchaseDay.GetRow(5).GetCell(0).StringCellValue != "采购退货明细" ||
+                            purchaseDay.GetRow(6).GetCell(2).StringCellValue != "退货单号" ||
+                            Math.Abs(purchaseDay.GetRow(7).GetCell(9).NumericCellValue - 10.00) > 0.001)
+                            throw new InvalidOperationException(
+                                "采购月报逐日采购 / 退货明细自检失败。");
+                    }
+                    finally
+                    {
+                        purchaseWorkbook.Close();
                     }
                 }
 
