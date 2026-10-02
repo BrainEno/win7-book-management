@@ -20,6 +20,7 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Button _next = UiTheme.CreateAntdButton("下一步", true);
 
         private Rectangle _targetBounds = Rectangle.Empty;
+        private Bitmap _backgroundSnapshot;
         private int _index;
 
         public OnboardingGuideForm(MainForm main, ApplicationServices services)
@@ -33,9 +34,9 @@ namespace Win7BookManagement.Forms
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
-            Bounds = main.Bounds;
-            BackColor = Color.FromArgb(23, 31, 44);
-            Opacity = 0.94;
+            Bounds = main.RectangleToScreen(main.ClientRectangle);
+            BackColor = UiTheme.Background;
+            Opacity = 1.0;
             TopMost = false;
             KeyPreview = true;
 
@@ -47,15 +48,17 @@ namespace Win7BookManagement.Forms
             KeyDown += HandleKeyDown;
             Shown += delegate
             {
-                // AutoScaleMode.Dpi may resize the borderless form while the
-                // handle is created. Re-bind to the main window afterwards so
-                // the overlay always covers exactly the current application.
-                Bounds = _main.Bounds;
+                // Keep the overlay on the client area only. The real interface
+                // is rendered into a snapshot below the translucent dim layer,
+                // so users can still see the page they are learning.
+                Bounds = _main.RectangleToScreen(_main.ClientRectangle);
+                RefreshBackgroundSnapshot();
                 ResizeCard();
                 ShowStep(0);
             };
             Resize += delegate
             {
+                RefreshBackgroundSnapshot();
                 ResizeCard();
                 PositionCard();
                 Invalidate();
@@ -135,11 +138,40 @@ namespace Win7BookManagement.Forms
         {
             base.OnPaint(e);
 
+            if (_backgroundSnapshot != null)
+            {
+                e.Graphics.DrawImage(
+                    _backgroundSnapshot,
+                    new Rectangle(Point.Empty, ClientSize),
+                    new Rectangle(Point.Empty, _backgroundSnapshot.Size),
+                    GraphicsUnit.Pixel);
+            }
+
+            // A moderate 42% dim keeps non-target content readable instead of
+            // covering the application with the previous nearly-opaque layer.
+            using (var dim = new SolidBrush(Color.FromArgb(108, 14, 22, 34)))
+                e.Graphics.FillRectangle(dim, ClientRectangle);
+
             if (_targetBounds == Rectangle.Empty)
                 return;
 
-            using (var pen = new Pen(Color.FromArgb(255, 220, 80), 4F))
-                e.Graphics.DrawRectangle(pen, _targetBounds);
+            var spotlight = _targetBounds;
+            spotlight.Inflate(8, 6);
+            spotlight.Intersect(ClientRectangle);
+
+            if (_backgroundSnapshot != null &&
+                spotlight.Width > 0 &&
+                spotlight.Height > 0)
+            {
+                e.Graphics.DrawImage(
+                    _backgroundSnapshot,
+                    spotlight,
+                    spotlight,
+                    GraphicsUnit.Pixel);
+            }
+
+            using (var pen = new Pen(UiTheme.Accent, 3F))
+                e.Graphics.DrawRectangle(pen, spotlight);
 
             DrawArrow(e.Graphics);
         }
@@ -171,6 +203,10 @@ namespace Win7BookManagement.Forms
             if (!string.IsNullOrWhiteSpace(step.NavigationKey))
                 _main.Navigate(step.NavigationKey);
 
+            _main.PerformLayout();
+            _main.Update();
+            RefreshBackgroundSnapshot();
+
             _stepLabel.Text = "新手引导  " + (_index + 1) + " / " + _steps.Count;
             _titleLabel.Text = step.Title;
             _bodyLabel.Text = step.Body;
@@ -181,6 +217,46 @@ namespace Win7BookManagement.Forms
             UpdateTarget(step.TargetNavigationKey);
             PositionCard();
             Invalidate();
+        }
+
+        private void RefreshBackgroundSnapshot()
+        {
+            if (_main == null ||
+                _main.IsDisposed ||
+                _main.ClientSize.Width <= 0 ||
+                _main.ClientSize.Height <= 0)
+                return;
+
+            Bitmap next = null;
+            try
+            {
+                next = new Bitmap(
+                    _main.ClientSize.Width,
+                    _main.ClientSize.Height,
+                    System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+                _main.DrawToBitmap(
+                    next,
+                    new Rectangle(Point.Empty, _main.ClientSize));
+
+                var old = _backgroundSnapshot;
+                _backgroundSnapshot = next;
+                next = null;
+                if (old != null) old.Dispose();
+            }
+            catch
+            {
+                if (next != null) next.Dispose();
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _backgroundSnapshot != null)
+            {
+                _backgroundSnapshot.Dispose();
+                _backgroundSnapshot = null;
+            }
+            base.Dispose(disposing);
         }
 
         private void ResizeCard()
