@@ -490,6 +490,8 @@ namespace Win7BookManagement.Forms
                 if (name == "金额") return compact ? "120" : "180";
                 if (name == "状态") return compact ? "120" : "180";
                 if (name == "供应商") return compact ? "120" : "150";
+                if (name == "收款方式") return compact ? "88" : "108";
+                if (name == "实收金额" || name == "找零金额") return compact ? "96" : "112";
                 if (name == "备注") return "fill";
             }
             else

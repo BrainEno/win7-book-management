@@ -160,6 +160,9 @@ SELECT so.id AS Id,
        so.order_no AS 单号,
        COALESCE(SUM(si.quantity),0) AS 数量,
        ROUND(so.total_cent / 100.0, 2) AS 金额,
+       CASE WHEN TRIM(so.payment_method)='' THEN '未记录' ELSE so.payment_method END AS 收款方式,
+       ROUND(so.amount_received_cent / 100.0, 2) AS 实收金额,
+       ROUND(so.change_cent / 100.0, 2) AS 找零金额,
        CASE
          WHEN COALESCE(SUM(r.returned_qty),0)=0 THEN '未退货'
          WHEN COALESCE(SUM(r.returned_qty),0)<COALESCE(SUM(si.quantity),0) THEN '部分退货'
@@ -175,12 +178,14 @@ LEFT JOIN (
 ) r ON r.source_sales_order_item_id=si.id
 WHERE so.sold_at>=@from AND so.sold_at<@to
   AND (@keyword='' OR so.order_no LIKE @like OR so.note LIKE @like
+       OR so.payment_method LIKE @like
        OR EXISTS (
          SELECT 1 FROM sales_order_items sx
          WHERE sx.sales_order_id=so.id
            AND (sx.isbn_snapshot LIKE @like OR sx.title_snapshot LIKE @like)
        ))
-GROUP BY so.id, so.sold_at, so.order_no, so.total_cent, so.note
+GROUP BY so.id, so.sold_at, so.order_no, so.total_cent,
+         so.payment_method, so.amount_received_cent, so.change_cent, so.note
 ORDER BY so.sold_at DESC, so.id DESC;";
                 case "purchase":
                     return @"

@@ -88,6 +88,12 @@ namespace Win7BookManagement.Infrastructure
                 if (!seededCategories.Contains("测试分类"))
                     throw new InvalidOperationException("图书分类字典自动同步自检失败。");
 
+                var paymentMethods = services.Dictionaries.GetActiveValues(DictionaryKeys.PaymentMethod);
+                if (!paymentMethods.Contains("微信") ||
+                    !paymentMethods.Contains("支付宝") ||
+                    !paymentMethods.Contains("现金"))
+                    throw new InvalidOperationException("默认收款方式字典自检失败。");
+
                 selfPublished.Category = "临时分类";
                 services.Books.Update(selfPublished);
                 var tempCategories = services.Dictionaries.Search(
@@ -227,6 +233,37 @@ namespace Win7BookManagement.Infrastructure
 
                 services.Purchases.Review(purchaseDraft.Id);
 
+                var heldDraft = services.Sales.SaveDraft(
+                    null,
+                    new List<TransactionLineInput>
+                    {
+                        new TransactionLineInput
+                        {
+                            BookId = bookId,
+                            Quantity = 1,
+                            UnitPriceCent = 2000,
+                            BaseUnitPriceCent = 2000,
+                            DiscountBasisPoints = 9500
+                        }
+                    },
+                    "held sale",
+                    9000);
+                if (heldDraft == null ||
+                    heldDraft.Lines.Count != 1 ||
+                    heldDraft.Lines[0].BookId != bookId ||
+                    services.Books.GetById(bookId).StockQuantity != 9)
+                    throw new InvalidOperationException("销售挂单保存不应改变库存。");
+
+                var draftSummaries = services.Sales.GetDraftSummaries();
+                if (draftSummaries.Count != 1 ||
+                    draftSummaries[0].Id != heldDraft.Id ||
+                    draftSummaries[0].QuantityTotal != 1)
+                    throw new InvalidOperationException("销售挂单列表自检失败。");
+
+                services.Sales.DeleteDraft(heldDraft.Id);
+                if (services.Sales.GetDraftSummaries().Count != 0)
+                    throw new InvalidOperationException("销售挂单删除自检失败。");
+
                 services.Sales.Checkout(
                     new List<TransactionLineInput>
                     {
@@ -240,15 +277,20 @@ namespace Win7BookManagement.Infrastructure
                         }
                     },
                     "sale",
-                    8000);
+                    8000,
+                    "现金",
+                    3000);
 
                 if (services.Books.GetById(bookId).StockQuantity != 7)
                     throw new InvalidOperationException("采购/销售库存事务自检失败。");
 
                 var saleDocs = services.Documents.Search("sale", DateTime.Today, DateTime.Today, "");
                 var purchaseDocs = services.Documents.Search("purchase", DateTime.Today, DateTime.Today, "");
-                if (saleDocs.Rows.Count != 1 || purchaseDocs.Rows.Count != 1)
-                    throw new InvalidOperationException("单据中心原单查询自检失败。");
+                if (saleDocs.Rows.Count != 1 || purchaseDocs.Rows.Count != 1 ||
+                    Convert.ToString(saleDocs.Rows[0]["收款方式"]) != "现金" ||
+                    Convert.ToDecimal(saleDocs.Rows[0]["实收金额"]) != 30.00m ||
+                    Convert.ToDecimal(saleDocs.Rows[0]["找零金额"]) != 1.20m)
+                    throw new InvalidOperationException("单据中心原单 / 收款快照查询自检失败。");
 
                 var saleId = Convert.ToInt64(saleDocs.Rows[0]["Id"]);
                 var purchaseId = Convert.ToInt64(purchaseDocs.Rows[0]["Id"]);
@@ -341,8 +383,9 @@ namespace Win7BookManagement.Infrastructure
                     Convert.ToDecimal(sales.Rows[0]["原单价"]) != 20.00m ||
                     Convert.ToDecimal(sales.Rows[0]["单品折扣%"]) != 90.00m ||
                     Convert.ToDecimal(sales.Rows[0]["整单折扣%"]) != 80.00m ||
-                    Convert.ToDecimal(sales.Rows[0]["实收单价"]) != 14.40m)
-                    throw new InvalidOperationException("销售折扣 / 退货报表自检失败。");
+                    Convert.ToDecimal(sales.Rows[0]["实收单价"]) != 14.40m ||
+                    Convert.ToString(sales.Rows[0]["收款方式"]) != "现金")
+                    throw new InvalidOperationException("销售折扣 / 收款方式 / 退货报表自检失败。");
 
                 var snapshot = services.Reports.InventorySnapshot(DateTime.Today);
                 var selfPublishedSnapshotFound = false;

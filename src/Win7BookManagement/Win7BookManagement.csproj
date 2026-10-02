@@ -98,6 +98,7 @@
     <Compile Include="Models\PurchaseDocument.cs" />
     <Compile Include="Models\ReturnLineInput.cs" />
     <Compile Include="Models\ReturnableDocumentLine.cs" />
+    <Compile Include="Models\SalesDraft.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TransactionLineInput.cs" />
 

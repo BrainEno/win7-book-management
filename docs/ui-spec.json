@@ -1,6 +1,6 @@
 {
   "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
-  "specVersion": "1.3.0",
+  "specVersion": "1.4.0",
   "project": {
     "name": "BOOK DESK / 简易图书管理系统",
     "repository": "https://github.com/BrainEno/win7-book-management",
@@ -1604,6 +1604,8 @@
             "加入",
             "选择图书",
             "新单",
+            "挂单",
+            "取单",
             "清空"
           ]
         },
@@ -1690,6 +1692,17 @@
             "min": 0,
             "max": 100,
             "decimalPlaces": 2
+          },
+          "paymentDialog": {
+            "title": "确认收款",
+            "methodsFromDictionary": "payment_method",
+            "defaultMethods": [
+              "微信",
+              "支付宝",
+              "现金"
+            ],
+            "cashBehavior": "现金显示实收输入并实时计算找零；实收小于应收时禁止确认。",
+            "nonCashBehavior": "非现金实收等于最终应收，找零为 0。"
           }
         },
         "summary": [
@@ -1705,8 +1718,22 @@
         "折扣百分比转 basis points 保存：100.00%=10000。",
         "每一步都在分级金额上按 MidpointRounding.AwayFromZero 舍入到整数分。",
         "sales_order_items.unit_price_cent 保存两级折扣后的实际成交单价，确保部分退货按真实支付金额退款。",
-        "历史销售单保持折扣前价格、单品折扣、整单折扣和最终成交价快照。"
+        "历史销售单保持折扣前价格、单品折扣、整单折扣和最终成交价快照。",
+        "历史销售单同时保存收款方式；现金额外保存实收与找零。"
       ],
+      "heldOrders": [
+        "挂单写入本地 SQLite sales_drafts / sales_draft_items，不改变库存。",
+        "取单恢复数量、当时销售价、单品折扣、整单折扣和备注。",
+        "最终结账重新校验图书启用状态和实时库存；结账成功后删除对应挂单。"
+      ],
+      "keyboardShortcuts": {
+        "F2": "聚焦扫码 / 搜索",
+        "F3": "选择图书",
+        "F5": "挂单",
+        "F6": "取单",
+        "Ctrl+Enter": "确认结账",
+        "Ctrl+N": "新单"
+      },
       "responsive": {
         "compact": [
           "折扣列保持可见，优先隐藏店内编码、作者、ISBN等辅助识别列。",
@@ -1746,6 +1773,27 @@
             "停用不清空历史图书分类。",
             "重命名图书分类时在同一事务中同步现有 books.category。"
           ]
+        },
+        {
+          "key": "payment_method",
+          "label": "收款方式",
+          "storage": "dictionary_values",
+          "defaults": [
+            "微信",
+            "支付宝",
+            "现金"
+          ],
+          "fields": [
+            "字典值",
+            "排序",
+            "备注",
+            "状态"
+          ],
+          "behavior": [
+            "启用值立即可用于零售结账。",
+            "停用只影响后续选择，不改写历史销售单的收款快照。",
+            "现金是内置找零语义；默认值应保持可用。"
+          ]
         }
       ],
       "extensibility": {
@@ -1761,7 +1809,6 @@
         "futureKeys": [
           "binding",
           "shelf_zone",
-          "payment_method",
           "customer_source",
           "tag"
         ]
