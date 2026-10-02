@@ -106,6 +106,9 @@ CREATE TABLE IF NOT EXISTS sales_orders (
     order_no TEXT NOT NULL UNIQUE,
     sold_at TEXT NOT NULL,
     total_cent INTEGER NOT NULL CHECK(total_cent >= 0),
+    payment_method TEXT NOT NULL DEFAULT '',
+    amount_received_cent INTEGER NOT NULL DEFAULT 0 CHECK(amount_received_cent >= 0),
+    change_cent INTEGER NOT NULL DEFAULT 0 CHECK(change_cent >= 0),
     note TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
 );
@@ -120,6 +123,32 @@ CREATE TABLE IF NOT EXISTS sales_order_items (
     unit_price_cent INTEGER NOT NULL CHECK(unit_price_cent >= 0),
     line_total_cent INTEGER NOT NULL CHECK(line_total_cent >= 0),
     FOREIGN KEY(sales_order_id) REFERENCES sales_orders(id),
+    FOREIGN KEY(book_id) REFERENCES books(id)
+);
+
+CREATE TABLE IF NOT EXISTS sales_drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    draft_no TEXT NOT NULL UNIQUE,
+    note TEXT NOT NULL DEFAULT '',
+    order_discount_basis_points INTEGER NOT NULL DEFAULT 10000
+        CHECK(order_discount_basis_points >= 0 AND order_discount_basis_points <= 10000),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sales_draft_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sales_draft_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    self_code_snapshot TEXT NOT NULL DEFAULT '',
+    isbn_snapshot TEXT NOT NULL DEFAULT '',
+    title_snapshot TEXT NOT NULL,
+    author_snapshot TEXT NOT NULL DEFAULT '',
+    quantity INTEGER NOT NULL CHECK(quantity > 0),
+    base_unit_price_cent INTEGER NOT NULL DEFAULT 0 CHECK(base_unit_price_cent >= 0),
+    line_discount_basis_points INTEGER NOT NULL DEFAULT 10000
+        CHECK(line_discount_basis_points >= 0 AND line_discount_basis_points <= 10000),
+    FOREIGN KEY(sales_draft_id) REFERENCES sales_drafts(id) ON DELETE CASCADE,
     FOREIGN KEY(book_id) REFERENCES books(id)
 );
 
@@ -222,6 +251,12 @@ ON inventory_transactions(book_id, occurred_at);
 CREATE INDEX IF NOT EXISTS ix_sales_orders_sold_at
 ON sales_orders(sold_at);
 
+CREATE INDEX IF NOT EXISTS ix_sales_drafts_updated_at
+ON sales_drafts(updated_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS ix_sales_draft_items_draft
+ON sales_draft_items(sales_draft_id, id);
+
 CREATE INDEX IF NOT EXISTS ix_purchase_orders_purchased_at
 ON purchase_orders(purchased_at);
 
@@ -242,6 +277,8 @@ ON purchase_return_items(source_purchase_order_item_id);
                     EnsureBookMetadataColumns(connection, transaction);
                     EnsurePurchaseWorkflowColumns(connection, transaction);
                     EnsureSalesDiscountColumns(connection, transaction);
+                    EnsureSalesPaymentColumns(connection, transaction);
+                    EnsureSalesDraftSchema(connection, transaction);
                     EnsureDictionarySchema(connection, transaction);
 
                     using (var bookIndexes = connection.CreateCommand())
@@ -280,11 +317,11 @@ WHERE updated_at IS NULL OR trim(updated_at)='';";
                         version.Transaction = transaction;
                         version.CommandText = @"
 INSERT INTO schema_info(version)
-SELECT 7 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+SELECT 8 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
 
 UPDATE schema_info
-SET version = 7
-WHERE version < 7;
+SET version = 8
+WHERE version < 8;
 
 INSERT OR IGNORE INTO app_settings(key, value, updated_at)
 VALUES('low_stock_threshold', '3', @now);";
@@ -367,6 +404,71 @@ WHERE subtotal_cent = 0 AND total_cent > 0;";
             }
         }
 
+        private static void EnsureSalesPaymentColumns(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction)
+        {
+            EnsureColumn(connection, transaction, "sales_orders", "payment_method",
+                "ALTER TABLE sales_orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_orders", "amount_received_cent",
+                "ALTER TABLE sales_orders ADD COLUMN amount_received_cent INTEGER NOT NULL DEFAULT 0 CHECK(amount_received_cent >= 0);");
+            EnsureColumn(connection, transaction, "sales_orders", "change_cent",
+                "ALTER TABLE sales_orders ADD COLUMN change_cent INTEGER NOT NULL DEFAULT 0 CHECK(change_cent >= 0);");
+
+            using (var normalize = connection.CreateCommand())
+            {
+                normalize.Transaction = transaction;
+                normalize.CommandText = @"
+UPDATE sales_orders
+SET amount_received_cent = total_cent
+WHERE amount_received_cent = 0 AND total_cent > 0;";
+                normalize.ExecuteNonQuery();
+            }
+        }
+
+        private static void EnsureSalesDraftSchema(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction)
+        {
+            using (var schema = connection.CreateCommand())
+            {
+                schema.Transaction = transaction;
+                schema.CommandText = @"
+CREATE TABLE IF NOT EXISTS sales_drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    draft_no TEXT NOT NULL UNIQUE,
+    note TEXT NOT NULL DEFAULT '',
+    order_discount_basis_points INTEGER NOT NULL DEFAULT 10000
+        CHECK(order_discount_basis_points >= 0 AND order_discount_basis_points <= 10000),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sales_draft_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sales_draft_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    self_code_snapshot TEXT NOT NULL DEFAULT '',
+    isbn_snapshot TEXT NOT NULL DEFAULT '',
+    title_snapshot TEXT NOT NULL,
+    author_snapshot TEXT NOT NULL DEFAULT '',
+    quantity INTEGER NOT NULL CHECK(quantity > 0),
+    base_unit_price_cent INTEGER NOT NULL DEFAULT 0 CHECK(base_unit_price_cent >= 0),
+    line_discount_basis_points INTEGER NOT NULL DEFAULT 10000
+        CHECK(line_discount_basis_points >= 0 AND line_discount_basis_points <= 10000),
+    FOREIGN KEY(sales_draft_id) REFERENCES sales_drafts(id) ON DELETE CASCADE,
+    FOREIGN KEY(book_id) REFERENCES books(id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_sales_drafts_updated_at
+ON sales_drafts(updated_at DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS ix_sales_draft_items_draft
+ON sales_draft_items(sales_draft_id, id);";
+                schema.ExecuteNonQuery();
+            }
+        }
+
         private static void EnsureDictionarySchema(
             SQLiteConnection connection,
             SQLiteTransaction transaction)
@@ -409,7 +511,14 @@ SELECT 'book_category',
        @now
 FROM books
 WHERE TRIM(category) <> ''
-GROUP BY TRIM(category);";
+GROUP BY TRIM(category);
+
+INSERT OR IGNORE INTO dictionary_values
+(dictionary_key, value, sort_order, note, is_active, created_at, updated_at)
+VALUES
+('payment_method', '微信', 10, '默认收款方式', 1, @now, @now),
+('payment_method', '支付宝', 20, '默认收款方式', 1, @now, @now),
+('payment_method', '现金', 30, '现金收款支持实收与找零', 1, @now, @now);";
                 seed.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 seed.ExecuteNonQuery();
             }
