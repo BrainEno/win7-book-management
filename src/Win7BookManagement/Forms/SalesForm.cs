@@ -867,7 +867,7 @@ namespace Win7BookManagement.Forms
             }
         }
 
-        private void LoadDraft(SalesService.SalesDraft draft)
+        private void LoadDraft(SalesDraft draft)
         {
             _rows.Clear();
             _selectedRow = null;
@@ -1277,7 +1277,7 @@ namespace Win7BookManagement.Forms
 
             public SalesDraftPickerDialog(
                 ApplicationServices services,
-                IList<SalesService.SalesDraftSummary> drafts)
+                IList<SalesDraftSummary> drafts)
             {
                 _services = services;
 
@@ -1455,7 +1455,7 @@ namespace Win7BookManagement.Forms
                 public decimal TotalYuan { get; private set; }
                 public string Note { get; private set; }
 
-                public DraftRow(SalesService.SalesDraftSummary source)
+                public DraftRow(SalesDraftSummary source)
                 {
                     Id = source.Id;
                     UpdatedAtText = source.UpdatedAt == DateTime.MinValue
