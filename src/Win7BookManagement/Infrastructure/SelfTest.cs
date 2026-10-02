@@ -421,10 +421,11 @@ namespace Win7BookManagement.Infrastructure
                 services.Settings.SetReportStoreName("目田书店");
                 services.Settings.SetReportNightShiftStartHour(14);
 
-                storedBook.Author = "后改作者";
-                storedBook.Publisher = "后改出版社";
-                storedBook.Category = "后改分类";
-                services.Books.Update(storedBook);
+                var bookForSnapshotMutation = services.Books.GetById(bookId);
+                bookForSnapshotMutation.Author = "后改作者";
+                bookForSnapshotMutation.Publisher = "后改出版社";
+                bookForSnapshotMutation.Category = "后改分类";
+                services.Books.Update(bookForSnapshotMutation);
 
                 var monthlySummary = services.Reports.SalesMonthlySummary(DateTime.Today);
                 if (monthlySummary.Rows.Count != 1 ||
