@@ -789,9 +789,37 @@ namespace Win7BookManagement.Reporting
                     OrderNote = ToStringValue(row["order_note"]),
                     ListPriceCent = ToLong(row["list_price_cent"]),
                     CostRefCent = ToLong(row["cost_ref_cent"]),
+                    CostRefSource = ToStringValue(row["cost_ref_source"]),
                     SupplierName = ToStringValue(row["supplier_name"]),
-                    StockAtSale = ToInt(row["stock_at_sale"]),
-                    ReturnedQuantity = ToInt(row["returned_quantity"])
+                    StockAfterSale = ToInt(row["stock_after_sale"]),
+                    ReturnedQuantityInMonth = ToInt(row["returned_quantity_in_month"]),
+                    ReturnedQuantityToMonthEnd = ToInt(row["returned_quantity_to_month_end"])
+                });
+            }
+            return result;
+        }
+
+        private static IList<MonthlyReturnRow> ReadReturns(DataTable table)
+        {
+            var result = new List<MonthlyReturnRow>();
+            foreach (DataRow row in table.Rows)
+            {
+                result.Add(new MonthlyReturnRow
+                {
+                    ReturnId = ToLong(row["return_id"]),
+                    ReturnItemId = ToLong(row["return_item_id"]),
+                    ReturnedAt = ToDateTime(row["returned_at"]),
+                    ReturnNo = ToStringValue(row["return_no"]),
+                    SourceOrderNo = ToStringValue(row["source_order_no"]),
+                    SourceItemId = ToLong(row["source_item_id"]),
+                    BookId = ToLong(row["book_id"]),
+                    Isbn = ToStringValue(row["isbn"]),
+                    Title = ToStringValue(row["title"]),
+                    Quantity = ToInt(row["quantity"]),
+                    UnitPriceCent = ToLong(row["unit_price_cent"]),
+                    LineTotalCent = ToLong(row["line_total_cent"]),
+                    RefundMethod = ToStringValue(row["refund_method"]),
+                    ReturnNote = ToStringValue(row["return_note"])
                 });
             }
             return result;
@@ -830,7 +858,9 @@ namespace Win7BookManagement.Reporting
             return 0;
         }
 
-        private static List<string> BuildPaymentMethods(ICollection<MonthlyOrder> orders)
+        private static List<string> BuildPaymentMethods(
+            ICollection<MonthlyOrder> orders,
+            ICollection<MonthlyReturnOrder> returns)
         {
             var result = new List<string> { "现金", "微信", "支付宝" };
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -844,7 +874,83 @@ namespace Win7BookManagement.Reporting
                 if (seen.Add(value))
                     result.Add(value);
             }
+
+            foreach (var returned in returns)
+            {
+                var value = string.IsNullOrWhiteSpace(returned.RefundMethod)
+                    ? "未记录"
+                    : returned.RefundMethod.Trim();
+                if (seen.Add(value))
+                    result.Add(value);
+            }
+
             return result;
+        }
+
+        private static void WriteMatrixRow(
+            ISheet sheet,
+            StyleFactory styles,
+            int rowIndex,
+            string label,
+            long monthQuantity,
+            long monthAmountCent,
+            long[,] quantityByDayShift,
+            long[,] amountByDayShift,
+            int daysInMonth,
+            bool bold,
+            BorderStyle top,
+            BorderStyle bottom)
+        {
+            GetRow(sheet, rowIndex).HeightInPoints = 17.1F;
+            MergeAndStyle(
+                sheet, styles, rowIndex, rowIndex, 0, 1, label,
+                FillTone.Yellow, bold, 9, false, HorizontalAlignment.Center,
+                BorderStyle.Medium, BorderStyle.Medium, top, bottom);
+
+            WriteSummaryNumber(
+                sheet, styles, rowIndex, 2, monthQuantity,
+                FillTone.Yellow, bold, "0",
+                BorderStyle.Medium, BorderStyle.Thin, top, bottom);
+            WriteSummaryNumber(
+                sheet, styles, rowIndex, 3, monthAmountCent / 100.0,
+                FillTone.Yellow, bold, "0.00",
+                BorderStyle.Thin, BorderStyle.Medium, top, bottom);
+
+            for (var day = 0; day < MaxCalendarDays; day++)
+            {
+                var start = FirstDayColumn + day * ColumnsPerDay;
+                for (var shift = 0; shift < 2; shift++)
+                {
+                    var qtyCol = start + shift * 2;
+                    var amountCol = qtyCol + 1;
+                    var qty = day < daysInMonth && quantityByDayShift != null
+                        ? quantityByDayShift[day, shift]
+                        : 0;
+                    var amount = day < daysInMonth && amountByDayShift != null
+                        ? amountByDayShift[day, shift]
+                        : 0;
+
+                    WriteSummaryNumber(
+                        sheet, styles, rowIndex, qtyCol, qty,
+                        FillTone.None, bold, "0",
+                        shift == 0 ? BorderStyle.Medium : BorderStyle.Thin,
+                        BorderStyle.Thin, top, bottom);
+                    WriteSummaryNumber(
+                        sheet, styles, rowIndex, amountCol, amount / 100.0,
+                        FillTone.Blue, bold, "0.00",
+                        BorderStyle.Thin,
+                        shift == 1 ? BorderStyle.Medium : BorderStyle.Thin,
+                        top, bottom);
+                }
+            }
+        }
+
+        private static void ConfigurePrint(ISheet sheet, bool landscape)
+        {
+            sheet.FitToPage = true;
+            sheet.PrintSetup.Landscape = landscape;
+            sheet.PrintSetup.FitWidth = 1;
+            sheet.PrintSetup.FitHeight = 0;
         }
 
         private static void WriteSummaryCell(
@@ -1172,9 +1278,11 @@ namespace Win7BookManagement.Reporting
             public string OrderNote { get; set; }
             public long ListPriceCent { get; set; }
             public long CostRefCent { get; set; }
+            public string CostRefSource { get; set; }
             public string SupplierName { get; set; }
-            public int StockAtSale { get; set; }
-            public int ReturnedQuantity { get; set; }
+            public int StockAfterSale { get; set; }
+            public int ReturnedQuantityInMonth { get; set; }
+            public int ReturnedQuantityToMonthEnd { get; set; }
 
             public MonthlySalesRow()
             {
@@ -1188,7 +1296,53 @@ namespace Win7BookManagement.Reporting
                 PublicationYear = "";
                 PaymentMethod = "";
                 OrderNote = "";
+                CostRefSource = "";
                 SupplierName = "";
+            }
+        }
+
+        private sealed class MonthlyReturnRow
+        {
+            public long ReturnId { get; set; }
+            public long ReturnItemId { get; set; }
+            public DateTime ReturnedAt { get; set; }
+            public string ReturnNo { get; set; }
+            public string SourceOrderNo { get; set; }
+            public long SourceItemId { get; set; }
+            public long BookId { get; set; }
+            public string Isbn { get; set; }
+            public string Title { get; set; }
+            public int Quantity { get; set; }
+            public long UnitPriceCent { get; set; }
+            public long LineTotalCent { get; set; }
+            public string RefundMethod { get; set; }
+            public string ReturnNote { get; set; }
+
+            public MonthlyReturnRow()
+            {
+                ReturnNo = "";
+                SourceOrderNo = "";
+                Isbn = "";
+                Title = "";
+                RefundMethod = "";
+                ReturnNote = "";
+            }
+        }
+
+        private sealed class MonthlyReturnOrder
+        {
+            public long ReturnId { get; set; }
+            public string ReturnNo { get; set; }
+            public DateTime ReturnedAt { get; set; }
+            public string RefundMethod { get; set; }
+            public long TotalCent { get; set; }
+            public string Note { get; set; }
+
+            public MonthlyReturnOrder()
+            {
+                ReturnNo = "";
+                RefundMethod = "";
+                Note = "";
             }
         }
     }
