@@ -22,7 +22,8 @@ namespace Win7BookManagement.Reporting
             sheet.FitToPage = true;
             sheet.HorizontallyCenter = true;
             sheet.PrintSetup.Landscape = landscape;
-            sheet.PrintSetup.PaperSize = (short)PaperSize.A4;
+            // OOXML / Excel paper code 9 = A4.
+            sheet.PrintSetup.PaperSize = 9;
             sheet.PrintSetup.FitWidth = 1;
             sheet.PrintSetup.FitHeight = 0;
 
@@ -30,8 +31,8 @@ namespace Win7BookManagement.Reporting
             sheet.SetMargin(MarginType.RightMargin, 0.28);
             sheet.SetMargin(MarginType.TopMargin, 0.48);
             sheet.SetMargin(MarginType.BottomMargin, 0.48);
-            sheet.SetMargin(MarginType.HeaderMargin, 0.20);
-            sheet.SetMargin(MarginType.FooterMargin, 0.20);
+            sheet.PrintSetup.HeaderMargin = 0.20;
+            sheet.PrintSetup.FooterMargin = 0.20;
 
             if (repeatStartRow >= 0 && repeatEndRow >= repeatStartRow)
             {
