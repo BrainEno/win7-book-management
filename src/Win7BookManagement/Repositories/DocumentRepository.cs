@@ -297,7 +297,7 @@ ORDER BY pi.id;";
 SELECT sri.isbn_snapshot AS ISBN,
        sri.title_snapshot AS 书名,
        sri.quantity AS 退货数量,
-       ROUND(sri.unit_price_cent/100.0,2) AS 原售价,
+       ROUND(sri.unit_price_cent/100.0,2) AS 成交单价,
        ROUND(sri.line_total_cent/100.0,2) AS 退款金额
 FROM sales_return_items sri
 WHERE sri.sales_return_id=@id
