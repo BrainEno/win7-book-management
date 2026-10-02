@@ -337,10 +337,15 @@ namespace Win7BookManagement.Reporting
                 ReturnHeaders.Length);
             for (var i = 0; i < maxColumns; i++)
             {
-                var width = i < PurchaseWidths.Length
+                var purchaseWidth = i < PurchaseWidths.Length
                     ? PurchaseWidths[i]
-                    : ReturnWidths[Math.Min(i, ReturnWidths.Length - 1)];
-                sheet.SetColumnWidth(i, Width(width));
+                    : 0;
+                var returnWidth = i < ReturnWidths.Length
+                    ? ReturnWidths[i]
+                    : 0;
+                sheet.SetColumnWidth(
+                    i,
+                    Width(Math.Max(purchaseWidth, returnWidth)));
             }
 
             var title = GetRow(sheet, 0);
