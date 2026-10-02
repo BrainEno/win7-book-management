@@ -133,6 +133,7 @@ namespace Win7BookManagement.Forms
 
             AddMenuItem("suppliers", "供应商", "UsergroupAddOutlined");
             AddMenuItem("book_category", "图书分类", "TagsOutlined");
+            AddMenuItem("payment_method", "收款方式", "WalletOutlined");
 
             _menu.SelectChanged += delegate(object sender, AntdUI.MenuSelectEventArgs e)
             {
@@ -188,6 +189,17 @@ namespace Win7BookManagement.Forms
                 _current = form;
                 _content.Controls.Add(form);
                 form.Show();
+                return;
+            }
+
+            if (string.Equals(key, "payment_method", StringComparison.OrdinalIgnoreCase))
+            {
+                _current = new DictionaryValuePanel(
+                    _services,
+                    DictionaryKeys.PaymentMethod,
+                    "收款方式",
+                    "用于零售结账选择。系统默认提供微信、支付宝和现金；现金会在结账时计算实收与找零。");
+                _content.Controls.Add(_current);
                 return;
             }
 
@@ -405,7 +417,7 @@ namespace Win7BookManagement.Forms
                 _grid.DataSource = rows;
                 _summary.Text =
                     "共 " + rows.Count + " 条；启用 " + activeCount +
-                    " 条。停用只影响以后选择，不会清空历史图书资料。";
+                    " 条。停用只影响以后选择，历史单据和已有资料中的快照不会被删除。";
             }
 
             private void Edit(DictionaryValue item)
