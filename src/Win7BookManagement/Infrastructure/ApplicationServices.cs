@@ -25,6 +25,7 @@ namespace Win7BookManagement.Infrastructure
             Settings = new SettingsRepository(Database);
             Excel = new ExcelReportExporter();
             SalesMonthlyExcel = new SalesMonthlyExcelExporter();
+            PurchaseMonthlyExcel = new PurchaseMonthlyExcelExporter();
             Backup = new BackupService(Database);
         }
 
@@ -42,6 +43,7 @@ namespace Win7BookManagement.Infrastructure
         public SettingsRepository Settings { get; private set; }
         public ExcelReportExporter Excel { get; private set; }
         public SalesMonthlyExcelExporter SalesMonthlyExcel { get; private set; }
+        public PurchaseMonthlyExcelExporter PurchaseMonthlyExcel { get; private set; }
         public BackupService Backup { get; private set; }
     }
 }
