@@ -49,6 +49,8 @@ Do not add architectural layers without a concrete need.
 - ISBN is a business identifier, not the primary key.
 - Primary keys are internal integer IDs.
 - Historical documents preserve snapshots.
+- Sales orders preserve the selected payment method. Cash checkout also preserves amount received and change; non-cash checkout records received equal to the final payable amount and zero change.
+- Held sales are drafts only: saving, loading, updating, or deleting a held sale must never change stock or append inventory ledger rows. Stock is revalidated only when the sale is actually checked out.
 - Default purchase price is master-data assistance only; it may prefill a new purchase line but must never rewrite historical purchase prices.
 - Every stock-changing operation must execute inside one SQLite transaction, update current stock, append an inventory transaction row, and either commit all changes or none.
 - Never mutate historical inventory transaction rows to "fix" current stock. Use an explicit adjustment transaction.
