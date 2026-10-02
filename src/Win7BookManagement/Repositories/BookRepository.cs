@@ -183,16 +183,17 @@ LIMIT 500;";
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = @"
-SELECT DISTINCT TRIM(category) AS category
-FROM books
-WHERE is_active = 1
-  AND TRIM(category) <> ''
-ORDER BY category COLLATE NOCASE;";
+SELECT value
+FROM dictionary_values
+WHERE dictionary_key=@key
+  AND is_active=1
+ORDER BY sort_order, value COLLATE NOCASE;";
+                command.Parameters.AddWithValue("@key", DictionaryKeys.BookCategory);
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        var value = Convert.ToString(reader["category"]);
+                        var value = Convert.ToString(reader["value"]);
                         if (!string.IsNullOrWhiteSpace(value))
                             result.Add(value);
                     }
