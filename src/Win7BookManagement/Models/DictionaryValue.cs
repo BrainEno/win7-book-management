@@ -2,7 +2,7 @@ namespace Win7BookManagement.Models
 {
     public static class DictionaryKeys
     {
-        public const string BookCategory = "book_category";
+        public const string BookCategory = "book_category";\n        public const string PaymentMethod = "payment_method";
         public const string PaymentMethod = "payment_method";
     }
 
