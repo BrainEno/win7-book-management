@@ -226,17 +226,20 @@ SELECT sr.id AS Id,
        sr.source_order_no_snapshot AS 原销售单号,
        COALESCE(SUM(sri.quantity),0) AS 数量,
        ROUND(sr.total_cent / 100.0, 2) AS 退款金额,
+       CASE WHEN TRIM(sr.refund_method)='' THEN '未记录' ELSE sr.refund_method END AS 退款方式,
        sr.note AS 备注
 FROM sales_returns sr
 JOIN sales_return_items sri ON sri.sales_return_id=sr.id
 WHERE sr.returned_at>=@from AND sr.returned_at<@to
-  AND (@keyword='' OR sr.return_no LIKE @like OR sr.source_order_no_snapshot LIKE @like OR sr.note LIKE @like
+  AND (@keyword='' OR sr.return_no LIKE @like OR sr.source_order_no_snapshot LIKE @like
+       OR sr.refund_method LIKE @like OR sr.note LIKE @like
        OR EXISTS (
          SELECT 1 FROM sales_return_items sx
          WHERE sx.sales_return_id=sr.id
            AND (sx.isbn_snapshot LIKE @like OR sx.title_snapshot LIKE @like)
        ))
-GROUP BY sr.id, sr.returned_at, sr.return_no, sr.source_order_no_snapshot, sr.total_cent, sr.note
+GROUP BY sr.id, sr.returned_at, sr.return_no, sr.source_order_no_snapshot,
+         sr.total_cent, sr.refund_method, sr.note
 ORDER BY sr.returned_at DESC, sr.id DESC;";
                 case "purchase_return":
                     return @"

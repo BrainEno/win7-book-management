@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
+using Win7BookManagement.Reporting;
 
 namespace Win7BookManagement.Forms
 {
@@ -143,7 +145,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 4,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(18, 16, 18, 16),
                 Margin = new Padding(0, 0, 0, 12),
@@ -228,7 +230,189 @@ namespace Win7BookManagement.Forms
             row.Controls.Add(save);
 
             section.Controls.Add(row, 0, 2);
+
+            var mappingRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = UiTheme.Surface,
+                Margin = new Padding(0, 10, 0, 0),
+                Padding = Padding.Empty
+            };
+            mappingRow.Controls.Add(new Label
+            {
+                Text = "月报分类映射",
+                AutoSize = true,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(8.6F, FontStyle.Bold),
+                Margin = new Padding(0, 10, 10, 0)
+            });
+
+            var editMapping = UiTheme.CreateAntdButton("编辑分类映射…", false);
+            editMapping.Width = 132;
+            editMapping.Margin = Padding.Empty;
+            editMapping.Click += delegate { EditReportCategoryMapping(); };
+            mappingRow.Controls.Add(editMapping);
+
+            mappingRow.Controls.Add(new Label
+            {
+                Text = "把系统里的图书分类映射到月报项目；未配置的分类仍按名称 / 关键词自动匹配。",
+                AutoSize = true,
+                MaximumSize = new Size(620, 0),
+                ForeColor = UiTheme.TextSecondary,
+                Font = UiTheme.Font(8F),
+                Margin = new Padding(12, 10, 0, 0)
+            });
+
+            section.Controls.Add(mappingRow, 0, 3);
             return section;
+        }
+
+        private void EditReportCategoryMapping()
+        {
+            using (var dialog = new Form())
+            {
+                UiTheme.ConfigureForm(dialog);
+                dialog.Text = "月报分类映射";
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.Width = 760;
+                dialog.Height = 560;
+                dialog.MinimumSize = new Size(620, 460);
+                dialog.ShowInTaskbar = false;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+                dialog.BackColor = UiTheme.Background;
+
+                var root = new TableLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    ColumnCount = 1,
+                    RowCount = 4,
+                    BackColor = UiTheme.Background,
+                    Padding = Padding.Empty,
+                    Margin = Padding.Empty
+                };
+                root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+                root.Controls.Add(new Label
+                {
+                    Text = "系统分类 → 销售月报项目",
+                    AutoSize = true,
+                    Font = UiTheme.Font(12F, FontStyle.Bold),
+                    ForeColor = UiTheme.TextPrimary,
+                    BackColor = UiTheme.Surface,
+                    Padding = new Padding(18, 14, 18, 6),
+                    Margin = Padding.Empty
+                }, 0, 0);
+
+                var targets = SalesMonthlyExcelExporter.GetBusinessLineNames();
+                root.Controls.Add(new Label
+                {
+                    Text = "每行填写“系统分类=月报项目”。例如：独立出版=独立出版书籍。\r\n" +
+                           "可用月报项目：" + string.Join("、", new List<string>(targets).ToArray()),
+                    AutoSize = true,
+                    MaximumSize = new Size(700, 0),
+                    Font = UiTheme.Font(8.2F),
+                    ForeColor = UiTheme.TextSecondary,
+                    BackColor = UiTheme.Surface,
+                    Padding = new Padding(18, 4, 18, 12),
+                    Margin = Padding.Empty
+                }, 0, 1);
+
+                var input = UiTheme.CreateAntdInput("每行一个映射，例如：独立出版=独立出版书籍");
+                input.Multiline = true;
+                input.Dock = DockStyle.Fill;
+                input.Margin = new Padding(14, 10, 14, 10);
+                input.Text = _services.Settings.GetReportCategoryMapping();
+                root.Controls.Add(input, 0, 2);
+
+                var footer = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Bottom,
+                    AutoSize = true,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    WrapContents = false,
+                    BackColor = UiTheme.Surface,
+                    Padding = new Padding(14, 10, 14, 10),
+                    Margin = Padding.Empty
+                };
+                var save = UiTheme.CreateAntdButton("保存映射", true);
+                save.Width = 104;
+                var cancel = UiTheme.CreateAntdButton("取消", false);
+                cancel.Width = 88;
+                save.Click += delegate
+                {
+                    var error = ValidateReportCategoryMapping(input.Text, targets);
+                    if (error != null)
+                    {
+                        MessageBox.Show(dialog, error, "分类映射格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    _services.Settings.SetReportCategoryMapping(input.Text);
+                    dialog.DialogResult = DialogResult.OK;
+                    dialog.Close();
+                };
+                cancel.Click += delegate
+                {
+                    dialog.DialogResult = DialogResult.Cancel;
+                    dialog.Close();
+                };
+                footer.Controls.Add(save);
+                footer.Controls.Add(cancel);
+                root.Controls.Add(footer, 0, 3);
+
+                dialog.Controls.Add(root);
+                dialog.AcceptButton = save;
+                dialog.CancelButton = cancel;
+                UiTheme.Apply(dialog);
+                dialog.Shown += delegate { UiTheme.FitDialogToWorkingArea(dialog, 24); };
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private static string ValidateReportCategoryMapping(string text, IList<string> targets)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return null;
+
+            var lines = text.Replace("\r", "").Split('\n');
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = (lines[i] ?? "").Trim();
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                    continue;
+
+                var separator = line.IndexOf('=');
+                if (separator <= 0 || separator >= line.Length - 1)
+                    return "第 " + (i + 1) + " 行需要使用“系统分类=月报项目”的格式。";
+
+                var source = line.Substring(0, separator).Trim();
+                var target = line.Substring(separator + 1).Trim();
+                if (source.Length == 0 || target.Length == 0)
+                    return "第 " + (i + 1) + " 行的分类和月报项目都不能为空。";
+
+                var known = false;
+                foreach (var item in targets)
+                {
+                    if (string.Equals(item, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        known = true;
+                        break;
+                    }
+                }
+                if (!known)
+                    return "第 " + (i + 1) + " 行的月报项目“" + target + "”不存在，请从提示的项目中选择。";
+            }
+
+            return null;
         }
 
         private Control CreateDataSection()

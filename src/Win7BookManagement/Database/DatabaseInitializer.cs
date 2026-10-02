@@ -117,8 +117,17 @@ CREATE TABLE IF NOT EXISTS sales_order_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sales_order_id INTEGER NOT NULL,
     book_id INTEGER NOT NULL,
+    self_code_snapshot TEXT NOT NULL DEFAULT '',
     isbn_snapshot TEXT NOT NULL DEFAULT '',
     title_snapshot TEXT NOT NULL,
+    author_snapshot TEXT NOT NULL DEFAULT '',
+    publisher_snapshot TEXT NOT NULL DEFAULT '',
+    category_snapshot TEXT NOT NULL DEFAULT '',
+    publication_year_snapshot TEXT NOT NULL DEFAULT '',
+    list_price_snapshot_cent INTEGER NOT NULL DEFAULT 0 CHECK(list_price_snapshot_cent >= 0),
+    cost_ref_snapshot_cent INTEGER NOT NULL DEFAULT 0 CHECK(cost_ref_snapshot_cent >= 0),
+    cost_ref_source_snapshot TEXT NOT NULL DEFAULT '',
+    supplier_snapshot TEXT NOT NULL DEFAULT '',
     quantity INTEGER NOT NULL CHECK(quantity > 0),
     unit_price_cent INTEGER NOT NULL CHECK(unit_price_cent >= 0),
     line_total_cent INTEGER NOT NULL CHECK(line_total_cent >= 0),
@@ -157,6 +166,7 @@ CREATE TABLE IF NOT EXISTS sales_returns (
     return_no TEXT NOT NULL UNIQUE,
     source_sales_order_id INTEGER NOT NULL,
     source_order_no_snapshot TEXT NOT NULL,
+    refund_method TEXT NOT NULL DEFAULT '',
     returned_at TEXT NOT NULL,
     total_cent INTEGER NOT NULL CHECK(total_cent >= 0),
     note TEXT NOT NULL DEFAULT '',
@@ -278,6 +288,7 @@ ON purchase_return_items(source_purchase_order_item_id);
                     EnsurePurchaseWorkflowColumns(connection, transaction);
                     EnsureSalesDiscountColumns(connection, transaction);
                     EnsureSalesPaymentColumns(connection, transaction);
+                    EnsureSalesReportingColumns(connection, transaction);
                     EnsureSalesDraftSchema(connection, transaction);
                     EnsureDictionarySchema(connection, transaction);
 
@@ -317,11 +328,11 @@ WHERE updated_at IS NULL OR trim(updated_at)='';";
                         version.Transaction = transaction;
                         version.CommandText = @"
 INSERT INTO schema_info(version)
-SELECT 8 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+SELECT 9 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
 
 UPDATE schema_info
-SET version = 8
-WHERE version < 8;
+SET version = 9
+WHERE version < 9;
 
 INSERT OR IGNORE INTO app_settings(key, value, updated_at)
 VALUES('low_stock_threshold', '3', @now);";
@@ -422,6 +433,104 @@ WHERE subtotal_cent = 0 AND total_cent > 0;";
 UPDATE sales_orders
 SET amount_received_cent = total_cent
 WHERE amount_received_cent = 0 AND total_cent > 0;";
+                normalize.ExecuteNonQuery();
+            }
+        }
+
+        private static void EnsureSalesReportingColumns(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction)
+        {
+            EnsureColumn(connection, transaction, "sales_order_items", "self_code_snapshot",
+                "ALTER TABLE sales_order_items ADD COLUMN self_code_snapshot TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_order_items", "author_snapshot",
+                "ALTER TABLE sales_order_items ADD COLUMN author_snapshot TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_order_items", "publisher_snapshot",
+                "ALTER TABLE sales_order_items ADD COLUMN publisher_snapshot TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_order_items", "category_snapshot",
+                "ALTER TABLE sales_order_items ADD COLUMN category_snapshot TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_order_items", "publication_year_snapshot",
+                "ALTER TABLE sales_order_items ADD COLUMN publication_year_snapshot TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_order_items", "list_price_snapshot_cent",
+                "ALTER TABLE sales_order_items ADD COLUMN list_price_snapshot_cent INTEGER NOT NULL DEFAULT 0 CHECK(list_price_snapshot_cent >= 0);");
+            EnsureColumn(connection, transaction, "sales_order_items", "cost_ref_snapshot_cent",
+                "ALTER TABLE sales_order_items ADD COLUMN cost_ref_snapshot_cent INTEGER NOT NULL DEFAULT 0 CHECK(cost_ref_snapshot_cent >= 0);");
+            EnsureColumn(connection, transaction, "sales_order_items", "cost_ref_source_snapshot",
+                "ALTER TABLE sales_order_items ADD COLUMN cost_ref_source_snapshot TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_order_items", "supplier_snapshot",
+                "ALTER TABLE sales_order_items ADD COLUMN supplier_snapshot TEXT NOT NULL DEFAULT '';");
+            EnsureColumn(connection, transaction, "sales_returns", "refund_method",
+                "ALTER TABLE sales_returns ADD COLUMN refund_method TEXT NOT NULL DEFAULT '';");
+
+            using (var normalize = connection.CreateCommand())
+            {
+                normalize.Transaction = transaction;
+                normalize.CommandText = @"
+UPDATE sales_order_items
+SET self_code_snapshot = COALESCE(
+      (SELECT b.self_code FROM books b WHERE b.id=sales_order_items.book_id), ''),
+    author_snapshot = COALESCE(
+      (SELECT b.author FROM books b WHERE b.id=sales_order_items.book_id), ''),
+    publisher_snapshot = COALESCE(
+      (SELECT b.publisher FROM books b WHERE b.id=sales_order_items.book_id), ''),
+    category_snapshot = COALESCE(
+      (SELECT b.category FROM books b WHERE b.id=sales_order_items.book_id), ''),
+    publication_year_snapshot = COALESCE(
+      (SELECT b.publication_year FROM books b WHERE b.id=sales_order_items.book_id), ''),
+    list_price_snapshot_cent = COALESCE(
+      (SELECT b.list_price_cent FROM books b WHERE b.id=sales_order_items.book_id), 0)
+WHERE cost_ref_source_snapshot='';
+
+UPDATE sales_order_items
+SET cost_ref_snapshot_cent = COALESCE(
+      (
+        SELECT pi.unit_cost_cent
+        FROM purchase_order_items pi
+        JOIN purchase_orders po ON po.id=pi.purchase_order_id
+        JOIN sales_orders so ON so.id=sales_order_items.sales_order_id
+        WHERE pi.book_id=sales_order_items.book_id
+          AND po.status='reviewed'
+          AND po.purchased_at<=so.sold_at
+        ORDER BY po.purchased_at DESC, po.id DESC, pi.id DESC
+        LIMIT 1
+      ),
+      (SELECT b.default_purchase_price_cent FROM books b WHERE b.id=sales_order_items.book_id),
+      0),
+    supplier_snapshot = COALESCE(
+      (
+        SELECT po.supplier_name_snapshot
+        FROM purchase_order_items pi
+        JOIN purchase_orders po ON po.id=pi.purchase_order_id
+        JOIN sales_orders so ON so.id=sales_order_items.sales_order_id
+        WHERE pi.book_id=sales_order_items.book_id
+          AND po.status='reviewed'
+          AND po.purchased_at<=so.sold_at
+        ORDER BY po.purchased_at DESC, po.id DESC, pi.id DESC
+        LIMIT 1
+      ),
+      ''),
+    cost_ref_source_snapshot = CASE
+      WHEN EXISTS (
+        SELECT 1
+        FROM purchase_order_items pi
+        JOIN purchase_orders po ON po.id=pi.purchase_order_id
+        JOIN sales_orders so ON so.id=sales_order_items.sales_order_id
+        WHERE pi.book_id=sales_order_items.book_id
+          AND po.status='reviewed'
+          AND po.purchased_at<=so.sold_at
+      ) THEN '最近采购价'
+      WHEN COALESCE(
+        (SELECT b.default_purchase_price_cent FROM books b WHERE b.id=sales_order_items.book_id), 0
+      )>0 THEN '默认进价'
+      ELSE '未设置'
+    END
+WHERE cost_ref_source_snapshot='';
+
+UPDATE sales_returns
+SET refund_method = COALESCE(
+  (SELECT so.payment_method FROM sales_orders so WHERE so.id=sales_returns.source_sales_order_id),
+  '')
+WHERE refund_method='';";
                 normalize.ExecuteNonQuery();
             }
         }

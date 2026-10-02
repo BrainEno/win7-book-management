@@ -19,6 +19,9 @@ namespace Win7BookManagement.Forms
         private readonly Label _rowChip = new Label();
         private readonly Label _quantityChip = new Label();
         private readonly Label _amountChip = new Label();
+        private readonly Label _returnAmountChip = new Label();
+        private readonly Label _netAmountChip = new Label();
+        private readonly Label _orderChip = new Label();
         private readonly Label _rangeHint = new Label();
         private readonly Label _emptyState = new Label();
         private readonly Label _summary = new Label();
@@ -196,9 +199,18 @@ namespace Win7BookManagement.Forms
             ConfigureChip(_rowChip, UiTheme.AccentSoft, UiTheme.Accent);
             ConfigureChip(_quantityChip, UiTheme.SurfaceMuted, UiTheme.TextSecondary);
             ConfigureChip(_amountChip, Color.FromArgb(252, 241, 226), UiTheme.Warning);
+            ConfigureChip(_returnAmountChip, UiTheme.SurfaceMuted, UiTheme.TextSecondary);
+            ConfigureChip(_netAmountChip, UiTheme.AccentSoft, UiTheme.Accent);
+            ConfigureChip(_orderChip, UiTheme.SurfaceMuted, UiTheme.TextSecondary);
+            _returnAmountChip.Visible = false;
+            _netAmountChip.Visible = false;
+            _orderChip.Visible = false;
             chips.Controls.Add(_rowChip);
             chips.Controls.Add(_quantityChip);
             chips.Controls.Add(_amountChip);
+            chips.Controls.Add(_returnAmountChip);
+            chips.Controls.Add(_netAmountChip);
+            chips.Controls.Add(_orderChip);
             section.Controls.Add(chips, 0, 3);
             section.SetColumnSpan(chips, 2);
             return section;
@@ -302,7 +314,9 @@ namespace Win7BookManagement.Forms
                 var option = SelectedOption;
                 if (option == null) return;
 
-                if (option.Key != "snapshot" && ToDate < FromDate)
+                if (option.Key != "snapshot" &&
+                    option.Key != "sales_monthly" &&
+                    ToDate < FromDate)
                 {
                     MessageBox.Show(this, "结束日期不能早于开始日期，请重新选择日期范围。", "日期范围不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     _to.Focus();
@@ -392,6 +406,43 @@ namespace Win7BookManagement.Forms
             var rowCount = _current == null ? 0 : _current.Rows.Count;
             _rowChip.Text = "明细行  " + rowCount;
 
+            _returnAmountChip.Visible = false;
+            _netAmountChip.Visible = false;
+            _orderChip.Visible = false;
+
+            if (option.Key == "sales_monthly")
+            {
+                var summaryTable = _services.Reports.SalesMonthlySummary(ToDate);
+                var summaryRow = summaryTable.Rows.Count == 0 ? null : summaryTable.Rows[0];
+
+                var grossCent = summaryRow == null ? 0L : Convert.ToInt64(summaryRow["gross_sales_cent"]);
+                var returnCent = summaryRow == null ? 0L : Convert.ToInt64(summaryRow["return_amount_cent"]);
+                var netCent = summaryRow == null ? 0L : Convert.ToInt64(summaryRow["net_sales_cent"]);
+                var salesQty = summaryRow == null ? 0L : Convert.ToInt64(summaryRow["sales_quantity"]);
+                var returnQty = summaryRow == null ? 0L : Convert.ToInt64(summaryRow["return_quantity"]);
+                var orderCount = summaryRow == null ? 0L : Convert.ToInt64(summaryRow["order_count"]);
+                var averageOrderCent = summaryRow == null ? 0L : Convert.ToInt64(summaryRow["average_order_cent"]);
+
+                _quantityChip.Visible = true;
+                _quantityChip.Text =
+                    "净销售册数  " + (salesQty - returnQty) +
+                    "（售 " + salesQty + " / 退 " + returnQty + "）";
+                _amountChip.Visible = true;
+                _amountChip.Text = "销售额  ¥" + (grossCent / 100m).ToString("0.00");
+                _returnAmountChip.Visible = true;
+                _returnAmountChip.Text = "退货额  ¥" + (returnCent / 100m).ToString("0.00");
+                _netAmountChip.Visible = true;
+                _netAmountChip.Text = "净销售  ¥" + (netCent / 100m).ToString("0.00");
+                _orderChip.Visible = true;
+                _orderChip.Text =
+                    "订单  " + orderCount +
+                    " · 客单价 ¥" + (averageOrderCent / 100m).ToString("0.00");
+
+                _summary.Text = option.Text + " · " + ToDate.ToString("yyyy-MM") +
+                    " · 净销售按退货发生日期扣减 · 导出生成月度总表与逐日明细";
+                return;
+            }
+
             var quantityColumn = QuantityColumnName(option.Key);
             var quantity = SumIntegerColumn(quantityColumn);
             _quantityChip.Visible = quantityColumn != null;
@@ -415,20 +466,10 @@ namespace Win7BookManagement.Forms
                 _amountChip.Text = label + "  ¥" + amount.ToString("0.00");
             }
 
-            if (option.Key == "snapshot")
-            {
-                _summary.Text = option.Text + " · 截至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
-            }
-            else if (option.Key == "sales_monthly")
-            {
-                _summary.Text = option.Text + " · " + ToDate.ToString("yyyy-MM") +
-                    " · " + rowCount + " 行销售明细 · 导出时生成月度总表与逐日明细";
-            }
-            else
-            {
-                _summary.Text = option.Text + " · " + FromDate.ToString("yyyy-MM-dd") +
-                    " 至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
-            }
+            _summary.Text = option.Key == "snapshot"
+                ? option.Text + " · 截至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行"
+                : option.Text + " · " + FromDate.ToString("yyyy-MM-dd") +
+                  " 至 " + ToDate.ToString("yyyy-MM-dd") + " · " + rowCount + " 行";
         }
 
         private static string QuantityColumnName(string key)
@@ -557,18 +598,22 @@ namespace Win7BookManagement.Forms
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
                 var detail = _services.Reports.SalesMonthlyExportDetail(month);
+                var returnDetail = _services.Reports.SalesMonthlyReturnExportDetail(month);
                 _services.SalesMonthlyExcel.Export(
                     detail,
+                    returnDetail,
                     dialog.FileName,
                     month,
                     _services.Settings.GetReportStoreName(),
-                    _services.Settings.GetReportNightShiftStartHour());
+                    _services.Settings.GetReportNightShiftStartHour(),
+                    _services.Settings.GetReportCategoryMapping());
 
                 MessageBox.Show(
                     this,
                     "销售月报已生成。\r\n\r\n包含：\r\n" +
-                    "• 销售月报表：按日期、白班/晚班、业务项目和收款方式汇总\r\n" +
-                    "• 每日明细：按时间和单号排序，同一单号的单据级字段自动合并\r\n\r\n" +
+                    "• 销售月报表：销售额、销售退货、净销售以及各收款方式的收款 / 退款 / 净额\r\n" +
+                    "• 每日明细：按时间和单号排序，同一单号的单据级字段自动合并\r\n" +
+                    "• 参考成本口径与当月 / 累计退货数量均写入明细，便于复核\r\n\r\n" +
                     dialog.FileName,
                     "Excel 已生成",
                     MessageBoxButtons.OK,

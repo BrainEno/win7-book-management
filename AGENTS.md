@@ -49,7 +49,9 @@ Do not add architectural layers without a concrete need.
 - ISBN is a business identifier, not the primary key.
 - Primary keys are internal integer IDs.
 - Historical documents preserve snapshots.
+- Sales order items preserve reporting-relevant book snapshots (store code, author, publisher, category, publication year and list price) plus the sale-time reference-cost source/value; later edits to book master data must not rewrite historical sales reporting.
 - Sales orders preserve the selected payment method. Cash checkout also preserves amount received and change; non-cash checkout records received equal to the final payable amount and zero change.
+- Sales returns preserve a refund method. Refund reporting is attributed by return date and refund method, never by rewriting the original payment snapshot.
 - Held sales are drafts only: saving, loading, updating, or deleting a held sale must never change stock or append inventory ledger rows. Stock is revalidated only when the sale is actually checked out.
 - Default purchase price is master-data assistance only; it may prefill a new purchase line but must never rewrite historical purchase prices.
 - Every stock-changing operation must execute inside one SQLite transaction, update current stock, append an inventory transaction row, and either commit all changes or none.
@@ -124,12 +126,17 @@ Exports must be valid .xlsx files and must not require Microsoft Excel.
 
 Monthly sales workbook invariants:
 - First sheet is a readable month matrix with four frozen leading columns and up to 31 four-column day groups: day-shift quantity / received amount for white and night shifts.
+- Keep gross sales, sales returns and net sales separate. Net sales is gross sales minus sales returns occurring in the report period; a later return must not retroactively alter the closed month's gross-sales row.
+- Payment reconciliation is payment-method based: sales collection, refund and net receipt are separate rows.
 - Preserve the approved template's core visual grammar: Songti, yellow structural cells, light-blue received-amount cells, explicit widths/heights, merged headers/sections, thin inner borders and stronger group/order separators.
 - Every calendar day in the target month has its own detail sheet, even when it has no sales.
 - Daily detail rows are sorted by operation time then order; order-level cells are vertically merged across multi-line orders.
 - The first 30 daily-detail columns stay compatible with the approved template; system-specific payment/category fields may be appended, never inserted into those 30 positions.
 - Monthly summary uses final order/line amounts, not cash tendered amount. Cash amount received and change remain order-level detail fields.
-- Report shift boundary and report store name come from app settings, not hard-coded UI text.
+- Reference cost is an operational estimate frozen at sale time: use the most recent reviewed purchase cost at or before the sale, otherwise the then-current default purchase price. Label it explicitly as reference cost; it is not an accounting-cost method.
+- Generic report exports must use readable fixed widths, frozen headers, filters, explicit numeric/date formats and visible table borders rather than raw AutoSize-only output.
+- Report shift boundary, report store name and optional system-category → monthly-business-line mapping come from app settings, not hard-coded UI text.
+- Category mapping entries use one `system category=monthly line` pair per line. Invalid targets must be rejected by the settings UI; unmapped values may use the documented fallback matcher.
 
 ## Testing expectations
 At minimum, verify:
