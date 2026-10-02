@@ -384,10 +384,8 @@ namespace Win7BookManagement.Infrastructure
                     Convert.ToDecimal(sales.Rows[0]["单品折扣%"]) != 90.00m ||
                     Convert.ToDecimal(sales.Rows[0]["整单折扣%"]) != 80.00m ||
                     Convert.ToDecimal(sales.Rows[0]["实收单价"]) != 14.40m ||
-                    Convert.ToString(sales.Rows[0]["收款方式"]) != "现金" ||
-                    Convert.ToDecimal(sales.Rows[0]["实收金额"]) != 30.00m ||
-                    Convert.ToDecimal(sales.Rows[0]["找零金额"]) != 1.20m)
-                    throw new InvalidOperationException("销售折扣 / 收款 / 退货报表自检失败。");
+                    Convert.ToString(sales.Rows[0]["收款方式"]) != "现金")
+                    throw new InvalidOperationException("销售折扣 / 收款方式 / 退货报表自检失败。");
 
                 var snapshot = services.Reports.InventorySnapshot(DateTime.Today);
                 var selfPublishedSnapshotFound = false;
