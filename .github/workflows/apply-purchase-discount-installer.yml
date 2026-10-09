@@ -19,16 +19,12 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Normalize and apply staged patch
+      - name: Apply deterministic source transform
         shell: powershell
         run: |
-          $patch = "scripts\purchase-discount-installer.patch"
-          $content = [System.IO.File]::ReadAllText($patch)
-          $content = $content.Replace("`n diff --git a/src/Win7BookManagement/Repositories/DocumentRepository.cs", "`ndiff --git a/src/Win7BookManagement/Repositories/DocumentRepository.cs")
-          [System.IO.File]::WriteAllText($patch, $content, (New-Object System.Text.UTF8Encoding($false)))
-          git apply --check $patch
-          git apply $patch
-          Remove-Item $patch
+          python .\scripts\apply_purchase_discount_installer.py
+          Remove-Item ".\scripts\purchase-discount-installer.patch" -ErrorAction SilentlyContinue
+          Remove-Item ".\scripts\apply_purchase_discount_installer.py"
           Remove-Item ".github\workflows\apply-purchase-discount-installer.yml"
 
       - name: Validate C# source manifest
