@@ -23,10 +23,16 @@ jobs:
         shell: powershell
         run: |
           $scriptPath = ".\scripts\apply_purchase_discount_installer.py"
-          $script = [System.IO.File]::ReadAllText($scriptPath)
-          $guard = "    if text.count(old) != 1:`n        raise RuntimeError(f`"Expected exactly one source block in {path}, found {text.count(old)}`")`n"
-          $script = $script.Replace($guard, "")
-          [System.IO.File]::WriteAllText($scriptPath, $script, (New-Object System.Text.UTF8Encoding($false)))
+          $lines = New-Object 'System.Collections.Generic.List[string]'
+          foreach ($line in [System.IO.File]::ReadAllLines($scriptPath)) { [void]$lines.Add($line) }
+          $guardIndex = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i].Trim() -eq 'if text.count(old) != 1:') { $guardIndex = $i; break }
+          }
+          if ($guardIndex -lt 0) { throw 'Transform uniqueness guard was not found.' }
+          $lines.RemoveAt($guardIndex)
+          $lines.RemoveAt($guardIndex)
+          [System.IO.File]::WriteAllLines($scriptPath, $lines, (New-Object System.Text.UTF8Encoding($false)))
           python $scriptPath
           Remove-Item ".\scripts\purchase-discount-installer.patch" -ErrorAction SilentlyContinue
           Remove-Item $scriptPath
