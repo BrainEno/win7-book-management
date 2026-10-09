@@ -79,6 +79,11 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     supplier_id INTEGER NULL,
     supplier_name_snapshot TEXT NOT NULL DEFAULT '',
     purchased_at TEXT NOT NULL,
+    subtotal_cent INTEGER NOT NULL DEFAULT 0 CHECK(subtotal_cent >= 0),
+    line_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discount_cent >= 0),
+    order_discount_basis_points INTEGER NOT NULL DEFAULT 10000
+        CHECK(order_discount_basis_points >= 0 AND order_discount_basis_points <= 10000),
+    order_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(order_discount_cent >= 0),
     total_cent INTEGER NOT NULL CHECK(total_cent >= 0),
     note TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
@@ -95,6 +100,10 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
     isbn_snapshot TEXT NOT NULL DEFAULT '',
     title_snapshot TEXT NOT NULL,
     quantity INTEGER NOT NULL CHECK(quantity > 0),
+    base_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(base_unit_cost_cent >= 0),
+    line_discount_basis_points INTEGER NOT NULL DEFAULT 10000
+        CHECK(line_discount_basis_points >= 0 AND line_discount_basis_points <= 10000),
+    line_discounted_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discounted_unit_cost_cent >= 0),
     unit_cost_cent INTEGER NOT NULL CHECK(unit_cost_cent >= 0),
     line_total_cent INTEGER NOT NULL CHECK(line_total_cent >= 0),
     FOREIGN KEY(purchase_order_id) REFERENCES purchase_orders(id),
@@ -286,6 +295,7 @@ ON purchase_return_items(source_purchase_order_item_id);
 
                     EnsureBookMetadataColumns(connection, transaction);
                     EnsurePurchaseWorkflowColumns(connection, transaction);
+                    EnsurePurchaseDiscountColumns(connection, transaction);
                     EnsureSalesDiscountColumns(connection, transaction);
                     EnsureSalesPaymentColumns(connection, transaction);
                     EnsureSalesReportingColumns(connection, transaction);
@@ -328,11 +338,11 @@ WHERE updated_at IS NULL OR trim(updated_at)='';";
                         version.Transaction = transaction;
                         version.CommandText = @"
 INSERT INTO schema_info(version)
-SELECT 9 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+SELECT 10 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
 
 UPDATE schema_info
-SET version = 9
-WHERE version < 9;
+SET version = 10
+WHERE version < 10;
 
 INSERT OR IGNORE INTO app_settings(key, value, updated_at)
 VALUES('low_stock_threshold', '3', @now);";
@@ -374,6 +384,45 @@ VALUES('low_stock_threshold', '3', @now);";
                 "ALTER TABLE purchase_orders ADD COLUMN reviewed_at TEXT NULL;");
             EnsureColumn(connection, transaction, "purchase_orders", "updated_at",
                 "ALTER TABLE purchase_orders ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';");
+        }
+
+        private static void EnsurePurchaseDiscountColumns(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction)
+        {
+            EnsureColumn(connection, transaction, "purchase_orders", "subtotal_cent",
+                "ALTER TABLE purchase_orders ADD COLUMN subtotal_cent INTEGER NOT NULL DEFAULT 0 CHECK(subtotal_cent >= 0);");
+            EnsureColumn(connection, transaction, "purchase_orders", "line_discount_cent",
+                "ALTER TABLE purchase_orders ADD COLUMN line_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discount_cent >= 0);");
+            EnsureColumn(connection, transaction, "purchase_orders", "order_discount_basis_points",
+                "ALTER TABLE purchase_orders ADD COLUMN order_discount_basis_points INTEGER NOT NULL DEFAULT 10000 CHECK(order_discount_basis_points >= 0 AND order_discount_basis_points <= 10000);");
+            EnsureColumn(connection, transaction, "purchase_orders", "order_discount_cent",
+                "ALTER TABLE purchase_orders ADD COLUMN order_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(order_discount_cent >= 0);");
+
+            EnsureColumn(connection, transaction, "purchase_order_items", "base_unit_cost_cent",
+                "ALTER TABLE purchase_order_items ADD COLUMN base_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(base_unit_cost_cent >= 0);");
+            EnsureColumn(connection, transaction, "purchase_order_items", "line_discount_basis_points",
+                "ALTER TABLE purchase_order_items ADD COLUMN line_discount_basis_points INTEGER NOT NULL DEFAULT 10000 CHECK(line_discount_basis_points >= 0 AND line_discount_basis_points <= 10000);");
+            EnsureColumn(connection, transaction, "purchase_order_items", "line_discounted_unit_cost_cent",
+                "ALTER TABLE purchase_order_items ADD COLUMN line_discounted_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discounted_unit_cost_cent >= 0);");
+
+            using (var normalize = connection.CreateCommand())
+            {
+                normalize.Transaction = transaction;
+                normalize.CommandText = @"
+UPDATE purchase_order_items
+SET base_unit_cost_cent = unit_cost_cent
+WHERE base_unit_cost_cent = 0 AND unit_cost_cent > 0;
+
+UPDATE purchase_order_items
+SET line_discounted_unit_cost_cent = unit_cost_cent
+WHERE line_discounted_unit_cost_cent = 0 AND unit_cost_cent > 0;
+
+UPDATE purchase_orders
+SET subtotal_cent = total_cent
+WHERE subtotal_cent = 0 AND total_cent > 0;";
+                normalize.ExecuteNonQuery();
+            }
         }
 
         private static void EnsureSalesDiscountColumns(

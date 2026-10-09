@@ -1,5 +1,5 @@
 #define AppName "BOOK DESK 简易图书管理系统"
-#define AppVersion "0.4.0"
+#define AppVersion "0.5.0"
 #define AppPublisher "BOOK DESK"
 #define AppExeName "Win7BookManagement.exe"
 #define DotNetInstaller "NDP48-x86-x64-AllOS-ENU.exe"
@@ -52,6 +52,8 @@ Filename: "{app}\{#AppExeName}"; Description: "安装完成后启动 BOOK DESK";
 [Code]
 var
   DotNetWasMissing: Boolean;
+  DotNetInstallSucceeded: Boolean;
+  DotNetRestartRequired: Boolean;
 
 function IsDotNet48Installed: Boolean;
 var
@@ -76,6 +78,8 @@ end;
 function InitializeSetup: Boolean;
 begin
   DotNetWasMissing := not IsDotNet48Installed;
+  DotNetInstallSucceeded := not DotNetWasMissing;
+  DotNetRestartRequired := False;
   Result := True;
 end;
 
@@ -109,10 +113,13 @@ begin
 
   if ResultCode = 0 then
   begin
+    DotNetInstallSucceeded := True;
     Result := '';
   end
   else if (ResultCode = 3010) or (ResultCode = 1641) then
   begin
+    DotNetInstallSucceeded := True;
+    DotNetRestartRequired := True;
     NeedsRestart := True;
     Result := '';
   end
@@ -126,5 +133,5 @@ end;
 
 function CanLaunchImmediately: Boolean;
 begin
-  Result := not DotNetWasMissing;
+  Result := DotNetInstallSucceeded and (not DotNetRestartRequired);
 end;

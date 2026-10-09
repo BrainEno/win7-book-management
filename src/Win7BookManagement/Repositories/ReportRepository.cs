@@ -381,7 +381,11 @@ SELECT po.purchased_at AS 日期,
        pi.isbn_snapshot AS ISBN,
        pi.title_snapshot AS 书名,
        pi.quantity AS 数量,
-       ROUND(pi.unit_cost_cent / 100.0, 2) AS 进价,
+       ROUND(pi.base_unit_cost_cent / 100.0, 2) AS 原进价,
+       ROUND(pi.line_discount_basis_points / 100.0, 2) AS [单品折扣%],
+       ROUND(pi.line_discounted_unit_cost_cent / 100.0, 2) AS 折后进价,
+       ROUND(po.order_discount_basis_points / 100.0, 2) AS [整单折扣%],
+       ROUND(pi.unit_cost_cent / 100.0, 2) AS 实际进价,
        ROUND(pi.line_total_cent / 100.0, 2) AS 金额
 FROM purchase_orders po
 JOIN purchase_order_items pi ON pi.purchase_order_id = po.id
@@ -530,8 +534,15 @@ SELECT po.id AS purchase_id,
        pi.isbn_snapshot AS isbn,
        pi.title_snapshot AS title,
        pi.quantity AS quantity,
+       pi.base_unit_cost_cent AS base_unit_cost_cent,
+       pi.line_discount_basis_points AS line_discount_basis_points,
+       pi.line_discounted_unit_cost_cent AS line_discounted_unit_cost_cent,
        pi.unit_cost_cent AS unit_cost_cent,
        pi.line_total_cent AS line_total_cent,
+       po.subtotal_cent AS order_subtotal_cent,
+       po.line_discount_cent AS order_line_discount_cent,
+       po.order_discount_basis_points AS order_discount_basis_points,
+       po.order_discount_cent AS order_discount_cent,
        COALESCE((
          SELECT SUM(pri.quantity)
          FROM purchase_return_items pri

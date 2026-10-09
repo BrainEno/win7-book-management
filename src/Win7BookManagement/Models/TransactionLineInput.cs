@@ -5,12 +5,13 @@ namespace Win7BookManagement.Models
         public long BookId { get; set; }
         public int Quantity { get; set; }
 
-        // Purchase uses UnitPriceCent as the unit cost. Sales uses it as the
-        // operator-entered pre-discount selling price for backward compatibility.
+        // Backward-compatible operator-entered unit amount. New purchase and
+        // sales flows also preserve BaseUnitPriceCent plus discount metadata.
         public long UnitPriceCent { get; set; }
 
-        // Sales-only discount metadata. Purchase services intentionally ignore
-        // these fields.
+        // Shared discount metadata. 10000 basis points = 100.00%.
+        // Purchase treats BaseUnitPriceCent as pre-discount unit cost; sales
+        // treats it as pre-discount selling price.
         public long BaseUnitPriceCent { get; set; }
         public int DiscountBasisPoints { get; set; }
 

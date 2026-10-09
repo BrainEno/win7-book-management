@@ -60,6 +60,9 @@ Do not add architectural layers without a concrete need.
 - Deleting a book that has transaction history is forbidden; deactivate it instead.
 - Sales discounts are stored as integer basis points (10000 = 100.00%). Apply line discount before whole-order discount, round each unit-price stage to integer cents using AwayFromZero, and preserve the pre-discount price plus both discount snapshots.
 - `sales_order_items.unit_price_cent` is the actual final unit price paid after all discounts. Sales returns must continue to refund from that immutable snapshot.
+- Purchase discounts follow the same basis-point and rounding rules as sales: pre-discount unit cost → line discount → whole-order discount.
+- `purchase_order_items.unit_cost_cent` is the final actual unit cost after all purchase discounts. Purchase returns and sale-time recent-purchase reference cost must use this immutable final-cost snapshot.
+- Legacy purchase rows without discount metadata migrate as 100% line / 100% order discount without changing their historical final amounts.
 - Generic dictionary values are never physically deleted from historical business data. Disabling a value prevents future selection; renaming a book category must update current book master data transactionally while historical documents remain snapshot-based.
 
 ## Return invariants

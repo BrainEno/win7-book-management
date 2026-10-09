@@ -147,13 +147,26 @@ namespace Win7BookManagement.Infrastructure
                     supplierId,
                     new List<TransactionLineInput>
                     {
-                        new TransactionLineInput { BookId = bookId, Quantity = 4, UnitPriceCent = 1000 }
+                        new TransactionLineInput
+                        {
+                            BookId = bookId,
+                            Quantity = 4,
+                            UnitPriceCent = 2000,
+                            BaseUnitPriceCent = 2000,
+                            DiscountBasisPoints = 8000
+                        }
                     },
-                    "purchase");
+                    "purchase",
+                    6250);
                 if (services.Books.GetById(bookId).StockQuantity != 5 ||
                     purchaseDraft.IsReviewed ||
+                    purchaseDraft.SubtotalCent != 8000 ||
+                    purchaseDraft.LineDiscountCent != 1600 ||
+                    purchaseDraft.OrderDiscountBasisPoints != 6250 ||
+                    purchaseDraft.OrderDiscountCent != 2400 ||
+                    purchaseDraft.TotalCent != 4000 ||
                     !purchaseDraft.OrderNo.StartsWith(DateTime.Today.ToString("yyyyMMdd"), StringComparison.Ordinal))
-                    throw new InvalidOperationException("采购草稿保存或自动单号自检失败。");
+                    throw new InvalidOperationException("采购折扣草稿保存或自动单号自检失败。");
 
                 var olderPurchaseDraft = services.Purchases.SaveDraft(
                     null,
@@ -210,6 +223,10 @@ namespace Win7BookManagement.Infrastructure
                     copiedPurchaseDraft.Lines.Count != 1 ||
                     copiedPurchaseDraft.Lines[0].BookId != bookId ||
                     copiedPurchaseDraft.Lines[0].Quantity != 4 ||
+                    copiedPurchaseDraft.OrderDiscountBasisPoints != 6250 ||
+                    copiedPurchaseDraft.Lines[0].BaseUnitCostCent != 2000 ||
+                    copiedPurchaseDraft.Lines[0].LineDiscountBasisPoints != 8000 ||
+                    copiedPurchaseDraft.Lines[0].LineDiscountedUnitCostCent != 1600 ||
                     copiedPurchaseDraft.Lines[0].UnitCostCent != 1000 ||
                     services.Books.GetById(bookId).StockQuantity != 9)
                     throw new InvalidOperationException("采购单复制为新草稿自检失败。");
@@ -354,6 +371,15 @@ namespace Win7BookManagement.Infrastructure
                     Convert.ToDecimal(saleItems.Rows[0]["整单折扣%"]) != 80.00m ||
                     Convert.ToDecimal(saleItems.Rows[0]["实收单价"]) != 14.40m)
                     throw new InvalidOperationException("原销售单退货状态 / 折扣快照自检失败。");
+
+                var purchaseItems = services.Documents.GetItems("purchase", purchaseId);
+                if (purchaseItems.Rows.Count != 1 ||
+                    Convert.ToDecimal(purchaseItems.Rows[0]["原进价"]) != 20.00m ||
+                    Convert.ToDecimal(purchaseItems.Rows[0]["单品折扣%"]) != 80.00m ||
+                    Convert.ToDecimal(purchaseItems.Rows[0]["折后进价"]) != 16.00m ||
+                    Convert.ToDecimal(purchaseItems.Rows[0]["整单折扣%"]) != 62.50m ||
+                    Convert.ToDecimal(purchaseItems.Rows[0]["实际进价"]) != 10.00m)
+                    throw new InvalidOperationException("采购折扣快照 / 单据中心展示自检失败。");
 
                 try
                 {
@@ -679,6 +705,13 @@ namespace Win7BookManagement.Infrastructure
                             purchaseDay.GetRow(2).GetCell(2).StringCellValue != "采购单号" ||
                             purchaseDay.GetRow(3).GetCell(3).StringCellValue != "测试供应商" ||
                             Math.Abs(purchaseDay.GetRow(3).GetCell(8).NumericCellValue - 40.00) > 0.001 ||
+                            purchaseDay.GetRow(2).GetCell(14).StringCellValue != "原进价" ||
+                            Math.Abs(purchaseDay.GetRow(3).GetCell(14).NumericCellValue - 20.00) > 0.001 ||
+                            Math.Abs(purchaseDay.GetRow(3).GetCell(15).NumericCellValue - 80.00) > 0.001 ||
+                            Math.Abs(purchaseDay.GetRow(3).GetCell(16).NumericCellValue - 16.00) > 0.001 ||
+                            Math.Abs(purchaseDay.GetRow(3).GetCell(17).NumericCellValue - 62.50) > 0.001 ||
+                            Math.Abs(purchaseDay.GetRow(3).GetCell(18).NumericCellValue - 80.00) > 0.001 ||
+                            Math.Abs(purchaseDay.GetRow(3).GetCell(20).NumericCellValue - 24.00) > 0.001 ||
                             purchaseDay.GetRow(5).GetCell(0).StringCellValue != "采购退货明细" ||
                             purchaseDay.GetRow(6).GetCell(2).StringCellValue != "退货单号" ||
                             Math.Abs(purchaseDay.GetRow(7).GetCell(9).NumericCellValue - 10.00) > 0.001)

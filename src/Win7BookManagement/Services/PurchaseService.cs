@@ -36,13 +36,28 @@ namespace Win7BookManagement.Services
             IList<TransactionLineInput> lines,
             string note)
         {
+            return SaveDraft(
+                documentId, requestedOrderNo, purchaseDate, supplierId, lines, note, 10000);
+        }
+
+        public PurchaseDocument SaveDraft(
+            long? documentId,
+            string requestedOrderNo,
+            DateTime purchaseDate,
+            long? supplierId,
+            IList<TransactionLineInput> lines,
+            string note,
+            int orderDiscountBasisPoints)
+        {
             var normalizedLines = lines ?? new List<TransactionLineInput>();
             ValidateDraftLines(normalizedLines);
+            if (orderDiscountBasisPoints < 0 || orderDiscountBasisPoints > 10000)
+                throw new InvalidOperationException("整单折扣必须在 0% 到 100% 之间。");
 
             var now = DateTime.Now;
             var timestamp = Format(now);
             var purchasedAt = Format(purchaseDate.Date);
-            var totalCent = CalculateTotal(normalizedLines);
+            var totals = CalculateTotals(normalizedLines, orderDiscountBasisPoints);
 
             long id;
             string orderNo;
@@ -93,6 +108,10 @@ SET order_no=@no,
     supplier_id=@supplierId,
     supplier_name_snapshot=@supplierName,
     purchased_at=@purchasedAt,
+    subtotal_cent=@subtotal,
+    line_discount_cent=@lineDiscount,
+    order_discount_basis_points=@orderDiscountBasisPoints,
+    order_discount_cent=@orderDiscount,
     total_cent=@total,
     note=@note,
     status=@status,
@@ -103,7 +122,11 @@ WHERE id=@id AND status=@draft;";
                             update.Parameters.AddWithValue("@supplierId", supplierId.HasValue ? (object)supplierId.Value : DBNull.Value);
                             update.Parameters.AddWithValue("@supplierName", supplierName);
                             update.Parameters.AddWithValue("@purchasedAt", purchasedAt);
-                            update.Parameters.AddWithValue("@total", totalCent);
+                            update.Parameters.AddWithValue("@subtotal", totals.SubtotalCent);
+                            update.Parameters.AddWithValue("@lineDiscount", totals.LineDiscountCent);
+                            update.Parameters.AddWithValue("@orderDiscountBasisPoints", orderDiscountBasisPoints);
+                            update.Parameters.AddWithValue("@orderDiscount", totals.OrderDiscountCent);
+                            update.Parameters.AddWithValue("@total", totals.TotalCent);
                             update.Parameters.AddWithValue("@note", (note ?? "").Trim());
                             update.Parameters.AddWithValue("@status", DraftStatus);
                             update.Parameters.AddWithValue("@updatedAt", timestamp);
@@ -128,17 +151,23 @@ WHERE id=@id AND status=@draft;";
                             insert.Transaction = transaction;
                             insert.CommandText = @"
 INSERT INTO purchase_orders
-(order_no, supplier_id, supplier_name_snapshot, purchased_at, total_cent, note,
- created_at, status, reviewed_at, updated_at)
+(order_no, supplier_id, supplier_name_snapshot, purchased_at,
+ subtotal_cent, line_discount_cent, order_discount_basis_points, order_discount_cent,
+ total_cent, note, created_at, status, reviewed_at, updated_at)
 VALUES
-(@no, @supplierId, @supplierName, @purchasedAt, @total, @note,
- @createdAt, @status, NULL, @updatedAt);
+(@no, @supplierId, @supplierName, @purchasedAt,
+ @subtotal, @lineDiscount, @orderDiscountBasisPoints, @orderDiscount,
+ @total, @note, @createdAt, @status, NULL, @updatedAt);
 SELECT last_insert_rowid();";
                             insert.Parameters.AddWithValue("@no", orderNo);
                             insert.Parameters.AddWithValue("@supplierId", supplierId.HasValue ? (object)supplierId.Value : DBNull.Value);
                             insert.Parameters.AddWithValue("@supplierName", supplierName);
                             insert.Parameters.AddWithValue("@purchasedAt", purchasedAt);
-                            insert.Parameters.AddWithValue("@total", totalCent);
+                            insert.Parameters.AddWithValue("@subtotal", totals.SubtotalCent);
+                            insert.Parameters.AddWithValue("@lineDiscount", totals.LineDiscountCent);
+                            insert.Parameters.AddWithValue("@orderDiscountBasisPoints", orderDiscountBasisPoints);
+                            insert.Parameters.AddWithValue("@orderDiscount", totals.OrderDiscountCent);
+                            insert.Parameters.AddWithValue("@total", totals.TotalCent);
                             insert.Parameters.AddWithValue("@note", (note ?? "").Trim());
                             insert.Parameters.AddWithValue("@createdAt", timestamp);
                             insert.Parameters.AddWithValue("@status", DraftStatus);
@@ -147,7 +176,7 @@ SELECT last_insert_rowid();";
                         }
                     }
 
-                    InsertItems(connection, transaction, id, normalizedLines);
+                    InsertItems(connection, transaction, id, normalizedLines, orderDiscountBasisPoints);
                     transaction.Commit();
                 }
                 catch
@@ -440,7 +469,8 @@ WHERE reference_id=@id
                 {
                     header.CommandText = @"
 SELECT id, order_no, supplier_id, supplier_name_snapshot, purchased_at,
-       total_cent, note, status, reviewed_at, updated_at
+       subtotal_cent, line_discount_cent, order_discount_basis_points,
+       order_discount_cent, total_cent, note, status, reviewed_at, updated_at
 FROM purchase_orders
 WHERE id=@id;";
                     header.Parameters.AddWithValue("@id", documentId);
@@ -456,6 +486,10 @@ WHERE id=@id;";
                                 : Convert.ToInt64(reader["supplier_id"]),
                             SupplierName = Convert.ToString(reader["supplier_name_snapshot"]),
                             PurchasedAt = ParseDate(Convert.ToString(reader["purchased_at"])),
+                            SubtotalCent = Convert.ToInt64(reader["subtotal_cent"]),
+                            LineDiscountCent = Convert.ToInt64(reader["line_discount_cent"]),
+                            OrderDiscountBasisPoints = Convert.ToInt32(reader["order_discount_basis_points"]),
+                            OrderDiscountCent = Convert.ToInt64(reader["order_discount_cent"]),
                             TotalCent = Convert.ToInt64(reader["total_cent"]),
                             Note = Convert.ToString(reader["note"]),
                             Status = Convert.ToString(reader["status"]),
@@ -481,6 +515,9 @@ SELECT pi.id,
        b.shelf_code,
        b.stock_quantity,
        pi.quantity,
+       pi.base_unit_cost_cent,
+       pi.line_discount_basis_points,
+       pi.line_discounted_unit_cost_cent,
        pi.unit_cost_cent,
        pi.line_total_cent
 FROM purchase_order_items pi
@@ -504,6 +541,9 @@ ORDER BY pi.id;";
                                 ShelfCode = Convert.ToString(reader["shelf_code"]),
                                 CurrentStock = Convert.ToInt32(reader["stock_quantity"]),
                                 Quantity = Convert.ToInt32(reader["quantity"]),
+                                BaseUnitCostCent = Convert.ToInt64(reader["base_unit_cost_cent"]),
+                                LineDiscountBasisPoints = Convert.ToInt32(reader["line_discount_basis_points"]),
+                                LineDiscountedUnitCostCent = Convert.ToInt64(reader["line_discounted_unit_cost_cent"]),
                                 UnitCostCent = Convert.ToInt64(reader["unit_cost_cent"]),
                                 LineTotalCent = Convert.ToInt64(reader["line_total_cent"])
                             });
@@ -604,7 +644,9 @@ LIMIT @limit;";
                 {
                     BookId = line.BookId,
                     Quantity = line.Quantity,
-                    UnitPriceCent = line.UnitCostCent
+                    UnitPriceCent = line.BaseUnitCostCent,
+                    BaseUnitPriceCent = line.BaseUnitCostCent,
+                    DiscountBasisPoints = line.LineDiscountBasisPoints
                 });
             }
 
@@ -614,7 +656,8 @@ LIMIT @limit;";
                 purchaseDate.Date,
                 source.SupplierId,
                 lines,
-                "");
+                "",
+                source.OrderDiscountBasisPoints);
         }
 
         public PurchaseNavigationState GetNavigationState(long currentId)
@@ -707,19 +750,58 @@ LIMIT 1;";
                     throw new InvalidOperationException("采购明细包含无效图书。");
                 if (line.Quantity <= 0)
                     throw new InvalidOperationException("入库数量必须大于 0。");
-                if (line.UnitPriceCent < 0)
+                if (ResolveBaseUnitCost(line) < 0)
                     throw new InvalidOperationException("进价不能为负数。");
+                if (line.DiscountBasisPoints < 0 || line.DiscountBasisPoints > 10000)
+                    throw new InvalidOperationException("单品折扣必须在 0% 到 100% 之间。");
                 if (!seen.Add(line.BookId))
                     throw new InvalidOperationException("同一本图书不能在采购明细中重复出现。");
             }
         }
 
-        private static long CalculateTotal(IList<TransactionLineInput> lines)
+        private static PurchaseTotals CalculateTotals(
+            IList<TransactionLineInput> lines,
+            int orderDiscountBasisPoints)
         {
-            long total = 0;
+            var result = new PurchaseTotals();
             foreach (var line in lines)
-                total = checked(total + checked((long)line.Quantity * line.UnitPriceCent));
-            return total;
+            {
+                var baseUnitCostCent = ResolveBaseUnitCost(line);
+                var lineDiscountedUnitCostCent =
+                    ApplyBasisPoints(baseUnitCostCent, line.DiscountBasisPoints);
+                var finalUnitCostCent =
+                    ApplyBasisPoints(lineDiscountedUnitCostCent, orderDiscountBasisPoints);
+
+                result.SubtotalCent = checked(
+                    result.SubtotalCent + checked((long)line.Quantity * baseUnitCostCent));
+                result.LineDiscountCent = checked(
+                    result.LineDiscountCent + checked(
+                        (long)line.Quantity * (baseUnitCostCent - lineDiscountedUnitCostCent)));
+                result.OrderDiscountCent = checked(
+                    result.OrderDiscountCent + checked(
+                        (long)line.Quantity * (lineDiscountedUnitCostCent - finalUnitCostCent)));
+                result.TotalCent = checked(
+                    result.TotalCent + checked((long)line.Quantity * finalUnitCostCent));
+            }
+            return result;
+        }
+
+        private static long ResolveBaseUnitCost(TransactionLineInput line)
+        {
+            return line.BaseUnitPriceCent > 0 || line.UnitPriceCent == 0
+                ? line.BaseUnitPriceCent
+                : line.UnitPriceCent;
+        }
+
+        private static long ApplyBasisPoints(long amountCent, int basisPoints)
+        {
+            if (amountCent <= 0 || basisPoints <= 0) return 0;
+            if (basisPoints >= 10000) return amountCent;
+
+            return decimal.ToInt64(decimal.Round(
+                amountCent * (basisPoints / 10000m),
+                0,
+                MidpointRounding.AwayFromZero));
         }
 
         private static string LoadSupplierName(
@@ -797,7 +879,8 @@ LIMIT 1;";
             SQLiteConnection connection,
             SQLiteTransaction transaction,
             long orderId,
-            IList<TransactionLineInput> lines)
+            IList<TransactionLineInput> lines,
+            int orderDiscountBasisPoints)
         {
             foreach (var line in lines)
             {
@@ -817,20 +900,31 @@ LIMIT 1;";
                     }
                 }
 
-                var lineTotal = checked((long)line.Quantity * line.UnitPriceCent);
+                var baseUnitCostCent = ResolveBaseUnitCost(line);
+                var lineDiscountedUnitCostCent =
+                    ApplyBasisPoints(baseUnitCostCent, line.DiscountBasisPoints);
+                var finalUnitCostCent =
+                    ApplyBasisPoints(lineDiscountedUnitCostCent, orderDiscountBasisPoints);
+                var lineTotal = checked((long)line.Quantity * finalUnitCostCent);
                 using (var item = connection.CreateCommand())
                 {
                     item.Transaction = transaction;
                     item.CommandText = @"
 INSERT INTO purchase_order_items
-(purchase_order_id, book_id, isbn_snapshot, title_snapshot, quantity, unit_cost_cent, line_total_cent)
-VALUES(@orderId, @bookId, @isbn, @title, @qty, @unit, @total);";
+(purchase_order_id, book_id, isbn_snapshot, title_snapshot, quantity,
+ base_unit_cost_cent, line_discount_basis_points, line_discounted_unit_cost_cent,
+ unit_cost_cent, line_total_cent)
+VALUES(@orderId, @bookId, @isbn, @title, @qty,
+ @baseUnit, @lineDiscountBasisPoints, @lineDiscountedUnit, @unit, @total);";
                     item.Parameters.AddWithValue("@orderId", orderId);
                     item.Parameters.AddWithValue("@bookId", line.BookId);
                     item.Parameters.AddWithValue("@isbn", isbn);
                     item.Parameters.AddWithValue("@title", title);
                     item.Parameters.AddWithValue("@qty", line.Quantity);
-                    item.Parameters.AddWithValue("@unit", line.UnitPriceCent);
+                    item.Parameters.AddWithValue("@baseUnit", baseUnitCostCent);
+                    item.Parameters.AddWithValue("@lineDiscountBasisPoints", line.DiscountBasisPoints);
+                    item.Parameters.AddWithValue("@lineDiscountedUnit", lineDiscountedUnitCostCent);
+                    item.Parameters.AddWithValue("@unit", finalUnitCostCent);
                     item.Parameters.AddWithValue("@total", lineTotal);
                     item.ExecuteNonQuery();
                 }
@@ -931,6 +1025,14 @@ VALUES(@bookId, @isbn, @title, @type, @qty, @refType, @refId, @refNo, @at, @note
         private static string Format(DateTime value)
         {
             return value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        }
+
+        private sealed class PurchaseTotals
+        {
+            public long SubtotalCent { get; set; }
+            public long LineDiscountCent { get; set; }
+            public long OrderDiscountCent { get; set; }
+            public long TotalCent { get; set; }
         }
 
         private sealed class PostingLine

@@ -12,6 +12,7 @@ namespace Win7BookManagement.Models
             SupplierName = "";
             Status = "draft";
             Note = "";
+            OrderDiscountBasisPoints = 10000;
         }
 
         public long Id { get; set; }
@@ -19,6 +20,10 @@ namespace Win7BookManagement.Models
         public long? SupplierId { get; set; }
         public string SupplierName { get; set; }
         public DateTime PurchasedAt { get; set; }
+        public long SubtotalCent { get; set; }
+        public long LineDiscountCent { get; set; }
+        public int OrderDiscountBasisPoints { get; set; }
+        public long OrderDiscountCent { get; set; }
         public long TotalCent { get; set; }
         public string Note { get; set; }
         public string Status { get; set; }
@@ -49,6 +54,9 @@ namespace Win7BookManagement.Models
         public string ShelfCode { get; set; }
         public int CurrentStock { get; set; }
         public int Quantity { get; set; }
+        public long BaseUnitCostCent { get; set; }
+        public int LineDiscountBasisPoints { get; set; }
+        public long LineDiscountedUnitCostCent { get; set; }
         public long UnitCostCent { get; set; }
         public long LineTotalCent { get; set; }
     }
