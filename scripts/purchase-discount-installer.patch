@@ -1,0 +1,1059 @@
+diff --git a/src/Win7BookManagement/Models/TransactionLineInput.cs b/src/Win7BookManagement/Models/TransactionLineInput.cs
+--- a/src/Win7BookManagement/Models/TransactionLineInput.cs
++++ b/src/Win7BookManagement/Models/TransactionLineInput.cs
+@@ -5,12 +5,13 @@ namespace Win7BookManagement.Models
+         public long BookId { get; set; }
+         public int Quantity { get; set; }
+ 
+-        // Purchase uses UnitPriceCent as the unit cost. Sales uses it as the
+-        // operator-entered pre-discount selling price for backward compatibility.
++        // Backward-compatible operator-entered unit amount. New purchase and
++        // sales flows also preserve BaseUnitPriceCent plus discount metadata.
+         public long UnitPriceCent { get; set; }
+ 
+-        // Sales-only discount metadata. Purchase services intentionally ignore
+-        // these fields.
++        // Shared discount metadata. 10000 basis points = 100.00%.
++        // Purchase treats BaseUnitPriceCent as pre-discount unit cost; sales
++        // treats it as pre-discount selling price.
+         public long BaseUnitPriceCent { get; set; }
+         public int DiscountBasisPoints { get; set; }
+ 
+diff --git a/src/Win7BookManagement/Models/PurchaseDocument.cs b/src/Win7BookManagement/Models/PurchaseDocument.cs
+--- a/src/Win7BookManagement/Models/PurchaseDocument.cs
++++ b/src/Win7BookManagement/Models/PurchaseDocument.cs
+@@ -11,6 +11,7 @@ namespace Win7BookManagement.Models
+             SupplierName = "";
+             Status = "draft";
+             Note = "";
++            OrderDiscountBasisPoints = 10000;
+         }
+ 
+         public long Id { get; set; }
+@@ -18,6 +19,10 @@ namespace Win7BookManagement.Models
+         public long? SupplierId { get; set; }
+         public string SupplierName { get; set; }
+         public DateTime PurchasedAt { get; set; }
++        public long SubtotalCent { get; set; }
++        public long LineDiscountCent { get; set; }
++        public int OrderDiscountBasisPoints { get; set; }
++        public long OrderDiscountCent { get; set; }
+         public long TotalCent { get; set; }
+         public string Note { get; set; }
+         public string Status { get; set; }
+@@ -49,6 +54,9 @@ namespace Win7BookManagement.Models
+         public int CurrentStock { get; set; }
+         public int Quantity { get; set; }
++        public long BaseUnitCostCent { get; set; }
++        public int LineDiscountBasisPoints { get; set; }
++        public long LineDiscountedUnitCostCent { get; set; }
+         public long UnitCostCent { get; set; }
+         public long LineTotalCent { get; set; }
+     }
+diff --git a/src/Win7BookManagement/Database/DatabaseInitializer.cs b/src/Win7BookManagement/Database/DatabaseInitializer.cs
+--- a/src/Win7BookManagement/Database/DatabaseInitializer.cs
++++ b/src/Win7BookManagement/Database/DatabaseInitializer.cs
+@@ -77,6 +77,11 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
+     supplier_id INTEGER NULL,
+     supplier_name_snapshot TEXT NOT NULL DEFAULT '',
+     purchased_at TEXT NOT NULL,
++    subtotal_cent INTEGER NOT NULL DEFAULT 0 CHECK(subtotal_cent >= 0),
++    line_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discount_cent >= 0),
++    order_discount_basis_points INTEGER NOT NULL DEFAULT 10000
++        CHECK(order_discount_basis_points >= 0 AND order_discount_basis_points <= 10000),
++    order_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(order_discount_cent >= 0),
+     total_cent INTEGER NOT NULL CHECK(total_cent >= 0),
+     note TEXT NOT NULL DEFAULT '',
+     created_at TEXT NOT NULL,
+@@ -94,6 +99,10 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
+     isbn_snapshot TEXT NOT NULL DEFAULT '',
+     title_snapshot TEXT NOT NULL,
+     quantity INTEGER NOT NULL CHECK(quantity > 0),
++    base_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(base_unit_cost_cent >= 0),
++    line_discount_basis_points INTEGER NOT NULL DEFAULT 10000
++        CHECK(line_discount_basis_points >= 0 AND line_discount_basis_points <= 10000),
++    line_discounted_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discounted_unit_cost_cent >= 0),
+     unit_cost_cent INTEGER NOT NULL CHECK(unit_cost_cent >= 0),
+     line_total_cent INTEGER NOT NULL CHECK(line_total_cent >= 0),
+     FOREIGN KEY(purchase_order_id) REFERENCES purchase_orders(id),
+@@ -292,6 +301,7 @@ ON purchase_return_items(source_purchase_order_item_id);
+ 
+                     EnsureBookMetadataColumns(connection, transaction);
+                     EnsurePurchaseWorkflowColumns(connection, transaction);
++                    EnsurePurchaseDiscountColumns(connection, transaction);
+                     EnsureSalesDiscountColumns(connection, transaction);
+                     EnsureSalesPaymentColumns(connection, transaction);
+                     EnsureSalesReportingColumns(connection, transaction);
+@@ -333,10 +343,10 @@ WHERE updated_at IS NULL OR trim(updated_at)='';";
+                         version.Transaction = transaction;
+                         version.CommandText = @"
+ INSERT INTO schema_info(version)
+-SELECT 9 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
++SELECT 10 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
+ 
+ UPDATE schema_info
+-SET version = 9
+-WHERE version < 9;
++SET version = 10
++WHERE version < 10;
+ 
+ INSERT OR IGNORE INTO app_settings(key, value, updated_at)
+ VALUES('low_stock_threshold', '3', @now);";
+@@ -379,6 +389,46 @@ VALUES('low_stock_threshold', '3', @now);";
+                 "ALTER TABLE purchase_orders ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';");
+         }
+ 
++        private static void EnsurePurchaseDiscountColumns(
++            SQLiteConnection connection,
++            SQLiteTransaction transaction)
++        {
++            EnsureColumn(connection, transaction, "purchase_orders", "subtotal_cent",
++                "ALTER TABLE purchase_orders ADD COLUMN subtotal_cent INTEGER NOT NULL DEFAULT 0 CHECK(subtotal_cent >= 0);");
++            EnsureColumn(connection, transaction, "purchase_orders", "line_discount_cent",
++                "ALTER TABLE purchase_orders ADD COLUMN line_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discount_cent >= 0);");
++            EnsureColumn(connection, transaction, "purchase_orders", "order_discount_basis_points",
++                "ALTER TABLE purchase_orders ADD COLUMN order_discount_basis_points INTEGER NOT NULL DEFAULT 10000 CHECK(order_discount_basis_points >= 0 AND order_discount_basis_points <= 10000);");
++            EnsureColumn(connection, transaction, "purchase_orders", "order_discount_cent",
++                "ALTER TABLE purchase_orders ADD COLUMN order_discount_cent INTEGER NOT NULL DEFAULT 0 CHECK(order_discount_cent >= 0);");
++
++            EnsureColumn(connection, transaction, "purchase_order_items", "base_unit_cost_cent",
++                "ALTER TABLE purchase_order_items ADD COLUMN base_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(base_unit_cost_cent >= 0);");
++            EnsureColumn(connection, transaction, "purchase_order_items", "line_discount_basis_points",
++                "ALTER TABLE purchase_order_items ADD COLUMN line_discount_basis_points INTEGER NOT NULL DEFAULT 10000 CHECK(line_discount_basis_points >= 0 AND line_discount_basis_points <= 10000);");
++            EnsureColumn(connection, transaction, "purchase_order_items", "line_discounted_unit_cost_cent",
++                "ALTER TABLE purchase_order_items ADD COLUMN line_discounted_unit_cost_cent INTEGER NOT NULL DEFAULT 0 CHECK(line_discounted_unit_cost_cent >= 0);");
++
++            using (var normalize = connection.CreateCommand())
++            {
++                normalize.Transaction = transaction;
++                normalize.CommandText = @"
++UPDATE purchase_order_items
++SET base_unit_cost_cent = unit_cost_cent
++WHERE base_unit_cost_cent = 0 AND unit_cost_cent > 0;
++
++UPDATE purchase_order_items
++SET line_discounted_unit_cost_cent = unit_cost_cent
++WHERE line_discounted_unit_cost_cent = 0 AND unit_cost_cent > 0;
++
++UPDATE purchase_orders
++SET subtotal_cent = total_cent
++WHERE subtotal_cent = 0 AND total_cent > 0;";
++                normalize.ExecuteNonQuery();
++            }
++        }
++
+         private static void EnsureSalesDiscountColumns(
+             SQLiteConnection connection,
+             SQLiteTransaction transaction)
+diff --git a/src/Win7BookManagement/Services/PurchaseService.cs b/src/Win7BookManagement/Services/PurchaseService.cs
+--- a/src/Win7BookManagement/Services/PurchaseService.cs
++++ b/src/Win7BookManagement/Services/PurchaseService.cs
+@@ -34,12 +34,29 @@ namespace Win7BookManagement.Services
+             DateTime purchaseDate,
+             long? supplierId,
+             IList<TransactionLineInput> lines,
+             string note)
++        {
++            return SaveDraft(
++                documentId,
++                requestedOrderNo,
++                purchaseDate,
++                supplierId,
++                lines,
++                note,
++                10000);
++        }
++
++        public PurchaseDocument SaveDraft(
++            long? documentId,
++            string requestedOrderNo,
++            DateTime purchaseDate,
++            long? supplierId,
++            IList<TransactionLineInput> lines,
++            string note,
++            int orderDiscountBasisPoints)
+         {
+             var normalizedLines = lines ?? new List<TransactionLineInput>();
+             ValidateDraftLines(normalizedLines);
++            if (orderDiscountBasisPoints < 0 || orderDiscountBasisPoints > 10000)
++                throw new InvalidOperationException("整单折扣必须在 0% 到 100% 之间。");
+ 
+             var now = DateTime.Now;
+             var timestamp = Format(now);
+             var purchasedAt = Format(purchaseDate.Date);
+-            var totalCent = CalculateTotal(normalizedLines);
++            var totals = CalculateTotals(normalizedLines, orderDiscountBasisPoints);
+ 
+             long id;
+             string orderNo;
+@@ -91,7 +108,11 @@ UPDATE purchase_orders
+     supplier_id=@supplierId,
+     supplier_name_snapshot=@supplierName,
+     purchased_at=@purchasedAt,
++    subtotal_cent=@subtotal,
++    line_discount_cent=@lineDiscount,
++    order_discount_basis_points=@orderDiscountBasisPoints,
++    order_discount_cent=@orderDiscount,
+     total_cent=@total,
+     note=@note,
+     status=@status,
+@@ -103,7 +124,11 @@ WHERE id=@id AND status=@draft;";
+                             update.Parameters.AddWithValue("@supplierId", supplierId.HasValue ? (object)supplierId.Value : DBNull.Value);
+                             update.Parameters.AddWithValue("@supplierName", supplierName);
+                             update.Parameters.AddWithValue("@purchasedAt", purchasedAt);
+-                            update.Parameters.AddWithValue("@total", totalCent);
++                            update.Parameters.AddWithValue("@subtotal", totals.SubtotalCent);
++                            update.Parameters.AddWithValue("@lineDiscount", totals.LineDiscountCent);
++                            update.Parameters.AddWithValue("@orderDiscountBasisPoints", orderDiscountBasisPoints);
++                            update.Parameters.AddWithValue("@orderDiscount", totals.OrderDiscountCent);
++                            update.Parameters.AddWithValue("@total", totals.TotalCent);
+                             update.Parameters.AddWithValue("@note", (note ?? "").Trim());
+                             update.Parameters.AddWithValue("@status", DraftStatus);
+                             update.Parameters.AddWithValue("@updatedAt", timestamp);
+@@ -128,14 +153,20 @@ WHERE id=@id AND status=@draft;";
+                             insert.Transaction = transaction;
+                             insert.CommandText = @"
+ INSERT INTO purchase_orders
+-(order_no, supplier_id, supplier_name_snapshot, purchased_at, total_cent, note,
++(order_no, supplier_id, supplier_name_snapshot, purchased_at,
++ subtotal_cent, line_discount_cent, order_discount_basis_points, order_discount_cent,
++ total_cent, note,
+  created_at, status, reviewed_at, updated_at)
+ VALUES
+-(@no, @supplierId, @supplierName, @purchasedAt, @total, @note,
++(@no, @supplierId, @supplierName, @purchasedAt,
++ @subtotal, @lineDiscount, @orderDiscountBasisPoints, @orderDiscount,
++ @total, @note,
+  @createdAt, @status, NULL, @updatedAt);
+ SELECT last_insert_rowid();";
+                             insert.Parameters.AddWithValue("@no", orderNo);
+                             insert.Parameters.AddWithValue("@supplierId", supplierId.HasValue ? (object)supplierId.Value : DBNull.Value);
+                             insert.Parameters.AddWithValue("@supplierName", supplierName);
+                             insert.Parameters.AddWithValue("@purchasedAt", purchasedAt);
+-                            insert.Parameters.AddWithValue("@total", totalCent);
++                            insert.Parameters.AddWithValue("@subtotal", totals.SubtotalCent);
++                            insert.Parameters.AddWithValue("@lineDiscount", totals.LineDiscountCent);
++                            insert.Parameters.AddWithValue("@orderDiscountBasisPoints", orderDiscountBasisPoints);
++                            insert.Parameters.AddWithValue("@orderDiscount", totals.OrderDiscountCent);
++                            insert.Parameters.AddWithValue("@total", totals.TotalCent);
+                             insert.Parameters.AddWithValue("@note", (note ?? "").Trim());
+                             insert.Parameters.AddWithValue("@createdAt", timestamp);
+                             insert.Parameters.AddWithValue("@status", DraftStatus);
+@@ -145,7 +176,7 @@ SELECT last_insert_rowid();";
+                         }
+                     }
+ 
+-                    InsertItems(connection, transaction, id, normalizedLines);
++                    InsertItems(connection, transaction, id, normalizedLines, orderDiscountBasisPoints);
+                     transaction.Commit();
+                 }
+                 catch
+@@ -415,7 +446,8 @@ namespace Win7BookManagement.Services
+                 {
+                     header.CommandText = @"
+ SELECT id, order_no, supplier_id, supplier_name_snapshot, purchased_at,
+-       total_cent, note, status, reviewed_at, updated_at
++       subtotal_cent, line_discount_cent, order_discount_basis_points,
++       order_discount_cent, total_cent, note, status, reviewed_at, updated_at
+ FROM purchase_orders
+ WHERE id=@id;";
+@@ -432,6 +464,10 @@ WHERE id=@id;";
+                                 : Convert.ToInt64(reader["supplier_id"]),
+                             SupplierName = Convert.ToString(reader["supplier_name_snapshot"]),
+                             PurchasedAt = ParseDate(Convert.ToString(reader["purchased_at"])),
++                            SubtotalCent = Convert.ToInt64(reader["subtotal_cent"]),
++                            LineDiscountCent = Convert.ToInt64(reader["line_discount_cent"]),
++                            OrderDiscountBasisPoints = Convert.ToInt32(reader["order_discount_basis_points"]),
++                            OrderDiscountCent = Convert.ToInt64(reader["order_discount_cent"]),
+                             TotalCent = Convert.ToInt64(reader["total_cent"]),
+                             Note = Convert.ToString(reader["note"]),
+                             Status = Convert.ToString(reader["status"]),
+@@ -456,6 +492,9 @@ SELECT pi.id,
+        b.shelf_code,
+        b.stock_quantity,
+        pi.quantity,
++       pi.base_unit_cost_cent,
++       pi.line_discount_basis_points,
++       pi.line_discounted_unit_cost_cent,
+        pi.unit_cost_cent,
+        pi.line_total_cent
+ FROM purchase_order_items pi
+@@ -480,6 +519,9 @@ ORDER BY pi.id;";
+                                 CurrentStock = Convert.ToInt32(reader["stock_quantity"]),
+                                 Quantity = Convert.ToInt32(reader["quantity"]),
++                                BaseUnitCostCent = Convert.ToInt64(reader["base_unit_cost_cent"]),
++                                LineDiscountBasisPoints = Convert.ToInt32(reader["line_discount_basis_points"]),
++                                LineDiscountedUnitCostCent = Convert.ToInt64(reader["line_discounted_unit_cost_cent"]),
+                                 UnitCostCent = Convert.ToInt64(reader["unit_cost_cent"]),
+                                 LineTotalCent = Convert.ToInt64(reader["line_total_cent"])
+                             });
+@@ -588,7 +630,9 @@ namespace Win7BookManagement.Services
+                 {
+                     BookId = line.BookId,
+                     Quantity = line.Quantity,
+-                    UnitPriceCent = line.UnitCostCent
++                    UnitPriceCent = line.BaseUnitCostCent,
++                    BaseUnitPriceCent = line.BaseUnitCostCent,
++                    DiscountBasisPoints = line.LineDiscountBasisPoints
+                 });
+             }
+ 
+@@ -599,7 +643,8 @@ namespace Win7BookManagement.Services
+                 purchaseDate.Date,
+                 source.SupplierId,
+                 lines,
+-                "");
++                "",
++                source.OrderDiscountBasisPoints);
+         }
+@@ -690,17 +735,51 @@ namespace Win7BookManagement.Services
+                 if (line.BookId <= 0)
+                     throw new InvalidOperationException("采购明细包含无效图书。");
+                 if (line.Quantity <= 0)
+                     throw new InvalidOperationException("入库数量必须大于 0。");
+-                if (line.UnitPriceCent < 0)
++                if (ResolveBaseUnitCost(line) < 0)
+                     throw new InvalidOperationException("进价不能为负数。");
++                if (line.DiscountBasisPoints < 0 || line.DiscountBasisPoints > 10000)
++                    throw new InvalidOperationException("单品折扣必须在 0% 到 100% 之间。");
+                 if (!seen.Add(line.BookId))
+                     throw new InvalidOperationException("同一本图书不能在采购明细中重复出现。");
+             }
+         }
+ 
+-        private static long CalculateTotal(IList<TransactionLineInput> lines)
++        private static PurchaseTotals CalculateTotals(
++            IList<TransactionLineInput> lines,
++            int orderDiscountBasisPoints)
+         {
+-            long total = 0;
++            var result = new PurchaseTotals();
+             foreach (var line in lines)
+-                total = checked(total + checked((long)line.Quantity * line.UnitPriceCent));
+-            return total;
++            {
++                var baseUnitCostCent = ResolveBaseUnitCost(line);
++                var lineDiscountedUnitCostCent =
++                    ApplyBasisPoints(baseUnitCostCent, line.DiscountBasisPoints);
++                var finalUnitCostCent =
++                    ApplyBasisPoints(lineDiscountedUnitCostCent, orderDiscountBasisPoints);
++
++                result.SubtotalCent = checked(
++                    result.SubtotalCent + checked((long)line.Quantity * baseUnitCostCent));
++                result.LineDiscountCent = checked(
++                    result.LineDiscountCent + checked(
++                        (long)line.Quantity * (baseUnitCostCent - lineDiscountedUnitCostCent)));
++                result.OrderDiscountCent = checked(
++                    result.OrderDiscountCent + checked(
++                        (long)line.Quantity * (lineDiscountedUnitCostCent - finalUnitCostCent)));
++                result.TotalCent = checked(
++                    result.TotalCent + checked((long)line.Quantity * finalUnitCostCent));
++            }
++            return result;
++        }
++
++        private static long ResolveBaseUnitCost(TransactionLineInput line)
++        {
++            return line.BaseUnitPriceCent > 0 || line.UnitPriceCent == 0
++                ? line.BaseUnitPriceCent
++                : line.UnitPriceCent;
++        }
++
++        private static long ApplyBasisPoints(long amountCent, int basisPoints)
++        {
++            if (amountCent <= 0 || basisPoints <= 0) return 0;
++            if (basisPoints >= 10000) return amountCent;
++            return decimal.ToInt64(decimal.Round(
++                amountCent * (basisPoints / 10000m),
++                0,
++                MidpointRounding.AwayFromZero));
+         }
+@@ -783,7 +862,8 @@ namespace Win7BookManagement.Services
+             SQLiteConnection connection,
+             SQLiteTransaction transaction,
+             long orderId,
+-            IList<TransactionLineInput> lines)
++            IList<TransactionLineInput> lines,
++            int orderDiscountBasisPoints)
+         {
+             foreach (var line in lines)
+             {
+@@ -805,16 +885,26 @@ namespace Win7BookManagement.Services
+                     }
+                 }
+ 
+-                var lineTotal = checked((long)line.Quantity * line.UnitPriceCent);
++                var baseUnitCostCent = ResolveBaseUnitCost(line);
++                var lineDiscountedUnitCostCent =
++                    ApplyBasisPoints(baseUnitCostCent, line.DiscountBasisPoints);
++                var finalUnitCostCent =
++                    ApplyBasisPoints(lineDiscountedUnitCostCent, orderDiscountBasisPoints);
++                var lineTotal = checked((long)line.Quantity * finalUnitCostCent);
+                 using (var item = connection.CreateCommand())
+                 {
+                     item.Transaction = transaction;
+                     item.CommandText = @"
+ INSERT INTO purchase_order_items
+-(purchase_order_id, book_id, isbn_snapshot, title_snapshot, quantity, unit_cost_cent, line_total_cent)
+-VALUES(@orderId, @bookId, @isbn, @title, @qty, @unit, @total);";
++(purchase_order_id, book_id, isbn_snapshot, title_snapshot, quantity,
++ base_unit_cost_cent, line_discount_basis_points, line_discounted_unit_cost_cent,
++ unit_cost_cent, line_total_cent)
++VALUES(@orderId, @bookId, @isbn, @title, @qty,
++ @baseUnit, @lineDiscountBasisPoints, @lineDiscountedUnit,
++ @unit, @total);";
+                     item.Parameters.AddWithValue("@orderId", orderId);
+                     item.Parameters.AddWithValue("@bookId", line.BookId);
+                     item.Parameters.AddWithValue("@isbn", isbn);
+                     item.Parameters.AddWithValue("@title", title);
+                     item.Parameters.AddWithValue("@qty", line.Quantity);
+-                    item.Parameters.AddWithValue("@unit", line.UnitPriceCent);
++                    item.Parameters.AddWithValue("@baseUnit", baseUnitCostCent);
++                    item.Parameters.AddWithValue("@lineDiscountBasisPoints", line.DiscountBasisPoints);
++                    item.Parameters.AddWithValue("@lineDiscountedUnit", lineDiscountedUnitCostCent);
++                    item.Parameters.AddWithValue("@unit", finalUnitCostCent);
+                     item.Parameters.AddWithValue("@total", lineTotal);
+                     item.ExecuteNonQuery();
+                 }
+@@ -909,6 +999,14 @@ namespace Win7BookManagement.Services
+             return value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+         }
+ 
++        private sealed class PurchaseTotals
++        {
++            public long SubtotalCent { get; set; }
++            public long LineDiscountCent { get; set; }
++            public long OrderDiscountCent { get; set; }
++            public long TotalCent { get; set; }
++        }
++
+         private sealed class PostingLine
+         {
+             public long BookId { get; set; }
+diff --git a/src/Win7BookManagement/Forms/PurchaseForm.cs b/src/Win7BookManagement/Forms/PurchaseForm.cs
+--- a/src/Win7BookManagement/Forms/PurchaseForm.cs
++++ b/src/Win7BookManagement/Forms/PurchaseForm.cs
+@@ -17,6 +17,7 @@ namespace Win7BookManagement.Forms
+         private readonly AntdUI.DatePicker _purchaseDate = new AntdUI.DatePicker();
+         private readonly AntdUI.Input _orderNo = UiTheme.CreateAntdInput("留空时保存草稿会自动生成");
+         private readonly AntdUI.Select _supplier = new AntdUI.Select();
++        private readonly AntdUI.InputNumber _orderDiscount = new AntdUI.InputNumber();
+         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写到货批次、物流或其他备注");
+         private readonly StringBuilder _scanBuffer = new StringBuilder();
+         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
+@@ -25,6 +26,9 @@ namespace Win7BookManagement.Forms
+         private readonly List<Supplier> _supplierOptions = new List<Supplier>();
+         private readonly Label _lineCount = new Label();
+         private readonly Label _quantityTotal = new Label();
++        private readonly Label _originalTotal = new Label();
++        private readonly Label _discountTotal = new Label();
++        private readonly Label _orderDiscountLabel = new Label();
+         private readonly Label _total = new Label();
+         private readonly Label _emptyState = new Label();
+         private readonly Label _statusLabel = new Label();
+@@ -67,6 +71,8 @@ namespace Win7BookManagement.Forms
+         private readonly AntdUI.Column _stockColumn;
+         private readonly AntdUI.Column _quantityColumn;
+         private readonly AntdUI.Column _unitCostColumn;
++        private readonly AntdUI.Column _discountColumn;
++        private readonly AntdUI.Column _discountedUnitCostColumn;
+         private readonly AntdUI.Column _lineTotalColumn;
+@@ -80,6 +86,7 @@ namespace Win7BookManagement.Forms
+         private string _baselineOrderNo = "";
+         private long? _baselineSupplierId;
+         private string _baselineNote = "";
++        private int _baselineOrderDiscountBasisPoints = 10000;
+         private PurchaseNavigationState _navigationState;
+@@ -121,7 +128,7 @@ namespace Win7BookManagement.Forms
+                 ReadOnly = false,
+                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
+             };
+-            _unitCostColumn = new AntdUI.Column("UnitCostYuan", "进价（元）")
++            _unitCostColumn = new AntdUI.Column("BaseUnitCostYuan", "原进价（元）")
+             {
+                 Width = "108",
+                 MinWidth = "92",
+@@ -129,13 +136,30 @@ namespace Win7BookManagement.Forms
+                 DisplayFormat = "0.00",
+                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
+             };
++            _discountColumn = new AntdUI.Column("DiscountPercent", "单品折扣%")
++            {
++                Width = "96",
++                MinWidth = "86",
++                ReadOnly = false,
++                DisplayFormat = "0.00",
++                Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
++            };
++            _discountedUnitCostColumn = new AntdUI.Column("DiscountedUnitCostYuan", "折后进价")
++            {
++                Width = "96",
++                MinWidth = "86",
++                ReadOnly = true,
++                DisplayFormat = "0.00"
++            };
+             _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计（元）")
+             {
+                 Width = "110",
+                 MinWidth = "94",
+                 ReadOnly = true,
+                 DisplayFormat = "0.00"
+             };
++
++            ConfigureOrderDiscount();
+@@ -205,6 +229,25 @@ namespace Win7BookManagement.Forms
+             return SaveDraftInternal(false);
+         }
+ 
++        private void ConfigureOrderDiscount()
++        {
++            _orderDiscount.Minimum = 0m;
++            _orderDiscount.Maximum = 100m;
++            _orderDiscount.DecimalPlaces = 2;
++            _orderDiscount.Value = 100m;
++            _orderDiscount.Width = 112;
++            _orderDiscount.MinimumSize = new Size(96, UiTheme.InputHeight);
++            _orderDiscount.ValueChanged += delegate(object sender, AntdUI.DecimalEventArgs e)
++            {
++                foreach (var row in _rows)
++                    row.OrderDiscountPercent = _orderDiscount.Value;
++                if (!_loadingDocument) MarkDirty();
++                _grid.Refresh();
++                UpdateTotals();
++            };
++        }
++
+         private Control CreateReceivingSection()
+@@ -452,6 +495,8 @@ namespace Win7BookManagement.Forms
+                 _publisherColumn,
+                 _quantityColumn,
+                 _unitCostColumn,
++                _discountColumn,
++                _discountedUnitCostColumn,
+                 _lineTotalColumn
+             };
+-            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v5");
++            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v6");
+@@ -478,7 +523,8 @@ namespace Win7BookManagement.Forms
+                 var key = e.Column == null ? "" : e.Column.Key;
+                 _scannerCaptureEnabled =
+                     !string.Equals(key, "Quantity", StringComparison.Ordinal) &&
+-                    !string.Equals(key, "UnitCostYuan", StringComparison.Ordinal);
++                    !string.Equals(key, "BaseUnitCostYuan", StringComparison.Ordinal) &&
++                    !string.Equals(key, "DiscountPercent", StringComparison.Ordinal);
+                 if (!_scannerCaptureEnabled)
+                     _scanBuffer.Clear();
+@@ -500,7 +546,7 @@ namespace Win7BookManagement.Forms
+                 }
+                 row.Quantity = quantity;
+             }
+-            else if (string.Equals(e.Column.Key, "UnitCostYuan", StringComparison.Ordinal))
++            else if (string.Equals(e.Column.Key, "BaseUnitCostYuan", StringComparison.Ordinal))
+             {
+                 decimal price;
+                 if (!decimal.TryParse(e.Value, out price) || price < 0)
+@@ -508,7 +554,17 @@ namespace Win7BookManagement.Forms
+                     MessageBox.Show(this, "本次进价必须是有效的非负金额。", "金额格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                     return false;
+                 }
+-                row.UnitCostYuan = price;
++                row.BaseUnitCostYuan = price;
++            }
++            else if (string.Equals(e.Column.Key, "DiscountPercent", StringComparison.Ordinal))
++            {
++                decimal discount;
++                if (!decimal.TryParse(e.Value, out discount) || discount < 0m || discount > 100m)
++                {
++                    MessageBox.Show(this, "单品折扣必须在 0 到 100 之间，可保留两位小数。", "折扣格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
++                    return false;
++                }
++                row.DiscountPercent = discount;
+             }
+@@ -588,10 +644,20 @@ namespace Win7BookManagement.Forms
+             ConfigureSummaryLabel(_lineCount, false);
+             ConfigureSummaryLabel(_quantityTotal, false);
++            ConfigureSummaryLabel(_originalTotal, false);
++            ConfigureSummaryLabel(_discountTotal, false);
+             ConfigureSummaryLabel(_total, true);
++            _orderDiscountLabel.AutoSize = true;
++            _orderDiscountLabel.Text = "整单折扣 %";
++            _orderDiscountLabel.ForeColor = UiTheme.TextSecondary;
++            _orderDiscountLabel.Font = UiTheme.Font(8.2F, FontStyle.Bold);
++            _orderDiscountLabel.Margin = new Padding(0, 9, 6, 0);
+             _metrics.Controls.Add(_lineCount);
+             _metrics.Controls.Add(_quantityTotal);
++            _metrics.Controls.Add(_originalTotal);
++            _metrics.Controls.Add(_discountTotal);
++            _metrics.Controls.Add(_orderDiscountLabel);
++            _metrics.Controls.Add(_orderDiscount);
+             _metrics.Controls.Add(_total);
+@@ -754,6 +820,10 @@ namespace Win7BookManagement.Forms
+             _supplier.Height = fieldHeight;
+             _supplier.MinimumSize = new Size(0, fieldHeight);
++            _orderDiscount.Width = compact ? 96 : 112;
++            _orderDiscount.Height = profileControlHeight;
++            _orderDiscount.MinimumSize = new Size(compact ? 96 : 112, profileControlHeight);
++            _orderDiscount.Font = UiTheme.Font(profile.BodyFontPoints);
+             _note.Height = profileControlHeight;
+             _note.MinimumSize = new Size(0, profileControlHeight);
+@@ -838,12 +908,14 @@ namespace Win7BookManagement.Forms
+             }
+ 
+             if (_metrics != null)
+-                _metrics.WrapContents = false;
++                _metrics.WrapContents = true;
+             if (_bottomActions != null)
+                 _bottomActions.WrapContents = false;
+ 
+             ResizeSummaryLabel(_lineCount, compact ? 84 : 110, compact ? 34 : 40, profile, false);
+             ResizeSummaryLabel(_quantityTotal, compact ? 94 : 126, compact ? 34 : 40, profile, false);
++            ResizeSummaryLabel(_originalTotal, compact ? 118 : 150, compact ? 34 : 40, profile, false);
++            ResizeSummaryLabel(_discountTotal, compact ? 112 : 142, compact ? 34 : 40, profile, false);
+             ResizeSummaryLabel(_total, compact ? 146 : 190, compact ? 34 : 40, profile, true);
+@@ -859,6 +931,8 @@ namespace Win7BookManagement.Forms
+             _quantityColumn.Visible = true;
+             _unitCostColumn.Visible = true;
++            _discountColumn.Visible = true;
++            _discountedUnitCostColumn.Visible = !compact;
+             _lineTotalColumn.Visible = true;
+@@ -950,6 +1024,8 @@ namespace Win7BookManagement.Forms
+             _quantityColumn.Width = compact ? "70" : "82";
+             _unitCostColumn.Width = compact ? "92" : "108";
++            _discountColumn.Width = compact ? "86" : "96";
++            _discountedUnitCostColumn.Width = compact ? "86" : "96";
+             _lineTotalColumn.Width = compact ? "94" : "110";
+@@ -1069,7 +1145,9 @@ namespace Win7BookManagement.Forms
+                 ShelfCode = book.ShelfCode,
+                 CurrentStock = book.StockQuantity,
+                 Quantity = 1,
+-                UnitCostYuan = Money.ToYuan(book.DefaultPurchasePriceCent)
++                BaseUnitCostYuan = Money.ToYuan(book.DefaultPurchasePriceCent),
++                DiscountPercent = 100m,
++                OrderDiscountPercent = _orderDiscount.Value
+             };
+@@ -1136,6 +1214,7 @@ namespace Win7BookManagement.Forms
+                 _orderNo.Text = "";
+                 _purchaseDate.Value = DateTime.Today;
+                 _note.Text = "";
++                _orderDiscount.Value = 100m;
+                 _rows.Clear();
+@@ -1183,7 +1262,7 @@ namespace Win7BookManagement.Forms
+                                 this,
+-                                "已复制为新的采购草稿。\r\n新单号：" + copy.OrderNo + "\r\n采购日期已设为今天，供应商、图书、数量和进价已复制。",
++                                "已复制为新的采购草稿。\r\n新单号：" + copy.OrderNo + "\r\n采购日期已设为今天，供应商、图书、数量、进价和折扣已复制。",
+                                 "已复制为新单",
+@@ -1254,6 +1333,7 @@ namespace Win7BookManagement.Forms
+                 _orderNo.Text = document.OrderNo;
+                 _purchaseDate.Value = document.PurchasedAt.Date;
+                 _note.Text = document.Note;
++                _orderDiscount.Value = document.OrderDiscountBasisPoints / 100m;
+                 SelectSupplier(document.SupplierId, document.SupplierName);
+@@ -1275,7 +1355,9 @@ namespace Win7BookManagement.Forms
+                         ShelfCode = line.ShelfCode,
+                         CurrentStock = line.CurrentStock,
+                         Quantity = line.Quantity,
+-                        UnitCostYuan = Money.ToYuan(line.UnitCostCent)
++                        BaseUnitCostYuan = Money.ToYuan(line.BaseUnitCostCent),
++                        DiscountPercent = line.LineDiscountBasisPoints / 100m,
++                        OrderDiscountPercent = document.OrderDiscountBasisPoints / 100m
+                     });
+@@ -1312,7 +1394,8 @@ namespace Win7BookManagement.Forms
+                     SelectedPurchaseDate,
+                     SelectedSupplierId,
+                     BuildLineInputs(),
+-                    _note.Text);
++                    _note.Text,
++                    PercentToBasisPoints(_orderDiscount.Value));
+@@ -1494,8 +1577,12 @@ namespace Win7BookManagement.Forms
+             table.Columns.Add("作者", typeof(string));
+             table.Columns.Add("出版社", typeof(string));
+             table.Columns.Add("数量", typeof(int));
+-            table.Columns.Add("进价（元）", typeof(decimal));
++            table.Columns.Add("原进价（元）", typeof(decimal));
++            table.Columns.Add("单品折扣%", typeof(decimal));
++            table.Columns.Add("折后进价（元）", typeof(decimal));
++            table.Columns.Add("整单折扣%", typeof(decimal));
++            table.Columns.Add("实际进价（元）", typeof(decimal));
+             table.Columns.Add("小计（元）", typeof(decimal));
+             table.Columns.Add("备注", typeof(string));
+@@ -1508,7 +1595,9 @@ namespace Win7BookManagement.Forms
+                     document.StatusText,
+                     document.SupplierName,
+-                    "", "", "", "", "", 0, 0m, 0m, document.Note);
++                    "", "", "", "", "", 0,
++                    0m, 100m, 0m, document.OrderDiscountBasisPoints / 100m,
++                    0m, 0m, document.Note);
+                 return table;
+             }
+@@ -1527,7 +1616,11 @@ namespace Win7BookManagement.Forms
+                     line.Author,
+                     line.Publisher,
+                     line.Quantity,
++                    Money.ToYuan(line.BaseUnitCostCent),
++                    line.LineDiscountBasisPoints / 100m,
++                    Money.ToYuan(line.LineDiscountedUnitCostCent),
++                    document.OrderDiscountBasisPoints / 100m,
+                     Money.ToYuan(line.UnitCostCent),
+                     Money.ToYuan(line.LineTotalCent),
+@@ -1545,14 +1638,18 @@ namespace Win7BookManagement.Forms
+                 if (row.Quantity <= 0)
+                     throw new InvalidOperationException("《" + row.Title + "》的入库数量必须大于 0。");
+-                if (row.UnitCostYuan < 0)
++                if (row.BaseUnitCostYuan < 0)
+                     throw new InvalidOperationException("《" + row.Title + "》的进价不能为负数。");
++                if (row.DiscountPercent < 0m || row.DiscountPercent > 100m)
++                    throw new InvalidOperationException("《" + row.Title + "》的单品折扣必须在 0 到 100 之间。");
++
++                var baseCent = Money.FromYuan(row.BaseUnitCostYuan);
+ 
+                 result.Add(new TransactionLineInput
+                 {
+                     BookId = row.BookId,
+                     Quantity = row.Quantity,
+-                    UnitPriceCent = Money.FromYuan(row.UnitCostYuan)
++                    UnitPriceCent = baseCent,
++                    BaseUnitPriceCent = baseCent,
++                    DiscountBasisPoints = PercentToBasisPoints(row.DiscountPercent)
+                 });
+@@ -1583,6 +1680,7 @@ namespace Win7BookManagement.Forms
+             return SelectedPurchaseDate != _baselinePurchaseDate ||
+                    SelectedSupplierId != _baselineSupplierId ||
++                   PercentToBasisPoints(_orderDiscount.Value) != _baselineOrderDiscountBasisPoints ||
+                    !string.Equals(
+@@ -1602,6 +1700,7 @@ namespace Win7BookManagement.Forms
+             _baselineOrderNo = (_orderNo.Text ?? "").Trim();
+             _baselineSupplierId = SelectedSupplierId;
+             _baselineNote = (_note.Text ?? "").Trim();
++            _baselineOrderDiscountBasisPoints = PercentToBasisPoints(_orderDiscount.Value);
+         }
+@@ -1685,6 +1784,7 @@ namespace Win7BookManagement.Forms
+             _orderNo.Enabled = editable;
+             _supplier.Enabled = editable;
++            _orderDiscount.Enabled = editable;
+             _note.Enabled = editable;
+@@ -1696,6 +1796,7 @@ namespace Win7BookManagement.Forms
+ 
+             _quantityColumn.ReadOnly = !editable;
+             _unitCostColumn.ReadOnly = !editable;
++            _discountColumn.ReadOnly = !editable;
+             _grid.Refresh();
+@@ -1734,12 +1835,22 @@ namespace Win7BookManagement.Forms
+         private void UpdateTotals()
+         {
+-            decimal total = 0m;
++            long originalCent = 0;
++            long totalCent = 0;
+             var quantity = 0;
+             var index = 1;
+             foreach (var row in _rows)
+             {
+                 row.Index = index++;
+-                total += row.Quantity * row.UnitCostYuan;
++                row.OrderDiscountPercent = _orderDiscount.Value;
++                var baseCent = Money.FromYuan(row.BaseUnitCostYuan);
++                var lineCent = ApplyBasisPoints(baseCent, PercentToBasisPoints(row.DiscountPercent));
++                var finalCent = ApplyBasisPoints(lineCent, PercentToBasisPoints(_orderDiscount.Value));
++                originalCent = checked(originalCent + checked((long)row.Quantity * baseCent));
++                totalCent = checked(totalCent + checked((long)row.Quantity * finalCent));
+                 quantity += row.Quantity;
+             }
+ 
+             _lineCount.Text = "图书项  " + _rows.Count;
+             _quantityTotal.Text = "入库册数  " + quantity;
+-            _total.Text = "采购金额  ¥" + total.ToString("0.00");
++            _originalTotal.Text = "原金额  ¥" + Money.ToYuan(originalCent).ToString("0.00");
++            _discountTotal.Text = "优惠  ¥" + Money.ToYuan(originalCent - totalCent).ToString("0.00");
++            _total.Text = "采购金额  ¥" + Money.ToYuan(totalCent).ToString("0.00");
+@@ -1765,7 +1876,43 @@ namespace Win7BookManagement.Forms
+             public string ShelfCode { get; set; }
+             public int CurrentStock { get; set; }
+             public int Quantity { get; set; }
+-            public decimal UnitCostYuan { get; set; }
+-            public decimal LineTotalYuan { get { return Quantity * UnitCostYuan; } }
++            public decimal BaseUnitCostYuan { get; set; }
++            public decimal DiscountPercent { get; set; }
++            public decimal OrderDiscountPercent { get; set; }
++
++            public decimal DiscountedUnitCostYuan
++            {
++                get
++                {
++                    var baseCent = Money.FromYuan(BaseUnitCostYuan);
++                    return Money.ToYuan(
++                        ApplyBasisPoints(baseCent, PercentToBasisPoints(DiscountPercent)));
++                }
++            }
++
++            public decimal LineTotalYuan
++            {
++                get
++                {
++                    var baseCent = Money.FromYuan(BaseUnitCostYuan);
++                    var lineCent = ApplyBasisPoints(baseCent, PercentToBasisPoints(DiscountPercent));
++                    var finalCent = ApplyBasisPoints(lineCent, PercentToBasisPoints(OrderDiscountPercent));
++                    return Money.ToYuan(checked((long)Quantity * finalCent));
++                }
++            }
+         }
++
++        private static int PercentToBasisPoints(decimal percent)
++        {
++            var clamped = Math.Max(0m, Math.Min(100m, percent));
++            return decimal.ToInt32(decimal.Round(
++                clamped * 100m, 0, MidpointRounding.AwayFromZero));
++        }
++
++        private static long ApplyBasisPoints(long amountCent, int basisPoints)
++        {
++            if (amountCent <= 0 || basisPoints <= 0) return 0;
++            if (basisPoints >= 10000) return amountCent;
++            return decimal.ToInt64(decimal.Round(
++                amountCent * (basisPoints / 10000m),
++                0,
++                MidpointRounding.AwayFromZero));
++        }
+     }
+ }
+diff --git a/src/Win7BookManagement/Repositories/ReportRepository.cs b/src/Win7BookManagement/Repositories/ReportRepository.cs
+--- a/src/Win7BookManagement/Repositories/ReportRepository.cs
++++ b/src/Win7BookManagement/Repositories/ReportRepository.cs
+@@ -383,7 +383,11 @@ SELECT po.purchased_at AS 日期,
+        pi.isbn_snapshot AS ISBN,
+        pi.title_snapshot AS 书名,
+        pi.quantity AS 数量,
+-       ROUND(pi.unit_cost_cent / 100.0, 2) AS 进价,
++       ROUND(pi.base_unit_cost_cent / 100.0, 2) AS 原进价,
++       ROUND(pi.line_discount_basis_points / 100.0, 2) AS [单品折扣%],
++       ROUND(pi.line_discounted_unit_cost_cent / 100.0, 2) AS 折后进价,
++       ROUND(po.order_discount_basis_points / 100.0, 2) AS [整单折扣%],
++       ROUND(pi.unit_cost_cent / 100.0, 2) AS 实际进价,
+        ROUND(pi.line_total_cent / 100.0, 2) AS 金额
+ FROM purchase_orders po
+@@ -533,12 +537,19 @@ SELECT po.id AS purchase_id,
+        pi.title_snapshot AS title,
+        pi.quantity AS quantity,
++       pi.base_unit_cost_cent AS base_unit_cost_cent,
++       pi.line_discount_basis_points AS line_discount_basis_points,
++       pi.line_discounted_unit_cost_cent AS line_discounted_unit_cost_cent,
+        pi.unit_cost_cent AS unit_cost_cent,
+        pi.line_total_cent AS line_total_cent,
++       po.subtotal_cent AS order_subtotal_cent,
++       po.line_discount_cent AS order_line_discount_cent,
++       po.order_discount_basis_points AS order_discount_basis_points,
++       po.order_discount_cent AS order_discount_cent,
+        COALESCE((
+ diff --git a/src/Win7BookManagement/Repositories/DocumentRepository.cs b/src/Win7BookManagement/Repositories/DocumentRepository.cs
+--- a/src/Win7BookManagement/Repositories/DocumentRepository.cs
++++ b/src/Win7BookManagement/Repositories/DocumentRepository.cs
+@@ -302,8 +302,13 @@ SELECT pi.isbn_snapshot AS ISBN,
+        pi.quantity AS 原数量,
+        COALESCE((SELECT SUM(pri.quantity) FROM purchase_return_items pri WHERE pri.source_purchase_order_item_id=pi.id),0) AS 已退,
+        pi.quantity-COALESCE((SELECT SUM(pri.quantity) FROM purchase_return_items pri WHERE pri.source_purchase_order_item_id=pi.id),0) AS 可退,
+-       ROUND(pi.unit_cost_cent/100.0,2) AS 进价,
++       ROUND(pi.base_unit_cost_cent/100.0,2) AS 原进价,
++       ROUND(pi.line_discount_basis_points/100.0,2) AS [单品折扣%],
++       ROUND(pi.line_discounted_unit_cost_cent/100.0,2) AS 折后进价,
++       ROUND(po.order_discount_basis_points/100.0,2) AS [整单折扣%],
++       ROUND(pi.unit_cost_cent/100.0,2) AS 实际进价,
+        ROUND(pi.line_total_cent/100.0,2) AS 金额
+ FROM purchase_order_items pi
++JOIN purchase_orders po ON po.id=pi.purchase_order_id
+ WHERE pi.purchase_order_id=@id
+ ORDER BY pi.id;";
+diff --git a/src/Win7BookManagement/Reporting/PurchaseMonthlyExcelExporter.cs b/src/Win7BookManagement/Reporting/PurchaseMonthlyExcelExporter.cs
+--- a/src/Win7BookManagement/Reporting/PurchaseMonthlyExcelExporter.cs
++++ b/src/Win7BookManagement/Reporting/PurchaseMonthlyExcelExporter.cs
+@@ -14,13 +14,15 @@ namespace Win7BookManagement.Reporting
+         {
+             "序号", "采购日期", "采购单号", "供应商", "ISBN", "书名",
+             "数量", "进价", "金额", "当月退货数量", "月末累计已退",
+-            "净入库数量", "复核时间", "单据备注"
++            "净入库数量", "复核时间", "单据备注",
++            "原进价", "单品折扣%", "折后进价", "整单折扣%",
++            "单据原金额", "单品优惠", "整单优惠"
+         };
+ 
+         private static readonly int[] PurchaseWidths =
+         {
+-            7, 13, 22, 18, 18, 30, 9, 11, 12, 13, 13, 12, 20, 28
++            7, 13, 22, 18, 18, 30, 9, 11, 12, 13, 13, 12, 20, 28,
++            11, 12, 11, 12, 13, 12, 12
+         };
+@@ -463,6 +465,27 @@ namespace Win7BookManagement.Reporting
+                         first ? source.OrderNote : null,
+                         "@", top, bottom, HorizontalAlignment.Left, true);
++                    WriteDetail(sheet, styles, excelRow, 14,
++                        source.BaseUnitCostCent / 100.0, "0.00", top, bottom);
++                    WriteDetail(sheet, styles, excelRow, 15,
++                        source.LineDiscountBasisPoints / 100.0, "0.00", top, bottom);
++                    WriteDetail(sheet, styles, excelRow, 16,
++                        source.LineDiscountedUnitCostCent / 100.0, "0.00", top, bottom);
++                    WriteDetail(sheet, styles, excelRow, 17,
++                        first ? (object)(source.OrderDiscountBasisPoints / 100.0) : null,
++                        "0.00", top, bottom);
++                    WriteDetail(sheet, styles, excelRow, 18,
++                        first ? (object)(source.OrderSubtotalCent / 100.0) : null,
++                        "0.00", top, bottom);
++                    WriteDetail(sheet, styles, excelRow, 19,
++                        first ? (object)(source.OrderLineDiscountCent / 100.0) : null,
++                        "0.00", top, bottom);
++                    WriteDetail(sheet, styles, excelRow, 20,
++                        first ? (object)(source.OrderDiscountCent / 100.0) : null,
++                        "0.00", top, bottom);
+                     excelRow++;
+                 }
+ 
+                 if (lastExcelRow > firstExcelRow)
+                 {
+-                    foreach (var column in new[] { 0, 1, 2, 3, 12, 13 })
++                    foreach (var column in new[] { 0, 1, 2, 3, 12, 13, 17, 18, 19, 20 })
+@@ -766,8 +789,15 @@ namespace Win7BookManagement.Reporting
+                     Isbn = ToText(row["isbn"]),
+                     Title = ToText(row["title"]),
+                     Quantity = ToInt(row["quantity"]),
++                    BaseUnitCostCent = ToLong(row["base_unit_cost_cent"]),
++                    LineDiscountBasisPoints = ToInt(row["line_discount_basis_points"]),
++                    LineDiscountedUnitCostCent = ToLong(row["line_discounted_unit_cost_cent"]),
+                     UnitCostCent = ToLong(row["unit_cost_cent"]),
+                     LineTotalCent = ToLong(row["line_total_cent"]),
++                    OrderSubtotalCent = ToLong(row["order_subtotal_cent"]),
++                    OrderLineDiscountCent = ToLong(row["order_line_discount_cent"]),
++                    OrderDiscountBasisPoints = ToInt(row["order_discount_basis_points"]),
++                    OrderDiscountCent = ToLong(row["order_discount_cent"]),
+                     ReturnedQuantityInMonth = ToInt(row["returned_quantity_in_month"]),
+@@ -1113,8 +1143,15 @@ namespace Win7BookManagement.Reporting
+             public string Isbn { get; set; }
+             public string Title { get; set; }
+             public int Quantity { get; set; }
++            public long BaseUnitCostCent { get; set; }
++            public int LineDiscountBasisPoints { get; set; }
++            public long LineDiscountedUnitCostCent { get; set; }
+             public long UnitCostCent { get; set; }
+             public long LineTotalCent { get; set; }
++            public long OrderSubtotalCent { get; set; }
++            public long OrderLineDiscountCent { get; set; }
++            public int OrderDiscountBasisPoints { get; set; }
++            public long OrderDiscountCent { get; set; }
+             public int ReturnedQuantityInMonth { get; set; }
+diff --git a/src/Win7BookManagement/Infrastructure/SelfTest.cs b/src/Win7BookManagement/Infrastructure/SelfTest.cs
+--- a/src/Win7BookManagement/Infrastructure/SelfTest.cs
++++ b/src/Win7BookManagement/Infrastructure/SelfTest.cs
+@@ -160,9 +160,17 @@ namespace Win7BookManagement.Infrastructure
+                     supplierId,
+                     new List<TransactionLineInput>
+                     {
+-                        new TransactionLineInput { BookId = bookId, Quantity = 4, UnitPriceCent = 1000 }
++                        new TransactionLineInput
++                        {
++                            BookId = bookId,
++                            Quantity = 4,
++                            UnitPriceCent = 2000,
++                            BaseUnitPriceCent = 2000,
++                            DiscountBasisPoints = 8000
++                        }
+                     },
+-                    "purchase");
++                    "purchase",
++                    6250);
+                 if (services.Books.GetById(bookId).StockQuantity != 5 ||
+                     purchaseDraft.IsReviewed ||
++                    purchaseDraft.SubtotalCent != 8000 ||
++                    purchaseDraft.LineDiscountCent != 1600 ||
++                    purchaseDraft.OrderDiscountBasisPoints != 6250 ||
++                    purchaseDraft.OrderDiscountCent != 2400 ||
++                    purchaseDraft.TotalCent != 4000 ||
+                     !purchaseDraft.OrderNo.StartsWith(DateTime.Today.ToString("yyyyMMdd"), StringComparison.Ordinal))
+-                    throw new InvalidOperationException("采购草稿保存或自动单号自检失败。");
++                    throw new InvalidOperationException("采购折扣草稿保存或自动单号自检失败。");
+@@ -232,6 +240,10 @@ namespace Win7BookManagement.Infrastructure
+                     copiedPurchaseDraft.Lines[0].BookId != bookId ||
+                     copiedPurchaseDraft.Lines[0].Quantity != 4 ||
++                    copiedPurchaseDraft.OrderDiscountBasisPoints != 6250 ||
++                    copiedPurchaseDraft.Lines[0].BaseUnitCostCent != 2000 ||
++                    copiedPurchaseDraft.Lines[0].LineDiscountBasisPoints != 8000 ||
++                    copiedPurchaseDraft.Lines[0].LineDiscountedUnitCostCent != 1600 ||
+                     copiedPurchaseDraft.Lines[0].UnitCostCent != 1000 ||
+@@ -348,6 +360,15 @@ namespace Win7BookManagement.Infrastructure
+                     throw new InvalidOperationException("原销售单退货状态 / 折扣快照自检失败。");
++
++                var purchaseItems = services.Documents.GetItems("purchase", purchaseId);
++                if (purchaseItems.Rows.Count != 1 ||
++                    Convert.ToDecimal(purchaseItems.Rows[0]["原进价"]) != 20.00m ||
++                    Convert.ToDecimal(purchaseItems.Rows[0]["单品折扣%"]) != 80.00m ||
++                    Convert.ToDecimal(purchaseItems.Rows[0]["折后进价"]) != 16.00m ||
++                    Convert.ToDecimal(purchaseItems.Rows[0]["整单折扣%"]) != 62.50m ||
++                    Convert.ToDecimal(purchaseItems.Rows[0]["实际进价"]) != 10.00m)
++                    throw new InvalidOperationException("采购折扣快照 / 单据中心展示自检失败。");
+@@ -603,6 +624,13 @@ namespace Win7BookManagement.Infrastructure
+                             Math.Abs(purchaseDay.GetRow(3).GetCell(8).NumericCellValue - 40.00) > 0.001 ||
++                            purchaseDay.GetRow(2).GetCell(14).StringCellValue != "原进价" ||
++                            Math.Abs(purchaseDay.GetRow(3).GetCell(14).NumericCellValue - 20.00) > 0.001 ||
++                            Math.Abs(purchaseDay.GetRow(3).GetCell(15).NumericCellValue - 80.00) > 0.001 ||
++                            Math.Abs(purchaseDay.GetRow(3).GetCell(16).NumericCellValue - 16.00) > 0.001 ||
++                            Math.Abs(purchaseDay.GetRow(3).GetCell(17).NumericCellValue - 62.50) > 0.001 ||
++                            Math.Abs(purchaseDay.GetRow(3).GetCell(18).NumericCellValue - 80.00) > 0.001 ||
++                            Math.Abs(purchaseDay.GetRow(3).GetCell(20).NumericCellValue - 24.00) > 0.001 ||
+                             purchaseDay.GetRow(5).GetCell(0).StringCellValue != "采购退货明细" ||
+diff --git a/installer/win7-book-management.iss b/installer/win7-book-management.iss
+--- a/installer/win7-book-management.iss
++++ b/installer/win7-book-management.iss
+@@ -1,5 +1,5 @@
+ #define AppName "BOOK DESK 简易图书管理系统"
+-#define AppVersion "0.4.0"
++#define AppVersion "0.5.0"
+ #define AppPublisher "BOOK DESK"
+@@ -48,6 +48,8 @@ Name: "{commondesktop}\BOOK DESK 图书管理系统"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+ [Code]
+ var
+   DotNetWasMissing: Boolean;
++  DotNetInstallSucceeded: Boolean;
++  DotNetRestartRequired: Boolean;
+@@ -73,6 +75,8 @@ function InitializeSetup: Boolean;
+ begin
+   DotNetWasMissing := not IsDotNet48Installed;
++  DotNetInstallSucceeded := not DotNetWasMissing;
++  DotNetRestartRequired := False;
+   Result := True;
+ end;
+@@ -103,10 +107,14 @@ begin
+   if ResultCode = 0 then
+   begin
++    DotNetInstallSucceeded := True;
+     Result := '';
+   end
+   else if (ResultCode = 3010) or (ResultCode = 1641) then
+   begin
++    DotNetInstallSucceeded := True;
++    DotNetRestartRequired := True;
+     NeedsRestart := True;
+     Result := '';
+@@ -122,5 +130,5 @@ end;
+ function CanLaunchImmediately: Boolean;
+ begin
+-  Result := not DotNetWasMissing;
++  Result := DotNetInstallSucceeded and (not DotNetRestartRequired);
+ end;
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@ -28,7 +28,7 @@
+ - 独立“使用帮助”页面，可随时重新播放新手引导
+ - 图书资料与多字段搜索：店内编码、ISBN、书名、作者、出版社、分类、出版年、版次、装帧、默认货架位、定价、默认进价、售价、备注；空字段在列表中显示“—”，窄屏优先保留 ISBN / 出版社 / 分类
+ - 字典管理：统一入口管理供应商、图书分类和收款方式；图书分类可在新增/编辑图书时即时创建，收款方式默认提供微信 / 支付宝 / 现金，均支持排序和停用
+-- 采购入库（供应商可选且默认“不区分”；采购日期/采购单号；草稿保存；复核后才正式入库；支持反复核、历史单据、按采购日期+内部序号稳定导航上一张/下一张、边界按钮自动禁用、单据 Excel 导出；明细表获得焦点后可直接接收键盘楔形扫码枪的 ISBN/店内编码，精确匹配即加入或累加数量，匹配不到自动打开高级图书查找；高级查找支持店内编码/ISBN/作者/书名/出版社/分类组合筛选、批量“添加到单据”和新增资料；历史窗口支持按单号/供应商/ISBN/书名搜索、按草稿/已复核筛选、复制任意历史单据为今天的新草稿，并可删除从未产生库存流水的废弃草稿，曾复核/反复核过的单据强制保留；Ctrl+S 保存草稿、Ctrl+N 新建、F3 高级查找、Alt+←/→ 切换单据、F4 打开历史）
++- 采购入库（供应商可选且默认“不区分”；采购日期/采购单号；支持单品折扣%与整单折扣%，保存原进价、折后进价、实际进价和优惠快照；草稿保存；复核后才正式入库；支持反复核、历史单据、按采购日期+内部序号稳定导航上一张/下一张、边界按钮自动禁用、单据 Excel 导出；明细表获得焦点后可直接接收键盘楔形扫码枪的 ISBN/店内编码，精确匹配即加入或累加数量，匹配不到自动打开高级图书查找；高级查找支持店内编码/ISBN/作者/书名/出版社/分类组合筛选、批量“添加到单据”和新增资料；历史窗口支持按单号/供应商/ISBN/书名搜索、按草稿/已复核筛选、复制任意历史单据为今天的新草稿并保留折扣，曾复核/反复核过的单据强制保留；采购退货始终按原采购实际进价退款；Ctrl+S 保存草稿、Ctrl+N 新建、F3 高级查找、Alt+←/→ 切换单据、F4 打开历史）
+@@ -85,6 +85,7 @@
+ - **采购月报（工作簿）**首个 Sheet 按日汇总采购单数、入库册数、采购金额、采购退货、净入库和净采购金额；第二个 Sheet 按供应商汇总；其后为当月每个自然日的采购入库 / 采购退货明细。
+-- 采购每日明细按单号分组，同一单号的日期、采购单号、供应商、复核时间和备注自动合并，并展示当月退货数量、月末累计已退和净入库数量。
++- 采购每日明细按单号分组，同一单号的日期、采购单号、供应商、复核时间和备注自动合并，并展示当月退货数量、月末累计已退和净入库数量；附加原进价、单品折扣、折后进价、整单折扣及优惠快照用于对账。
+ - Excel 统一设置为 A4、自动适配一页宽、明确页边距、打印区域、重复表头、页眉和“第 X 页 / 共 Y 页”页脚；宽表默认横向打印。
+diff --git a/AGENTS.md b/AGENTS.md
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -45,6 +45,9 @@ Keep one Windows desktop solution with clear folders/layers:
+ - Sales discounts are stored as integer basis points (10000 = 100.00%). Apply line discount before whole-order discount, round each unit-price stage to integer cents using AwayFromZero, and preserve the pre-discount price plus both discount snapshots.
+ - `sales_order_items.unit_price_cent` is the actual final unit price paid after all discounts. Sales returns must continue to refund from that immutable snapshot.
++- Purchase discounts follow the same basis-point and rounding rules as sales: pre-discount unit cost → line discount → whole-order discount.
++- `purchase_order_items.unit_cost_cent` is the final actual unit cost after all purchase discounts. Purchase returns and sale-time recent-purchase reference cost must use this immutable final-cost snapshot.
++- Legacy purchase rows without discount metadata migrate as 100% line / 100% order discount without changing their historical final amounts.
+ - Generic dictionary values are never physically deleted from historical business data. Disabling a value prevents future selection; renaming a book category must update current book master data transactionally while historical documents remain snapshot-based.
