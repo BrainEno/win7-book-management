@@ -67,7 +67,7 @@ namespace Win7BookManagement.Forms
 
             section.Controls.Add(new Label
             {
-                Text = "数据库备份会生成一个可独立保存的 .db 文件。建议每天营业结束后创建一次，并再复制到 U 盘或另一块硬盘。",
+                Text = "备份会生成经过 SQLite 完整性校验的独立 .db 文件。恢复前系统会自动保存当前完整数据；恢复失败时会自动回滚。建议每天营业结束后备份，并另存到 U 盘或另一块硬盘。",
                 AutoSize = true,
                 MaximumSize = new Size(900, 0),
                 Font = UiTheme.Font(8.6F),
@@ -93,14 +93,14 @@ namespace Win7BookManagement.Forms
             section.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
             var backupCard = CreateActionCard(
-                "创建备份",
-                "复制当前 SQLite 数据库到你选择的位置，不会中断或修改现有经营数据。",
+                "创建安全备份",
+                "使用 SQLite 一致性快照保存当前全部数据，写入完成后再做完整性和外键检查；校验失败不会留下一个看似可用的坏备份。",
                 "创建备份",
                 true,
                 delegate { CreateBackup(); });
             var restoreCard = CreateActionCard(
-                "从备份恢复",
-                "用已有 .db 备份替换当前数据库。执行前系统会先自动保留当前数据库的安全副本。",
+                "从备份安全恢复",
+                "先校验所选备份，再创建恢复前安全备份，随后从暂存数据库切换；恢复或升级失败会自动回滚到操作前数据。",
                 "从备份恢复",
                 false,
                 delegate { Restore(); });
@@ -214,7 +214,12 @@ namespace Win7BookManagement.Forms
                         return;
 
                     _services.Backup.CreateBackup(dialog.FileName);
-                    MessageBox.Show(this, "备份完成：\r\n" + dialog.FileName, "备份成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(
+                        this,
+                        "备份完成，并已通过数据库完整性检查：\r\n" + dialog.FileName,
+                        "备份成功",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
@@ -234,8 +239,13 @@ namespace Win7BookManagement.Forms
 
                 if (MessageBox.Show(
                     this,
-                    "恢复会覆盖当前数据库。系统会先自动保留一份 .before_restore 安全副本。\r\n\r\n确定继续吗？",
-                    "确认恢复",
+                    "恢复会替换当前数据库。系统将按以下顺序执行：\r\n" +
+                    "1. 校验所选备份的完整性；\r\n" +
+                    "2. 创建恢复前安全备份；\r\n" +
+                    "3. 在暂存数据库中准备恢复数据；\r\n" +
+                    "4. 替换后再次校验，失败则自动回滚。\r\n\r\n" +
+                    "确定继续吗？",
+                    "确认安全恢复",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning) != DialogResult.Yes)
                 {
@@ -244,12 +254,29 @@ namespace Win7BookManagement.Forms
 
                 try
                 {
-                    _services.Backup.Restore(dialog.FileName);
-                    MessageBox.Show(this, "恢复完成。请关闭并重新启动程序后再继续操作。", "恢复成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var safetyBackupPath = _services.Backup.Restore(dialog.FileName);
+                    var safetyMessage = string.IsNullOrWhiteSpace(safetyBackupPath)
+                        ? ""
+                        : "\r\n\r\n恢复前安全备份保存在：\r\n" + safetyBackupPath;
+                    MessageBox.Show(
+                        this,
+                        "恢复完成，恢复后的数据库已通过完整性检查。" + safetyMessage +
+                        "\r\n\r\n请关闭并重新启动程序后再继续操作。",
+                        "恢复成功",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "恢复失败：\r\n" + ex.Message, "无法恢复数据库", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    var safetyMessage = string.IsNullOrWhiteSpace(_services.Backup.LastSafetyBackupPath)
+                        ? ""
+                        : "\r\n\r\n恢复前安全备份：\r\n" + _services.Backup.LastSafetyBackupPath;
+                    MessageBox.Show(
+                        this,
+                        "恢复失败：\r\n" + ex.Message + safetyMessage,
+                        "无法恢复数据库",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
                 }
             }
         }

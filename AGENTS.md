@@ -114,7 +114,10 @@ Do not add architectural layers without a concrete need.
 - Prefer WAL where safe, but checkpoint before database-file backup.
 - Schema changes must be versioned and forward-only.
 - Database bootstrap must create a new usable database automatically.
-- Backups must use a consistent SQLite backup/copy procedure.
+- Backups must use SQLite's backup API to create a consistent standalone snapshot; never treat a raw copy of the WAL-mode main database file as a complete backup.
+- A backup artifact must be written to a temporary file, pass SQLite integrity/core-table/foreign-key validation, and only then replace or publish the requested destination.
+- Restore must validate the selected backup before touching the live database, create a timestamped pre-restore safety snapshot through the same SQLite backup API, restore through a validated staging database, and validate again after forward migrations.
+- Any failure after the live database is replaced must automatically attempt rollback from the pre-restore safety snapshot; the safety snapshot must be preserved for manual recovery if automatic rollback fails.
 
 ## Excel/reporting rules
 Required exports:
