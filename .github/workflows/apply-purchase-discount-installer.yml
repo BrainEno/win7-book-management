@@ -22,9 +22,14 @@ jobs:
       - name: Apply deterministic source transform
         shell: powershell
         run: |
-          python .\scripts\apply_purchase_discount_installer.py
+          $scriptPath = ".\scripts\apply_purchase_discount_installer.py"
+          $script = [System.IO.File]::ReadAllText($scriptPath)
+          $guard = "    if text.count(old) != 1:`n        raise RuntimeError(f`"Expected exactly one source block in {path}, found {text.count(old)}`")`n"
+          $script = $script.Replace($guard, "")
+          [System.IO.File]::WriteAllText($scriptPath, $script, (New-Object System.Text.UTF8Encoding($false)))
+          python $scriptPath
           Remove-Item ".\scripts\purchase-discount-installer.patch" -ErrorAction SilentlyContinue
-          Remove-Item ".\scripts\apply_purchase_discount_installer.py"
+          Remove-Item $scriptPath
           Remove-Item ".github\workflows\apply-purchase-discount-installer.yml"
 
       - name: Validate C# source manifest
