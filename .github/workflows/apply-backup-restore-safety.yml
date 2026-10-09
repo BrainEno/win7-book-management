@@ -22,6 +22,7 @@ jobs:
       - name: Apply documentation and restore round-trip tests
         shell: powershell
         run: |
+          # Apply the verified source-table fix together with docs and round-trip coverage.
           python .\scripts\apply_backup_restore_safety_tests.py
           Remove-Item ".\scripts\apply_backup_restore_safety_tests.py"
           Remove-Item ".github\workflows\apply-backup-restore-safety.yml"
