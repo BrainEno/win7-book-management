@@ -10,6 +10,13 @@ def replace_once(path, old, new):
     p.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
+backup_service = "src/Win7BookManagement/Services/BackupService.cs"
+replace_once(
+    backup_service,
+    "AND name IN ('schema_info','books','inventory_transactions','settings');",
+    "AND name IN ('schema_info','books','inventory_transactions','app_settings');"
+)
+
 self_test = "src/Win7BookManagement/Infrastructure/SelfTest.cs"
 replace_once(
     self_test,
