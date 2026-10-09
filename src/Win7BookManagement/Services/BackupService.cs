@@ -351,7 +351,7 @@ namespace Win7BookManagement.Services
 SELECT COUNT(*)
 FROM sqlite_master
 WHERE type='table'
-  AND name IN ('schema_info','books','inventory_transactions','settings');";
+  AND name IN ('schema_info','books','inventory_transactions','app_settings');";
                         if (Convert.ToInt32(requiredTables.ExecuteScalar(), CultureInfo.InvariantCulture) != 4)
                             throw new InvalidOperationException("所选文件不是有效的本系统数据库备份。");
                     }

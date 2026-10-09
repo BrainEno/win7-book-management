@@ -724,10 +724,63 @@ namespace Win7BookManagement.Infrastructure
                     }
                 }
 
+                var backupSnapshotStock = services.Books.GetById(bookId).StockQuantity;
                 var backupPath = Path.Combine(root, "backup.db");
                 services.Backup.CreateBackup(backupPath);
                 if (!File.Exists(backupPath) || new FileInfo(backupPath).Length == 0)
                     throw new InvalidOperationException("数据库备份自检失败。");
+
+                var liveOverwriteRejected = false;
+                try
+                {
+                    services.Backup.CreateBackup(dbPath);
+                }
+                catch (InvalidOperationException)
+                {
+                    liveOverwriteRejected = true;
+                }
+                if (!liveOverwriteRejected)
+                    throw new InvalidOperationException("备份不应允许覆盖当前数据库文件。");
+
+                services.Inventory.Adjust(bookId, 2, "backup restore mutation");
+                if (services.Books.GetById(bookId).StockQuantity != backupSnapshotStock + 2)
+                    throw new InvalidOperationException("恢复往返测试准备数据失败。");
+
+                var safetyBackupPath = services.Backup.Restore(backupPath);
+                var restoredServices = new ApplicationServices(dbPath);
+                if (restoredServices.Books.GetById(bookId).StockQuantity != backupSnapshotStock)
+                    throw new InvalidOperationException("数据库恢复没有还原到备份时的数据。");
+
+                if (string.IsNullOrWhiteSpace(safetyBackupPath) || !File.Exists(safetyBackupPath))
+                    throw new InvalidOperationException("恢复前安全备份没有生成。");
+
+                using (var safetyConnection = new SQLiteConnection(
+                    "Data Source=" + safetyBackupPath + ";Version=3;Read Only=True;Pooling=False;"))
+                {
+                    safetyConnection.Open();
+                    using (var command = safetyConnection.CreateCommand())
+                    {
+                        command.CommandText = "SELECT stock_quantity FROM books WHERE id=@id;";
+                        command.Parameters.AddWithValue("@id", bookId);
+                        if (Convert.ToInt32(command.ExecuteScalar()) != backupSnapshotStock + 2)
+                            throw new InvalidOperationException("恢复前安全备份没有保存恢复操作前的最新数据。");
+                    }
+                }
+
+                var corruptBackupPath = Path.Combine(root, "corrupt-backup.db");
+                File.WriteAllText(corruptBackupPath, "not a sqlite database");
+                var corruptBackupRejected = false;
+                try
+                {
+                    restoredServices.Backup.Restore(corruptBackupPath);
+                }
+                catch (InvalidOperationException)
+                {
+                    corruptBackupRejected = true;
+                }
+                if (!corruptBackupRejected ||
+                    new ApplicationServices(dbPath).Books.GetById(bookId).StockQuantity != backupSnapshotStock)
+                    throw new InvalidOperationException("损坏备份拒绝或原数据库保护自检失败。");
 
                 VerifyLegacyBookSchemaUpgrade(root);
                 VerifyPersistentTableWidths(services);
