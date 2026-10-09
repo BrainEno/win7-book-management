@@ -19,6 +19,7 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.DatePicker _purchaseDate = new AntdUI.DatePicker();
         private readonly AntdUI.Input _orderNo = UiTheme.CreateAntdInput("留空时保存草稿会自动生成");
         private readonly AntdUI.Select _supplier = new AntdUI.Select();
+        private readonly AntdUI.InputNumber _orderDiscount = new AntdUI.InputNumber();
         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写到货批次、物流或其他备注");
         private readonly StringBuilder _scanBuffer = new StringBuilder();
         private readonly PersistentAntdTable _grid = new PersistentAntdTable();
@@ -26,6 +27,9 @@ namespace Win7BookManagement.Forms
         private readonly List<Supplier> _supplierOptions = new List<Supplier>();
         private readonly Label _lineCount = new Label();
         private readonly Label _quantityTotal = new Label();
+        private readonly Label _originalTotal = new Label();
+        private readonly Label _discountTotal = new Label();
+        private readonly Label _orderDiscountLabel = new Label();
         private readonly Label _total = new Label();
         private readonly Label _emptyState = new Label();
         private readonly Label _statusLabel = new Label();
@@ -65,6 +69,8 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Column _stockColumn;
         private readonly AntdUI.Column _quantityColumn;
         private readonly AntdUI.Column _unitCostColumn;
+        private readonly AntdUI.Column _discountColumn;
+        private readonly AntdUI.Column _discountedUnitCostColumn;
         private readonly AntdUI.Column _lineTotalColumn;
 
         private PurchaseCartRow _selectedRow;
@@ -76,6 +82,7 @@ namespace Win7BookManagement.Forms
         private string _baselineOrderNo = "";
         private long? _baselineSupplierId;
         private string _baselineNote = "";
+        private int _baselineOrderDiscountBasisPoints = 10000;
         private PurchaseNavigationState _navigationState;
         private UiSpecProfile _profile = BookDeskUiSpec.Standard;
         private DateTime _lastScanCharAt = DateTime.MinValue;
@@ -107,13 +114,28 @@ namespace Win7BookManagement.Forms
                 ReadOnly = false,
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
             };
-            _unitCostColumn = new AntdUI.Column("UnitCostYuan", "进价（元）")
+            _unitCostColumn = new AntdUI.Column("BaseUnitCostYuan", "原进价（元）")
             {
                 Width = "108",
                 MinWidth = "92",
                 ReadOnly = false,
                 DisplayFormat = "0.00",
                 Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
+            };
+            _discountColumn = new AntdUI.Column("DiscountPercent", "单品折扣%")
+            {
+                Width = "96",
+                MinWidth = "86",
+                ReadOnly = false,
+                DisplayFormat = "0.00",
+                Style = new AntdUI.Table.CellStyleInfo { BackColor = UiTheme.AccentSoft }
+            };
+            _discountedUnitCostColumn = new AntdUI.Column("DiscountedUnitCostYuan", "折后进价")
+            {
+                Width = "96",
+                MinWidth = "86",
+                ReadOnly = true,
+                DisplayFormat = "0.00"
             };
             _lineTotalColumn = new AntdUI.Column("LineTotalYuan", "小计（元）")
             {
@@ -122,6 +144,8 @@ namespace Win7BookManagement.Forms
                 ReadOnly = true,
                 DisplayFormat = "0.00"
             };
+
+            ConfigureOrderDiscount();
 
             var root = new TableLayoutPanel
             {
@@ -188,6 +212,24 @@ namespace Win7BookManagement.Forms
             if (result == DialogResult.Cancel) return false;
             if (result == DialogResult.No) return true;
             return SaveDraftInternal(false);
+        }
+
+        private void ConfigureOrderDiscount()
+        {
+            _orderDiscount.Minimum = 0m;
+            _orderDiscount.Maximum = 100m;
+            _orderDiscount.DecimalPlaces = 2;
+            _orderDiscount.Value = 100m;
+            _orderDiscount.Width = 112;
+            _orderDiscount.MinimumSize = new Size(96, UiTheme.InputHeight);
+            _orderDiscount.ValueChanged += delegate(object sender, AntdUI.DecimalEventArgs e)
+            {
+                foreach (var row in _rows)
+                    row.OrderDiscountPercent = _orderDiscount.Value;
+                if (!_loadingDocument) MarkDirty();
+                _grid.Refresh();
+                UpdateTotals();
+            };
         }
 
         private Control CreateReceivingSection()
@@ -459,9 +501,11 @@ namespace Win7BookManagement.Forms
                 _publisherColumn,
                 _quantityColumn,
                 _unitCostColumn,
+                _discountColumn,
+                _discountedUnitCostColumn,
                 _lineTotalColumn
             };
-            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v5");
+            _grid.ConfigureColumnPersistence(_services.Settings, "purchase-lines-ui-spec-v6");
 
             _grid.MouseDown += delegate
             {
@@ -484,7 +528,8 @@ namespace Win7BookManagement.Forms
                 var key = e.Column == null ? "" : e.Column.Key;
                 _scannerCaptureEnabled =
                     !string.Equals(key, "Quantity", StringComparison.Ordinal) &&
-                    !string.Equals(key, "UnitCostYuan", StringComparison.Ordinal);
+                    !string.Equals(key, "BaseUnitCostYuan", StringComparison.Ordinal) &&
+                    !string.Equals(key, "DiscountPercent", StringComparison.Ordinal);
                 if (!_scannerCaptureEnabled)
                     _scanBuffer.Clear();
             };
@@ -508,7 +553,7 @@ namespace Win7BookManagement.Forms
                 }
                 row.Quantity = quantity;
             }
-            else if (string.Equals(e.Column.Key, "UnitCostYuan", StringComparison.Ordinal))
+            else if (string.Equals(e.Column.Key, "BaseUnitCostYuan", StringComparison.Ordinal))
             {
                 decimal price;
                 if (!decimal.TryParse(e.Value, out price) || price < 0)
@@ -516,7 +561,17 @@ namespace Win7BookManagement.Forms
                     MessageBox.Show(this, "本次进价必须是有效的非负金额。", "金额格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return false;
                 }
-                row.UnitCostYuan = price;
+                row.BaseUnitCostYuan = price;
+            }
+            else if (string.Equals(e.Column.Key, "DiscountPercent", StringComparison.Ordinal))
+            {
+                decimal discount;
+                if (!decimal.TryParse(e.Value, out discount) || discount < 0m || discount > 100m)
+                {
+                    MessageBox.Show(this, "单品折扣必须在 0 到 100 之间，可保留两位小数。", "折扣格式不正确", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+                row.DiscountPercent = discount;
             }
 
             MarkDirty();
@@ -587,9 +642,20 @@ namespace Win7BookManagement.Forms
             };
             ConfigureSummaryLabel(_lineCount, false);
             ConfigureSummaryLabel(_quantityTotal, false);
+            ConfigureSummaryLabel(_originalTotal, false);
+            ConfigureSummaryLabel(_discountTotal, false);
             ConfigureSummaryLabel(_total, true);
+            _orderDiscountLabel.AutoSize = true;
+            _orderDiscountLabel.Text = "整单折扣 %";
+            _orderDiscountLabel.ForeColor = UiTheme.TextSecondary;
+            _orderDiscountLabel.Font = UiTheme.Font(8.2F, FontStyle.Bold);
+            _orderDiscountLabel.Margin = new Padding(0, 9, 6, 0);
             _metrics.Controls.Add(_lineCount);
             _metrics.Controls.Add(_quantityTotal);
+            _metrics.Controls.Add(_originalTotal);
+            _metrics.Controls.Add(_discountTotal);
+            _metrics.Controls.Add(_orderDiscountLabel);
+            _metrics.Controls.Add(_orderDiscount);
             _metrics.Controls.Add(_total);
 
             _bottomActions = new FlowLayoutPanel
@@ -753,6 +819,10 @@ namespace Win7BookManagement.Forms
             _orderNo.MinimumSize = new Size(0, fieldHeight);
             _supplier.Height = fieldHeight;
             _supplier.MinimumSize = new Size(0, fieldHeight);
+            _orderDiscount.Width = compact ? 96 : 112;
+            _orderDiscount.Height = profileControlHeight;
+            _orderDiscount.MinimumSize = new Size(compact ? 96 : 112, profileControlHeight);
+            _orderDiscount.Font = UiTheme.Font(profile.BodyFontPoints);
             _note.Height = profileControlHeight;
             _note.MinimumSize = new Size(0, profileControlHeight);
 
@@ -855,12 +925,14 @@ namespace Win7BookManagement.Forms
             }
 
             if (_metrics != null)
-                _metrics.WrapContents = false;
+                _metrics.WrapContents = true;
             if (_bottomActions != null)
                 _bottomActions.WrapContents = false;
 
             ResizeSummaryLabel(_lineCount, compact ? 84 : 110, compact ? 34 : 40, profile, false);
             ResizeSummaryLabel(_quantityTotal, compact ? 94 : 126, compact ? 34 : 40, profile, false);
+            ResizeSummaryLabel(_originalTotal, compact ? 118 : 150, compact ? 34 : 40, profile, false);
+            ResizeSummaryLabel(_discountTotal, compact ? 112 : 142, compact ? 34 : 40, profile, false);
             ResizeSummaryLabel(_total, compact ? 146 : 190, compact ? 34 : 40, profile, true);
 
             _indexColumn.Visible = true;
@@ -871,6 +943,8 @@ namespace Win7BookManagement.Forms
             _publisherColumn.Visible = true;
             _quantityColumn.Visible = true;
             _unitCostColumn.Visible = true;
+            _discountColumn.Visible = true;
+            _discountedUnitCostColumn.Visible = !compact;
             _lineTotalColumn.Visible = true;
             _shelfColumn.Visible = false;
             _stockColumn.Visible = false;
@@ -972,6 +1046,8 @@ namespace Win7BookManagement.Forms
             _publisherColumn.Width = compact ? "84" : "118";
             _quantityColumn.Width = compact ? "70" : "82";
             _unitCostColumn.Width = compact ? "92" : "108";
+            _discountColumn.Width = compact ? "86" : "96";
+            _discountedUnitCostColumn.Width = compact ? "86" : "96";
             _lineTotalColumn.Width = compact ? "94" : "110";
             _shelfColumn.Width = "88";
             _stockColumn.Width = "92";
@@ -1111,7 +1187,9 @@ namespace Win7BookManagement.Forms
                 ShelfCode = book.ShelfCode,
                 CurrentStock = book.StockQuantity,
                 Quantity = 1,
-                UnitCostYuan = Money.ToYuan(book.DefaultPurchasePriceCent)
+                BaseUnitCostYuan = Money.ToYuan(book.DefaultPurchasePriceCent),
+                DiscountPercent = 100m,
+                OrderDiscountPercent = _orderDiscount.Value
             };
             _rows.Add(added);
             _selectedRow = added;
@@ -1171,6 +1249,7 @@ namespace Win7BookManagement.Forms
                 _orderNo.Text = "";
                 _purchaseDate.Value = DateTime.Today;
                 _note.Text = "";
+                _orderDiscount.Value = 100m;
                 _rows.Clear();
                 _selectedRow = null;
                 if (_supplierOptions.Count > 0) _supplier.SelectedIndex = 0;
@@ -1208,7 +1287,7 @@ namespace Win7BookManagement.Forms
                             LoadDocument(copy.Id);
                             MessageBox.Show(
                                 this,
-                                "已复制为新的采购草稿。\r\n新单号：" + copy.OrderNo + "\r\n采购日期已设为今天，供应商、图书、数量和进价已复制。",
+                                "已复制为新的采购草稿。\r\n新单号：" + copy.OrderNo + "\r\n采购日期已设为今天，供应商、图书、数量、进价和折扣已复制。",
                                 "已复制为新单",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Information);
@@ -1286,6 +1365,7 @@ namespace Win7BookManagement.Forms
                 _orderNo.Text = document.OrderNo;
                 _purchaseDate.Value = document.PurchasedAt.Date;
                 _note.Text = document.Note;
+                _orderDiscount.Value = document.OrderDiscountBasisPoints / 100m;
                 SelectSupplier(document.SupplierId, document.SupplierName);
 
                 _rows.Clear();
@@ -1302,7 +1382,9 @@ namespace Win7BookManagement.Forms
                         ShelfCode = line.ShelfCode,
                         CurrentStock = line.CurrentStock,
                         Quantity = line.Quantity,
-                        UnitCostYuan = Money.ToYuan(line.UnitCostCent)
+                        BaseUnitCostYuan = Money.ToYuan(line.BaseUnitCostCent),
+                        DiscountPercent = line.LineDiscountBasisPoints / 100m,
+                        OrderDiscountPercent = document.OrderDiscountBasisPoints / 100m
                     });
                 }
                 _selectedRow = _rows.Count > 0 ? _rows[0] : null;
@@ -1336,7 +1418,8 @@ namespace Win7BookManagement.Forms
                     SelectedPurchaseDate,
                     SelectedSupplierId,
                     BuildLineInputs(),
-                    _note.Text);
+                    _note.Text,
+                    PercentToBasisPoints(_orderDiscount.Value));
 
                 LoadDocument(document.Id);
                 if (showMessage)
@@ -1489,7 +1572,11 @@ namespace Win7BookManagement.Forms
             table.Columns.Add("作者", typeof(string));
             table.Columns.Add("出版社", typeof(string));
             table.Columns.Add("数量", typeof(int));
-            table.Columns.Add("进价（元）", typeof(decimal));
+            table.Columns.Add("原进价（元）", typeof(decimal));
+            table.Columns.Add("单品折扣%", typeof(decimal));
+            table.Columns.Add("折后进价（元）", typeof(decimal));
+            table.Columns.Add("整单折扣%", typeof(decimal));
+            table.Columns.Add("实际进价（元）", typeof(decimal));
             table.Columns.Add("小计（元）", typeof(decimal));
             table.Columns.Add("备注", typeof(string));
 
@@ -1500,7 +1587,9 @@ namespace Win7BookManagement.Forms
                     document.PurchasedAt.ToString("yyyy-MM-dd"),
                     document.StatusText,
                     document.SupplierName,
-                    "", "", "", "", "", 0, 0m, 0m, document.Note);
+                    "", "", "", "", "", 0,
+                    0m, 100m, 0m, document.OrderDiscountBasisPoints / 100m,
+                    0m, 0m, document.Note);
                 return table;
             }
 
@@ -1517,6 +1606,10 @@ namespace Win7BookManagement.Forms
                     line.Author,
                     line.Publisher,
                     line.Quantity,
+                    Money.ToYuan(line.BaseUnitCostCent),
+                    line.LineDiscountBasisPoints / 100m,
+                    Money.ToYuan(line.LineDiscountedUnitCostCent),
+                    document.OrderDiscountBasisPoints / 100m,
                     Money.ToYuan(line.UnitCostCent),
                     Money.ToYuan(line.LineTotalCent),
                     document.Note);
@@ -1539,14 +1632,19 @@ namespace Win7BookManagement.Forms
             {
                 if (row.Quantity <= 0)
                     throw new InvalidOperationException("《" + row.Title + "》的入库数量必须大于 0。");
-                if (row.UnitCostYuan < 0)
+                if (row.BaseUnitCostYuan < 0)
                     throw new InvalidOperationException("《" + row.Title + "》的进价不能为负数。");
+                if (row.DiscountPercent < 0m || row.DiscountPercent > 100m)
+                    throw new InvalidOperationException("《" + row.Title + "》的单品折扣必须在 0 到 100 之间。");
 
+                var baseCent = Money.FromYuan(row.BaseUnitCostYuan);
                 result.Add(new TransactionLineInput
                 {
                     BookId = row.BookId,
                     Quantity = row.Quantity,
-                    UnitPriceCent = Money.FromYuan(row.UnitCostYuan)
+                    UnitPriceCent = baseCent,
+                    BaseUnitPriceCent = baseCent,
+                    DiscountBasisPoints = PercentToBasisPoints(row.DiscountPercent)
                 });
             }
             return result;
@@ -1580,6 +1678,7 @@ namespace Win7BookManagement.Forms
         {
             return SelectedPurchaseDate != _baselinePurchaseDate ||
                    SelectedSupplierId != _baselineSupplierId ||
+                   PercentToBasisPoints(_orderDiscount.Value) != _baselineOrderDiscountBasisPoints ||
                    !string.Equals(
                        (_orderNo.Text ?? "").Trim(),
                        _baselineOrderNo,
@@ -1596,6 +1695,7 @@ namespace Win7BookManagement.Forms
             _baselineOrderNo = (_orderNo.Text ?? "").Trim();
             _baselineSupplierId = SelectedSupplierId;
             _baselineNote = (_note.Text ?? "").Trim();
+            _baselineOrderDiscountBasisPoints = PercentToBasisPoints(_orderDiscount.Value);
         }
 
         private void UpdateNavigationState()
@@ -1698,6 +1798,7 @@ namespace Win7BookManagement.Forms
             _purchaseDate.Enabled = editable;
             _orderNo.Enabled = editable;
             _supplier.Enabled = editable;
+            _orderDiscount.Enabled = editable;
             _note.Enabled = editable;
             _lookupButton.Enabled = editable;
             _clearButton.Enabled = editable;
@@ -1708,6 +1809,7 @@ namespace Win7BookManagement.Forms
 
             _quantityColumn.ReadOnly = !editable;
             _unitCostColumn.ReadOnly = !editable;
+            _discountColumn.ReadOnly = !editable;
             _grid.Refresh();
             _scannerCaptureEnabled = editable;
             if (!editable) _scanBuffer.Clear();
@@ -1747,19 +1849,27 @@ namespace Win7BookManagement.Forms
 
         private void UpdateTotals()
         {
-            decimal total = 0m;
+            long originalCent = 0;
+            long totalCent = 0;
             var quantity = 0;
             var index = 1;
             foreach (var row in _rows)
             {
                 row.Index = index++;
-                total += row.Quantity * row.UnitCostYuan;
+                row.OrderDiscountPercent = _orderDiscount.Value;
+                var baseCent = Money.FromYuan(row.BaseUnitCostYuan);
+                var lineCent = ApplyBasisPoints(baseCent, PercentToBasisPoints(row.DiscountPercent));
+                var finalCent = ApplyBasisPoints(lineCent, PercentToBasisPoints(_orderDiscount.Value));
+                originalCent = checked(originalCent + checked((long)row.Quantity * baseCent));
+                totalCent = checked(totalCent + checked((long)row.Quantity * finalCent));
                 quantity += row.Quantity;
             }
 
             _lineCount.Text = "图书项  " + _rows.Count;
             _quantityTotal.Text = "入库册数  " + quantity;
-            _total.Text = "采购金额  ¥" + total.ToString("0.00");
+            _originalTotal.Text = "原金额  ¥" + Money.ToYuan(originalCent).ToString("0.00");
+            _discountTotal.Text = "优惠  ¥" + Money.ToYuan(originalCent - totalCent).ToString("0.00");
+            _total.Text = "采购金额  ¥" + Money.ToYuan(totalCent).ToString("0.00");
 
             var empty = _rows.Count == 0;
             _emptyState.Visible = empty;
@@ -1789,8 +1899,46 @@ namespace Win7BookManagement.Forms
             public string ShelfCode { get; set; }
             public int CurrentStock { get; set; }
             public int Quantity { get; set; }
-            public decimal UnitCostYuan { get; set; }
-            public decimal LineTotalYuan { get { return Quantity * UnitCostYuan; } }
+            public decimal BaseUnitCostYuan { get; set; }
+            public decimal DiscountPercent { get; set; }
+            public decimal OrderDiscountPercent { get; set; }
+
+            public decimal DiscountedUnitCostYuan
+            {
+                get
+                {
+                    var baseCent = Money.FromYuan(BaseUnitCostYuan);
+                    return Money.ToYuan(
+                        ApplyBasisPoints(baseCent, PercentToBasisPoints(DiscountPercent)));
+                }
+            }
+
+            public decimal LineTotalYuan
+            {
+                get
+                {
+                    var baseCent = Money.FromYuan(BaseUnitCostYuan);
+                    var lineCent = ApplyBasisPoints(baseCent, PercentToBasisPoints(DiscountPercent));
+                    var finalCent = ApplyBasisPoints(lineCent, PercentToBasisPoints(OrderDiscountPercent));
+                    return Money.ToYuan(checked((long)Quantity * finalCent));
+                }
+            }
+        }
+
+        private static int PercentToBasisPoints(decimal percent)
+        {
+            var clamped = Math.Max(0m, Math.Min(100m, percent));
+            return decimal.ToInt32(decimal.Round(
+                clamped * 100m, 0, MidpointRounding.AwayFromZero));
+        }
+
+        private static long ApplyBasisPoints(long amountCent, int basisPoints)
+        {
+            if (amountCent <= 0 || basisPoints <= 0) return 0;
+            if (basisPoints >= 10000) return amountCent;
+            return decimal.ToInt64(decimal.Round(
+                amountCent * (basisPoints / 10000m),
+                0, MidpointRounding.AwayFromZero));
         }
     }
 }

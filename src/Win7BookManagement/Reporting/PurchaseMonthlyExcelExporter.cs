@@ -15,12 +15,15 @@ namespace Win7BookManagement.Reporting
         {
             "序号", "采购日期", "采购单号", "供应商", "ISBN", "书名",
             "数量", "进价", "金额", "当月退货数量", "月末累计已退",
-            "净入库数量", "复核时间", "单据备注"
+            "净入库数量", "复核时间", "单据备注",
+            "原进价", "单品折扣%", "折后进价", "整单折扣%",
+            "单据原金额", "单品优惠", "整单优惠"
         };
 
         private static readonly int[] PurchaseWidths =
         {
-            7, 13, 22, 18, 18, 30, 9, 11, 12, 13, 13, 12, 20, 28
+            7, 13, 22, 18, 18, 30, 9, 11, 12, 13, 13, 12, 20, 28,
+            11, 12, 11, 12, 13, 12, 12
         };
 
         private static readonly string[] ReturnHeaders =
@@ -506,12 +509,30 @@ namespace Win7BookManagement.Reporting
                         sheet, styles, excelRow, 13,
                         first ? source.OrderNote : null,
                         "@", top, bottom, HorizontalAlignment.Left, true);
+                    WriteDetail(sheet, styles, excelRow, 14,
+                        source.BaseUnitCostCent / 100.0, "0.00", top, bottom);
+                    WriteDetail(sheet, styles, excelRow, 15,
+                        source.LineDiscountBasisPoints / 100.0, "0.00", top, bottom);
+                    WriteDetail(sheet, styles, excelRow, 16,
+                        source.LineDiscountedUnitCostCent / 100.0, "0.00", top, bottom);
+                    WriteDetail(sheet, styles, excelRow, 17,
+                        first ? (object)(source.OrderDiscountBasisPoints / 100.0) : null,
+                        "0.00", top, bottom);
+                    WriteDetail(sheet, styles, excelRow, 18,
+                        first ? (object)(source.OrderSubtotalCent / 100.0) : null,
+                        "0.00", top, bottom);
+                    WriteDetail(sheet, styles, excelRow, 19,
+                        first ? (object)(source.OrderLineDiscountCent / 100.0) : null,
+                        "0.00", top, bottom);
+                    WriteDetail(sheet, styles, excelRow, 20,
+                        first ? (object)(source.OrderDiscountCent / 100.0) : null,
+                        "0.00", top, bottom);
                     excelRow++;
                 }
 
                 if (lastExcelRow > firstExcelRow)
                 {
-                    foreach (var column in new[] { 0, 1, 2, 3, 12, 13 })
+                    foreach (var column in new[] { 0, 1, 2, 3, 12, 13, 17, 18, 19, 20 })
                     {
                         sheet.AddMergedRegion(
                             new CellRangeAddress(
@@ -770,8 +791,15 @@ namespace Win7BookManagement.Reporting
                     Isbn = ToText(row["isbn"]),
                     Title = ToText(row["title"]),
                     Quantity = ToInt(row["quantity"]),
+                    BaseUnitCostCent = ToLong(row["base_unit_cost_cent"]),
+                    LineDiscountBasisPoints = ToInt(row["line_discount_basis_points"]),
+                    LineDiscountedUnitCostCent = ToLong(row["line_discounted_unit_cost_cent"]),
                     UnitCostCent = ToLong(row["unit_cost_cent"]),
                     LineTotalCent = ToLong(row["line_total_cent"]),
+                    OrderSubtotalCent = ToLong(row["order_subtotal_cent"]),
+                    OrderLineDiscountCent = ToLong(row["order_line_discount_cent"]),
+                    OrderDiscountBasisPoints = ToInt(row["order_discount_basis_points"]),
+                    OrderDiscountCent = ToLong(row["order_discount_cent"]),
                     ReturnedQuantityInMonth = ToInt(row["returned_quantity_in_month"]),
                     ReturnedQuantityToMonthEnd = ToInt(row["returned_quantity_to_month_end"])
                 });
@@ -1109,8 +1137,15 @@ namespace Win7BookManagement.Reporting
             public string Isbn { get; set; }
             public string Title { get; set; }
             public int Quantity { get; set; }
+            public long BaseUnitCostCent { get; set; }
+            public int LineDiscountBasisPoints { get; set; }
+            public long LineDiscountedUnitCostCent { get; set; }
             public long UnitCostCent { get; set; }
             public long LineTotalCent { get; set; }
+            public long OrderSubtotalCent { get; set; }
+            public long OrderLineDiscountCent { get; set; }
+            public int OrderDiscountBasisPoints { get; set; }
+            public long OrderDiscountCent { get; set; }
             public int ReturnedQuantityInMonth { get; set; }
             public int ReturnedQuantityToMonthEnd { get; set; }
 
