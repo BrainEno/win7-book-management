@@ -37,9 +37,22 @@ namespace Win7BookManagement.Infrastructure
         public float TableFontPoints { get; private set; }
         public float SecondaryFontPoints { get; private set; }
 
+        public bool IsTight
+        {
+            get { return string.Equals(Name, "tight", StringComparison.Ordinal); }
+        }
+
+        /// <summary>
+        /// Tight is the small-screen variant of Compact: every page that
+        /// already switches to its compact layout must also do so on a
+        /// 1024x768 Win7 panel, so both profiles report IsCompact.
+        /// </summary>
         public bool IsCompact
         {
-            get { return string.Equals(Name, "compact", StringComparison.Ordinal); }
+            get
+            {
+                return string.Equals(Name, "compact", StringComparison.Ordinal) || IsTight;
+            }
         }
 
         public UiSpecProfile(
@@ -130,8 +143,16 @@ namespace Win7BookManagement.Infrastructure
         public const int ReferenceRasterWidth = 1586;
         public const int ReferenceRasterHeight = 992;
 
-        public const int MinimumClientWidth = 1280;
-        public const int MinimumClientHeight = 720;
+        // Compatibility floor promised by AGENTS.md and UI_DESIGN_STANDARD.md:
+        // a 1024x768 Win7 panel at 100% DPI. The shell clamps its own minimum
+        // to Screen.WorkingArea so this value is an upper bound, never a size
+        // that can push the window outside the display.
+        public const int MinimumClientWidth = 1024;
+        public const int MinimumClientHeight = 680;
+
+        // Below this width the sidebar collapses to an icon rail (Tight).
+        public const int TightBreakpoint = 1180;
+        public const int TightHeightBreakpoint = 640;
 
         public const int ShellStatusHeight = 28;
         public const int SidebarFooterHeight = 72;
@@ -208,6 +229,30 @@ namespace Win7BookManagement.Infrastructure
         public const int DocumentsListMinimumHeight = 220;
         public const int DocumentsDetailMinimumHeight = 180;
 
+        /// <summary>
+        /// 1024x768 Win7 panels and 1366x768 laptops at 125% DPI. The sidebar
+        /// becomes a 96px icon rail so the working area keeps a usable width
+        /// for tables and bottom action bars.
+        /// </summary>
+        public static readonly UiSpecProfile Tight = new UiSpecProfile(
+            "tight",
+            96,
+            48,
+            8,
+            6,
+            6,
+            32,
+            5,
+            8,
+            34,
+            38,
+            8,
+            28,
+            16,
+            12,
+            11,
+            10);
+
         public static readonly UiSpecProfile Compact = new UiSpecProfile(
             "compact",
             208,
@@ -267,6 +312,9 @@ namespace Win7BookManagement.Infrastructure
 
         public static UiSpecProfile Resolve(int clientWidth, int clientHeight)
         {
+            if (clientWidth <= TightBreakpoint || clientHeight <= TightHeightBreakpoint)
+                return Tight;
+
             if (clientWidth <= 1440 || clientHeight <= 800)
                 return Compact;
 

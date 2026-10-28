@@ -698,6 +698,7 @@ namespace Win7BookManagement.Infrastructure
 
                 VerifyLegacyBookSchemaUpgrade(root);
                 VerifyPersistentTableWidths(services);
+                VerifyWindowPlacementContracts();
                 VerifyUiLayoutContracts(services, storedBook);
 
                 return 0;
@@ -772,13 +773,15 @@ namespace Win7BookManagement.Infrastructure
             };
 
             var viewports = new[]
-            {
-                new Size(1024, 768),
-                new Size(1366, 768),
-                new Size(1600, 900),
-                new Size(1920, 1080),
-                new Size(2560, 1440)
-            };
+                {
+                    new Size(1024, 680),
+                    new Size(1024, 768),
+                    new Size(1280, 1024),
+                    new Size(1366, 768),
+                    new Size(1600, 900),
+                    new Size(1920, 1080),
+                    new Size(2560, 1440)
+                };
 
             if (!(UiTheme.ResponsiveButtonHeight(820) < UiTheme.ResponsiveButtonHeight(1500)) ||
                 !(UiTheme.ResponsiveInputHeight(820) < UiTheme.ResponsiveInputHeight(1500)) ||
@@ -823,6 +826,73 @@ namespace Win7BookManagement.Infrastructure
                 foreach (var form in forms)
                     form.Dispose();
             }
+        }
+
+        /// <summary>
+        /// Pure window-placement checks. These run on any monitor (including
+        /// the 1920x1080 GitHub Actions runner) and lock the Issue #54
+        /// behaviour: a 1024x768 Win7 working area must contain the whole
+        /// shell, and the minimum size must never exceed the working area.
+        /// </summary>
+        private static void VerifyWindowPlacementContracts()
+        {
+            var smallWorkingArea = new Rectangle(0, 0, 1024, 728);
+            var preferred = new Size(1600, 900);
+            var minimum = new Size(
+                BookDeskUiSpec.MinimumClientWidth,
+                BookDeskUiSpec.MinimumClientHeight);
+
+            var small = WindowPlacement.FitBounds(smallWorkingArea, preferred, minimum);
+            if (small != new Rectangle(0, 0, 1024, 728))
+                throw new InvalidOperationException(
+                    "1024x768 屏幕适配自检失败：期望窗口完全位于 1024x728 工作区，实际为 " + small + "。");
+
+            var smallMinimum = WindowPlacement.ClampMinimum(smallWorkingArea.Size, minimum);
+            if (smallMinimum.Width > smallWorkingArea.Width || smallMinimum.Height > smallWorkingArea.Height)
+                throw new InvalidOperationException(
+                    "最小窗口尺寸超过小屏工作区：" + smallMinimum + "。");
+
+            var hd = WindowPlacement.FitBounds(new Rectangle(0, 0, 1920, 1040), preferred, minimum);
+            if (hd != new Rectangle(160, 70, 1600, 900))
+                throw new InvalidOperationException(
+                    "大屏居中自检失败：期望 (160,70,1600,900)，实际为 " + hd + "。");
+
+            var secondary = WindowPlacement.FitBounds(
+                new Rectangle(-1920, 0, 1920, 1040),
+                preferred,
+                minimum);
+            if (secondary.X != -1760 || secondary.Y != 70)
+                throw new InvalidOperationException(
+                    "负坐标副屏居中自检失败：实际为 " + secondary + "。");
+
+            var tiny = WindowPlacement.FitBounds(new Rectangle(0, 0, 800, 560), preferred, minimum);
+            if (tiny.Width != 800 || tiny.Height != 560)
+                throw new InvalidOperationException(
+                    "极小工作区应收缩到屏幕尺寸，实际为 " + tiny + "。");
+
+            var clampedMinimum = WindowPlacement.ClampMinimum(new Size(1024, 728), new Size(1280, 900));
+            if (clampedMinimum != new Size(1024, 728))
+                throw new InvalidOperationException(
+                    "最小窗口未夹取到工作区：" + clampedMinimum + "。");
+
+            if (BookDeskUiSpec.MinimumClientWidth > 1024 ||
+                BookDeskUiSpec.MinimumClientHeight > 680)
+                throw new InvalidOperationException(
+                    "UI 规格声明的最小客户区大于 1024x768 兼容下限。");
+
+            var tight = BookDeskUiSpec.Resolve(1024, 728);
+            if (!tight.IsTight || !tight.IsCompact)
+                throw new InvalidOperationException("1024x728 应解析为 tight（且按 compact 处理）。");
+            if (tight.SidebarWidth >= BookDeskUiSpec.Compact.SidebarWidth)
+                throw new InvalidOperationException("tight 档位应比 compact 更窄。");
+
+            var compact = BookDeskUiSpec.Resolve(1366, 728);
+            if (compact.IsTight || !compact.IsCompact)
+                throw new InvalidOperationException("1366x768 应解析为 compact 而不是 tight。");
+
+            var standard = BookDeskUiSpec.Resolve(1600, 900);
+            if (!string.Equals(standard.Name, "standard", StringComparison.Ordinal))
+                throw new InvalidOperationException("1600x900 应解析为 standard。");
         }
 
         private static void VerifyControlTree(Control control, string formName, int viewportWidth)
