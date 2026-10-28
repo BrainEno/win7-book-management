@@ -136,6 +136,8 @@
     <Compile Include="Models\SalesDraft.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TransactionLineInput.cs" />
+    <Compile Include="Infrastructure\BackupStatusBanner.cs" />
+    <Compile Include="Services\AutoBackupService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />

@@ -27,6 +27,7 @@ namespace Win7BookManagement.Infrastructure
             SalesMonthlyExcel = new SalesMonthlyExcelExporter();
             PurchaseMonthlyExcel = new PurchaseMonthlyExcelExporter();
             Backup = new BackupService(Database);
+            AutoBackup = new AutoBackupService(Database, Settings);
         }
 
         public DatabaseConnectionFactory Database { get; private set; }
@@ -45,5 +46,6 @@ namespace Win7BookManagement.Infrastructure
         public SalesMonthlyExcelExporter SalesMonthlyExcel { get; private set; }
         public PurchaseMonthlyExcelExporter PurchaseMonthlyExcel { get; private set; }
         public BackupService Backup { get; private set; }
+        public AutoBackupService AutoBackup { get; private set; }
     }
 }
