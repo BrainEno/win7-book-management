@@ -111,7 +111,7 @@ namespace Win7BookManagement.Forms
                 Font = UiTheme.Font(8.25F),
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
-                Text = "完全离线  |  数据库：" + _services.Database.DatabasePath
+                Text = BuildStatusText()
             };
 
             _recordStatus = new Label
@@ -552,6 +552,25 @@ namespace Win7BookManagement.Forms
                 case "settings": return "SettingOutlined";
                 default: return "BarChartOutlined";
             }
+        }
+
+        private string BuildStatusText()
+        {
+            var status = _services.AutoBackup.GetStatus();
+            if (!status.LastBackupUtc.HasValue)
+            {
+                _status.ForeColor = UiTheme.Danger;
+                return "完全离线  |  数据库：" + _services.Database.DatabasePath + "  |  尚无备份";
+            }
+
+            _status.ForeColor = status.Level == BackupHealthLevel.Critical
+                ? UiTheme.Danger
+                : status.Level == BackupHealthLevel.Warning
+                    ? UiTheme.Warning
+                    : UiTheme.TextSecondary;
+            var ageDays = Math.Max(0, (int)Math.Floor(
+                (DateTime.UtcNow - status.LastBackupUtc.Value).TotalDays));
+            return "完全离线  |  最近备份：" + ageDays + " 天前  |  数据库：" + _services.Database.DatabasePath;
         }
 
         private void ApplyResponsiveLayout()
