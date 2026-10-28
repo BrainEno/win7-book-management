@@ -1,6 +1,6 @@
 {
   "$schema": "https://example.local/schemas/book-desk-ui-spec.schema.json",
-  "specVersion": "1.4.0",
+  "specVersion": "1.5.0",
   "project": {
     "name": "BOOK DESK / 简易图书管理系统",
     "repository": "https://github.com/BrainEno/win7-book-management",
@@ -88,13 +88,20 @@
   },
   "viewports": {
     "testMatrix": [
-      {
-        "width": 1366,
-        "height": 768,
-        "profile": "compact",
-        "captureName": "1366x768",
-        "mandatory": true
-      },
+          {
+            "width": 1024,
+            "height": 768,
+            "profile": "tight",
+            "captureName": "1024x768",
+            "mandatory": true
+          },
+          {
+            "width": 1366,
+            "height": 768,
+            "profile": "compact",
+            "captureName": "1366x768",
+            "mandatory": true
+          },
       {
         "width": 1600,
         "height": 900,
@@ -119,10 +126,10 @@
     ],
     "captureDimensionMeaning": "Target application window outer size for manual screenshots. Automated pixel diff MUST crop to the application client content region so native OS window chrome does not create false diffs.",
     "minimumSupportedClient": {
-      "width": 1280,
-      "height": 720,
-      "policy": "Primary actions and key data may not clip. Whole-workspace horizontal scrolling is forbidden; table-local horizontal scrolling is last resort only below the mandatory 1366x768 test size."
-    }
+          "width": 1024,
+          "height": 680,
+          "policy": "Primary actions and key data may not clip. The shell must clamp its own size and minimum size to Screen.WorkingArea before it is shown, then re-clamp after DPI changes. Whole-workspace horizontal scrolling is forbidden; table-local horizontal scrolling is last resort only below the mandatory 1366x768 test size."
+        }
   },
   "tokens": {
     "color": {
@@ -312,9 +319,34 @@
     }
   },
   "responsiveProfiles": {
-    "compact": {
-      "when": "clientWidth <= 1440 OR clientHeight <= 800",
-      "mandatoryTestViewport": "1366x768",
+      "tight": {
+        "when": "clientWidth <= 1180 OR clientHeight <= 640",
+        "mandatoryTestViewport": "1024x768",
+        "sidebarWidth": 96,
+        "sidebarCollapsed": true,
+        "pageHeaderHeight": 48,
+        "pageTitleSize": 16,
+        "contentPaddingX": 8,
+        "contentPaddingY": 6,
+        "sectionGap": 6,
+        "controlHeight": 32,
+        "buttonHorizontalPadding": 8,
+        "controlGap": 5,
+        "tableHeaderHeight": 34,
+        "tableRowHeight": 38,
+        "bodyFontSize": 12,
+        "tableFontSize": 11,
+        "secondaryFontSize": 10,
+        "rules": [
+          "Sidebar collapses to an icon rail (AntdUI.Menu Collapsed) and its footer is hidden.",
+          "The shell must fit inside Screen.WorkingArea; never open a 1024x768 screen with the bottom action bar outside the display.",
+          "Keep the sales checkout and purchase review actions reachable without scrolling the workspace horizontally.",
+          "Pages that already implement a compact layout must also apply it for tight (IsCompact is true for both profiles)."
+        ]
+      },
+      "compact": {
+            "when": "1181 <= clientWidth <= 1440 AND clientHeight > 640, or 641 <= clientHeight <= 800",
+            "mandatoryTestViewport": "1366x768",
       "sidebarWidth": 208,
       "pageHeaderHeight": 56,
       "pageTitleSize": 18,

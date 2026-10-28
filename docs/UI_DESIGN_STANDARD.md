@@ -7,7 +7,8 @@
 1. Windows 7 SP1 + .NET Framework 4.8 是硬约束。
 2. 运行时只使用 WinForms / GDI+ 能稳定支持的能力，不引入 WebView2、WinUI、WPF 宿主或只支持 Windows 10/11 的视觉框架。
 3. 所有主页面必须在 1024×768 可操作，在 Windows 10/11 的 2K / 4K + DPI 缩放下不截断主要信息。
-4. 优先通过响应式列隐藏、侧栏折叠、间距压缩和可伸缩布局解决小窗口问题；滚动条是最后手段。
+4. 主窗口必须把“首选尺寸 / 最小尺寸”夹取到当前显示器 `Screen.WorkingArea` 之后再显示，DPI 变化后重新夹取；禁止出现窗口比屏幕大、底部汇总或主操作落到屏幕外的情况。
+5. 优先通过响应式列隐藏、侧栏折叠、间距压缩和可伸缩布局解决小窗口问题；滚动条是最后手段。
 
 ## 2. 第三方 UI 组件策略
 
@@ -117,13 +118,17 @@
 
 四个已确认原型页使用 `BookDeskUiSpec` 的窗口级断点：
 
-- Compact：clientWidth <= 1440，或 clientHeight <= 800；
+- Tight：clientWidth <= 1180，或 clientHeight <= 640；
+- Compact：1181 <= clientWidth <= 1440 且 clientHeight > 640，或 641 <= clientHeight <= 800；
 - Standard：1441 <= clientWidth < 2200，且 clientHeight > 800；
 - Expanded：clientWidth >= 2200。
 
 典型行为：
 
+- 1024×768 / 1024×680 进入 Tight：Sidebar 折叠为 96px 图标栏并隐藏侧栏页脚，页头、间距与表头切换到 ui-spec 的 tight 档；
 - 1366×768 进入 Compact；1600×900 / 1920×1080 使用 Standard；2560×1440 使用 Expanded；
+- `IsCompact` 对 tight 与 compact 同时为 true，已实现 compact 布局的页面无需区分两档；
+- 窗口首选 1600×900 仅作为偏好：启动与 DPI 变化时由 `Infrastructure/WindowPlacement` 夹取到工作区，最小尺寸同步下调；
 - 缩小时先减少 margin / padding / gap，再压缩可伸缩表格列；最后才允许表格自身出现横向滚动；
 - 不允许整页工作区在 1366×768 及以上出现横向滚动；
 - 工具栏只有在确有必要时才换行，主输入框和主操作必须始终可见；
@@ -161,10 +166,11 @@
 
 每个主页面完成后至少检查：
 
-- 1024×768，100% DPI（兼容性下限）；
-- 1366×768，100% DPI；
+- 1024×768，100% DPI（兼容性下限，Tight 档，Sidebar 图标栏）；
+- 1280×1024，100% DPI；
+- 1366×768，100% / 125% DPI；
 - 1600×900，100% DPI；
-- 1920×1080，100% / 125% DPI；
+- 1920×1080，100% / 125% / 150% DPI；
 - 2560×1440，100% DPI；
 - 4K，150% / 200% DPI；
 - 文字是否完整显示；
@@ -321,6 +327,7 @@ Release 自检除数据库 / 进销存事务外，还必须实例化主要 WinFo
 - 单行 TextBox 不得设置 AutoSize=false；
 - 可见按钮不得低于当前字体所需高度；
 - TableLayoutPanel 不得重新引入小于 80px 的 Absolute 行；
+- `WindowPlacement` 的窗口放置数学必须在 --self-test 中断言：1024×728 工作区内完整容纳窗口、大屏居中、负坐标副屏、极小工作区收缩、最小尺寸不超过工作区；
 - 基准检查窗口为 1024×768，真实 125% / 150% / 200% DPI 仍需在 Windows 上做最终 smoke test。
 
 此检查的目的不是替代真实高 DPI 测试，而是防止最常见的“文字显示一半”“输入框被固定行挤压”“按钮高度不够”等回归再次被合并。
@@ -368,7 +375,7 @@ Release 自检除数据库 / 进销存事务外，还必须实例化主要 WinFo
 UI 自检必须尽量接近真实运行环境，而不是只验证“能编译”。
 
 - Self-test 在 Application.EnableVisualStyles() 与 SetCompatibleTextRenderingDefault(false) 之后运行，确保字体度量与正式程序一致。
-- 核心页面至少在 1024×768、1366×768、1920×1080 三种逻辑窗口尺寸执行布局检查。
+- 核心页面至少在 1024×768、1280×1024、1366×768、1600×900、1920×1080、2560×1440 六种逻辑窗口尺寸执行布局检查（SelfTest 已覆盖 1024×680 起的七档）。
 - 固定高度文本行继续禁止小于安全字体高度；单行 TextBox 继续禁止强制固定高度。
 - 对 TableLayoutPanel 的 Absolute 列增加内容宽度检查：若 Label / Button / CheckBox / ComboBox 的实际首选宽度大于列宽，CI 直接失败。
 - 自动检查不能替代 Win7 真机和 125%–200% DPI 的最终视觉复核，但任何可机械检测的裁字风险都应优先在 CI 阶段拦截。
@@ -459,3 +466,16 @@ UI 自检必须尽量接近真实运行环境，而不是只验证“能编译�
 - 同一资源覆盖 16 / 20 / 24 / 32 / 48 / 64 / 128 / 256 尺寸。
 - EXE、主窗口、Dialog、任务栏、桌面/开始菜单快捷方式、installer 与卸载项使用同一品牌图标。
 - 图标由构建脚本可重复生成，避免二进制资源丢失后无法重建。
+
+## 20. 小屏窗口放置与 Tight 档（Issue #54）
+
+Windows 7 收银机常见 1024×768 / 1280×1024 屏幕；1366×768 笔记本在 125% 缩放下有效宽度约 1093px，1920×1080 在 150% 下有效高度约 680px。历史实现把 `MinimumSize` 固定为 1280×720、初始尺寸 1600×900，在这些环境里会让底部状态栏、销售“确认结账”和采购“复核入库”落到屏幕之外。
+
+现行约束：
+
+- `Infrastructure/WindowPlacement` 负责全部窗口放置：`FitBounds` / `ClampMinimum` 为纯函数，`Apply` 在构造时按鼠标所在显示器工作区夹取，`ClampToWorkingArea` 在 Shown 与 DpiChanged 后再次夹取并保证标题栏在屏内；
+- `BookDeskUiSpec.MinimumClientWidth/Height` = 1024×680，`Resolve` 新增 `Tight`（<=1180 宽或 <=640 高）；
+- Tight 使用 96px 图标栏（AntdUI.Menu `Collapsed`），隐藏侧栏页脚，页头 48px、内容边距 8/6、按钮 32px、表格 38px；
+- 页面层无需新增分支：`UiSpecProfile.IsCompact` 对 tight 与 compact 同时为 true；
+- `--self-test` 覆盖窗口放置纯函数与档位解析，CI 无需真实 1024×768 显示器即可防止回归；
+- 仍必须在 Win7 真机（1024×768、1280×1024）与 125% / 150% DPI 上完成最终视觉复核。
