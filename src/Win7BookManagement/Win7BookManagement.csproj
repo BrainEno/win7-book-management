@@ -136,6 +136,9 @@
     <Compile Include="Models\SalesDraft.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TransactionLineInput.cs" />
+    <Compile Include="Infrastructure\AppLog.cs" />
+    <Compile Include="Infrastructure\CrashReporter.cs" />
+    <Compile Include="Infrastructure\UserErrorText.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />

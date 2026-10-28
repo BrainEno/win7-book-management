@@ -11,15 +11,22 @@ namespace Win7BookManagement
         [STAThread]
         private static int Main(string[] args)
         {
-            // CI layout checks must use the same WinForms rendering mode as the
-            // real application. Otherwise text metrics can differ between the
-            // self-test and the executable that users actually see.
+            // CI 布局检查必须与真实应用使用同一 WinForms 渲染模式。
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            // P0-3 / P1-1 / P1-6 接线顺序：目录 → 日志 → 全局异常 → 主题 → 业务。
+            AppPaths.EnsureFolders();
+            AppLog.Info("app", "BOOK DESK 启动");
+            CrashReporter.Install();
             UiTheme.InitializeAntdUi();
+            LowSpecMode.ApplyToAntdUi();
 
             if (args != null && args.Any(a => string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase)))
                 return SelfTest.Run();
+
+            if (args != null && args.Any(a => string.Equals(a, "--verify", StringComparison.OrdinalIgnoreCase)))
+                return InvariantChecks.RunAndPrint(AppPaths.DatabasePath);
 
             if (args != null)
             {
@@ -33,17 +40,31 @@ namespace Win7BookManagement
                 }
             }
 
+            ApplicationServices services = null;
             try
             {
-                AppPaths.EnsureFolders();
-                var services = new ApplicationServices(AppPaths.DatabasePath);
+                services = new ApplicationServices(AppPaths.DatabasePath);
+                services.AutoBackup.RunStartupBackupIfNeeded();
+
                 Application.Run(new MainForm(services));
                 return 0;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("程序启动失败：\r\n" + ex.Message, "图书管理系统", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var errorId = AppLog.ErrorWithId("startup", "程序启动失败", ex);
+                MessageBox.Show(
+                    "程序启动失败，不修改任何数据。\r\n\r\n原因：" + UserErrorText.For(ex) +
+                    "\r\n错误编号：" + errorId +
+                    "\r\n日志目录：" + AppPaths.LogsDirectory,
+                    "BOOK DESK 启动失败",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
                 return 1;
+            }
+            finally
+            {
+                if (services != null)
+                    services.AutoBackup.RunExitBackup();
             }
         }
     }
