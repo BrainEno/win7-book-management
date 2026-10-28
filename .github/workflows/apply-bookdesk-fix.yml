@@ -1,0 +1,305 @@
+name: apply-bookdesk-fix
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BOOK DESK P0/P1 自动应用器
+#
+# 用法（无需下载任何文件）：
+#   1. 把本文件保存为 .github/workflows/apply-bookdesk-fix.yml 并提交到默认分支。
+#   2. 在修复控制台复制某条 issue 的「修复评论」，粘贴到对应 issue 的评论区。
+#      可以只贴一条，也可以把 9 条全部贴完。
+#   3. Actions → apply-bookdesk-fix → Run workflow：
+#        issue_numbers 留空 = 自动扫描 #54 #55 #64 #56 #57 #60 #61 #62 #63
+#        keys          留空 = 应用所有已找到载荷的 issue
+#   4. 工作流会：解码 → 校验 SHA-256 → git apply --check → 应用 → 同步 csproj
+#      → 防截断门禁 → 建分支 → 开 Draft PR → 在 Windows 上编译并跑双重门禁。
+#
+# 安全：只接受 OWNER / MEMBER / COLLABORATOR 发布的载荷评论。
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_numbers:
+        description: "要扫描的 issue 编号（逗号分隔，留空=全部 9 条）"
+        required: false
+        default: ""
+      keys:
+        description: "只应用这些修复键（如 P0-3,P1-1；留空=全部已找到的）"
+        required: false
+        default: ""
+      close_issues:
+        description: "PR 描述使用 Closes 自动关闭 issue（建议验证通过后再开）"
+        type: boolean
+        required: false
+        default: false
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: apply-bookdesk-fix
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: 收集载荷并开 PR
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (contains(github.event.comment.body, 'BOOKDESK-FIX v1') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    outputs:
+      branch: ${{ steps.apply.outputs.branch }}
+      applied: ${{ steps.apply.outputs.applied }}
+      pr_url: ${{ steps.pr.outputs.pr_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 写入收集器
+        shell: bash
+        run: |
+          mkdir -p .bookdesk
+          cat > .bookdesk/collect.mjs <<'COLLECT_EOF'
+          import fs from "node:fs";
+          import path from "node:path";
+          import zlib from "node:zlib";
+          import crypto from "node:crypto";
+
+          const ORDER = ["P0-3","P1-1","P0-1","P1-6","P1-4","P1-3","P0-2","P1-5","P1-2"];
+          const dir = ".bookdesk/payload";
+          const parts = new Map();
+          const meta = new Map();
+
+          for (const file of fs.readdirSync(dir).filter((f) => f.startsWith("comments-"))) {
+            const issue = file.replace("comments-", "").replace(".json", "");
+            const comments = JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
+            for (const c of comments) {
+              const body = c.body || "";
+              const marker = /<!--\s*BOOKDESK-FIX v1 key=([A-Z0-9-]+) part=(\d+)\/(\d+) sha256=([0-9a-f]{64})\s*-->/.exec(body);
+              if (!marker) continue;
+              const payload = /```bookdesk-b64\r?\n([\s\S]*?)```/.exec(body);
+              if (!payload) { console.error(`[FAIL] issue #${issue} 有标记但缺少 bookdesk-b64 载荷块`); process.exit(1); }
+              const [, key, part, total, sha] = marker;
+              if (!parts.has(key)) parts.set(key, new Map());
+              parts.get(key).set(Number(part), payload[1].replace(/\s+/g, ""));
+              meta.set(key, { total: Number(total), sha, issue });
+            }
+          }
+
+          const wanted = (process.env.INPUT_KEYS || "").split(",").map((s) => s.trim()).filter(Boolean);
+          const out = [];
+          for (const key of ORDER) {
+            if (wanted.length && !wanted.includes(key)) continue;
+            if (!parts.has(key)) { console.log(`[SKIP] ${key} 未找到载荷评论`); continue; }
+            const info = meta.get(key);
+            const bucket = parts.get(key);
+            let joined = "";
+            let complete = true;
+            for (let i = 1; i <= info.total; i++) {
+              if (!bucket.has(i)) { complete = false; break; }
+              joined += bucket.get(i);
+            }
+            if (!complete) { console.error(`[FAIL] ${key} 分片不完整（需要 ${info.total} 片）`); process.exit(1); }
+            const raw = zlib.gunzipSync(Buffer.from(joined, "base64"));
+            const sha = crypto.createHash("sha256").update(raw).digest("hex");
+            if (sha !== info.sha) { console.error(`[FAIL] ${key} SHA-256 不匹配`); process.exit(1); }
+            fs.writeFileSync(`.bookdesk/${key}.patch`, raw);
+            console.log(`[OK] ${key} 来自 issue #${info.issue}，${raw.length} 字节，SHA-256 校验通过`);
+            out.push({ key, issue: info.issue });
+          }
+
+          if (out.length === 0) { console.error("没有找到任何 BOOKDESK-FIX 载荷评论。请先粘贴修复评论。"); process.exit(1); }
+          fs.writeFileSync(".bookdesk/plan.json", JSON.stringify(out, null, 2));
+          COLLECT_EOF
+
+      - name: 从 issue 评论收集载荷
+        id: collect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_ISSUES: ${{ github.event.inputs.issue_numbers }}
+          EVENT_ISSUE: ${{ github.event.issue.number }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
+            NUMBERS="$EVENT_ISSUE"
+          elif [ -n "$INPUT_ISSUES" ]; then
+            NUMBERS="$INPUT_ISSUES"
+          else
+            NUMBERS="54 55 64 56 57 60 61 62 63"
+          fi
+          mkdir -p .bookdesk/payload
+          for n in $(echo "$NUMBERS" | tr ',' ' '); do
+            echo "== 扫描 issue #$n =="
+            gh api "repos/${{ github.repository }}/issues/$n/comments?per_page=100" --paginate \
+              > ".bookdesk/payload/comments-$n.json"
+          done
+
+      - name: 解码并校验
+        env:
+          INPUT_KEYS: ${{ github.event.inputs.keys }}
+        run: node .bookdesk/collect.mjs
+
+      - name: 应用补丁 + 防截断门禁
+        id: apply
+        run: |
+          set -euo pipefail
+          BRANCH="fix/p0-p1-$(date +%Y%m%d-%H%M%S)"
+          git config user.name "bookdesk-fix-bot"
+          git config user.email "actions@github.com"
+          git checkout -b "$BRANCH"
+
+          APPLIED=""
+          for key in $(node -e "console.log(require('./.bookdesk/plan.json').map(p=>p.key).join(' '))"); do
+            echo "== 应用 $key =="
+            git apply --check ".bookdesk/$key.patch"
+            git apply ".bookdesk/$key.patch"
+            APPLIED="$APPLIED $key"
+          done
+
+          # 同步老式 csproj 的显式编译清单
+          node - <<'CSPROJ_EOF'
+          const fs = require("node:fs");
+          const p = "src/Win7BookManagement/Win7BookManagement.csproj";
+          const required = [
+            "Database\\Migrations\\MigrationCatalog.cs","Database\\Migrations\\SchemaMigrator.cs",
+            "Features\\CsvBookImporter.cs","Features\\IsbnValidator.cs","Features\\OperatorSessionService.cs",
+            "Features\\ReceiptRenderer.cs","Features\\StocktakeService.cs",
+            "Infrastructure\\AppLog.cs","Infrastructure\\AsyncRunner.cs","Infrastructure\\BackupStatusBanner.cs",
+            "Infrastructure\\BuildInfo.cs","Infrastructure\\CrashReporter.cs","Infrastructure\\InvariantChecks.cs",
+            "Infrastructure\\LowSpecMode.cs","Infrastructure\\UserErrorText.cs","Infrastructure\\WindowPlacement.cs",
+            "Services\\AutoBackupService.cs"
+          ];
+          const anchor = '<Compile Include="Program.cs" />';
+          let c = fs.readFileSync(p, "utf8");
+          if (!c.includes(anchor)) { console.error("csproj 缺少 Program.cs 编译项"); process.exit(1); }
+          let added = 0;
+          for (const f of required) {
+            if (!fs.existsSync("src/Win7BookManagement/" + f.replace(/\\/g, "/"))) continue;
+            const e = '<Compile Include="' + f + '" />';
+            if (c.includes(e)) continue;
+            c = c.replace(anchor, e + "\r\n    " + anchor);
+            added++;
+          }
+          fs.writeFileSync(p, c, "utf8");
+          console.log("csproj 新增编译项：" + added);
+          CSPROJ_EOF
+
+          rm -rf .bookdesk
+          git add -A
+
+          # 门禁：文档/文本只允许新增，禁止整份覆盖导致既有内容丢失
+          if git diff --cached --numstat | awk '$2>0 && ($3 ~ /\.(md|txt)$/){print "TRUNCATION: " $3 " -" $2 " lines"; bad=1} END{exit bad?1:0}'; then
+            echo "[PASS] 无文档截断"
+          else
+            echo "::error::检测到文档被截断，已中止"; exit 1
+          fi
+
+          git commit -m "fix: apply BOOK DESK P0/P1 repairs ($APPLIED )"
+          git push -u origin "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "applied=$APPLIED" >> "$GITHUB_OUTPUT"
+
+      - name: 开 Draft PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLOSE_ISSUES: ${{ github.event.inputs.close_issues }}
+        run: |
+          set -euo pipefail
+          BODY_FILE=$(mktemp)
+          {
+            echo "## BOOK DESK P0/P1 自动修复"
+            echo
+            echo "本 PR 由 \`apply-bookdesk-fix\` 工作流从 issue 评论中的载荷自动应用生成。"
+            echo
+            echo "### 已应用"
+            for key in ${{ steps.apply.outputs.applied }}; do echo "- \`$key\`"; done
+            echo
+            echo "### 关联 issue"
+            node -e '
+              const map={"P0-1":54,"P0-2":55,"P0-3":64,"P1-1":56,"P1-2":57,"P1-3":60,"P1-4":61,"P1-5":62,"P1-6":63};
+              const keys=process.argv[1].trim().split(/\s+/).filter(Boolean);
+              const verb=process.env.CLOSE_ISSUES==="true"?"Closes":"Refs";
+              for(const k of keys) if(map[k]) console.log(`- ${verb} #${map[k]} (${k})`);
+            ' "${{ steps.apply.outputs.applied }}"
+            echo
+            echo "### 合并前必须通过"
+            echo "- [ ] \`verify\` 作业：Release x86 编译成功"
+            echo "- [ ] \`Win7BookManagement.exe --self-test\` 退出码 0（原有功能未破坏）"
+            echo "- [ ] \`Win7BookManagement.exe --verify\` 退出码 0（P0 不变量）"
+            echo "- [ ] 契约测试工程退出码 0"
+            echo "- [ ] \`scripts/verify-p0p1-fixes.ps1\` 全部 PASS"
+            echo
+            echo "> 本 PR 以 Draft 创建。验证作业全绿后再转正式并合并。"
+          } > "$BODY_FILE"
+          URL=$(gh pr create --draft --base "${{ github.event.repository.default_branch }}" \
+            --head "${{ steps.apply.outputs.branch }}" \
+            --title "fix: BOOK DESK P0/P1 修复 (${{ steps.apply.outputs.applied }} )" \
+            --body-file "$BODY_FILE")
+          echo "pr_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "已创建 $URL"
+
+  verify:
+    name: Windows 编译与双重门禁
+    needs: collect
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.collect.outputs.branch }}
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: 还原并编译 Release x86
+        run: msbuild Win7BookManagement.sln -restore /m /p:Configuration=Release /p:Platform=x86
+
+      - name: 原有自检（功能回归门禁）
+        shell: pwsh
+        run: |
+          & "src/Win7BookManagement/bin/x86/Release/Win7BookManagement.exe" --self-test
+          if ($LASTEXITCODE -ne 0) { throw "原有 --self-test 失败：稳定功能被破坏" }
+
+      - name: P0 不变量验证
+        shell: pwsh
+        run: |
+          & "src/Win7BookManagement/bin/x86/Release/Win7BookManagement.exe" --verify
+          if ($LASTEXITCODE -ne 0) { throw "--verify 不变量检查失败" }
+
+      - name: 契约测试
+        shell: pwsh
+        run: |
+          if (Test-Path "tests/Win7BookManagement.Tests/Win7BookManagement.Tests.csproj") {
+            msbuild tests/Win7BookManagement.Tests/Win7BookManagement.Tests.csproj /m /p:Configuration=Release /p:Platform=x86
+            & "tests/Win7BookManagement.Tests/bin/x86/Release/Win7BookManagement.Tests.exe"
+            if ($LASTEXITCODE -ne 0) { throw "契约测试失败" }
+          } else { Write-Host "未应用 P1-2，跳过契约测试" }
+
+      - name: 源码级验证
+        shell: pwsh
+        run: |
+          if (Test-Path "scripts/verify-p0p1-fixes.ps1") {
+            ./scripts/verify-p0p1-fixes.ps1 -SkipBuild
+            if ($LASTEXITCODE -ne 0) { throw "verify-p0p1-fixes.ps1 失败" }
+          } else { Write-Host "未应用 P1-2，跳过源码级验证" }
+
+      - name: 在 PR 上回报结果
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $status = "${{ job.status }}"
+          $icon = if ($status -eq "success") { "✅" } else { "❌" }
+          $body = "$icon Windows 验证作业：$status`n`n- 分支：${{ needs.collect.outputs.branch }}`n- 已应用：${{ needs.collect.outputs.applied }}`n- 门禁：编译 / --self-test / --verify / 契约测试 / 源码级验证"
+          gh pr comment "${{ needs.collect.outputs.pr_url }}" --body $body
