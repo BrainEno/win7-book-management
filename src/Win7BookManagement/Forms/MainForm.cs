@@ -17,6 +17,15 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Label _pageTitle;
         private readonly Label _status;
         private readonly Label _recordStatus;
+        private readonly Panel _sidebarFooter;
+
+        // The historical 1600x900 shell is only a preference. WindowPlacement
+        // reduces it (and the minimum) to the real working area of the monitor
+        // it opens on, because Win7 tills and 125%-150% DPI laptops are smaller.
+        private static readonly Size PreferredWindowSize = new Size(1600, 900);
+        private static readonly Size MinimumWindowSize = new Size(
+            BookDeskUiSpec.MinimumClientWidth,
+            BookDeskUiSpec.MinimumClientHeight);
         private readonly Dictionary<string, AntdUI.MenuItem> _menuItems =
             new Dictionary<string, AntdUI.MenuItem>();
 
@@ -26,15 +35,16 @@ namespace Win7BookManagement.Forms
         private bool _syncingNavigation;
 
         public MainForm(ApplicationServices services)
-        {
+            {
             _services = services;
             UiTheme.ConfigureForm(this);
 
             Text = "简易图书管理系统  BOOK DESK";
-            StartPosition = FormStartPosition.CenterScreen;
-            Width = 1600;
-            Height = 900;
-            MinimumSize = new Size(1280, 720);
+            // Fit the first frame to the monitor working area instead of the
+            // hard-coded 1600x900 / 1280x720 minimum that used to overflow
+            // 1024x768 and 1280x1024 screens.
+            WindowPlacement.Apply(this, PreferredWindowSize, MinimumWindowSize);
+
             BackColor = UiTheme.Background;
             Font = UiTheme.Font(9F);
 
@@ -48,10 +58,10 @@ namespace Win7BookManagement.Forms
 
             _navigation = CreateNavigation();
             BuildNavigation();
-            var sidebarFoot = CreateSidebarFooter();
+            _sidebarFooter = CreateSidebarFooter();
 
             _sidebar.Controls.Add(_navigation);
-            _sidebar.Controls.Add(sidebarFoot);
+            _sidebar.Controls.Add(_sidebarFooter);
 
             var main = new Panel
             {
@@ -159,14 +169,28 @@ namespace Win7BookManagement.Forms
             FormClosing += HandleFormClosing;
             Shown += delegate
             {
+                // AutoScaleMode.Dpi can grow MinimumSize while the handle is
+                // created, so clamp once more before the first frame is judged.
+                WindowPlacement.ClampToWorkingArea(this);
+                ApplyResponsiveLayout();
+
                 if (string.IsNullOrWhiteSpace(_currentKey))
                     Navigate("dashboard");
                 if (!_services.Settings.IsOnboardingCompleted())
                     BeginInvoke(new Action(StartOnboardingGuide));
             };
 
+            // Moving the shell to a monitor with a different scaling factor or
+            // working area must not leave the bottom summary/action bar off
+            // screen. Clamp, then re-apply the tight/compact/standard density.
+            DpiChanged += delegate
+            {
+                WindowPlacement.ClampToWorkingArea(this);
+                ApplyResponsiveLayout();
+            };
+
             ApplyResponsiveLayout();
-        }
+            }
 
         private AntdUI.Menu CreateNavigation()
         {
@@ -531,43 +555,55 @@ namespace Win7BookManagement.Forms
         }
 
         private void ApplyResponsiveLayout()
-        {
+            {
             var profile = BookDeskUiSpec.Resolve(ClientSize.Width, ClientSize.Height);
 
             _sidebar.Width = profile.SidebarWidth;
             _header.Height = profile.PageHeaderHeight;
-            _header.Padding = profile.IsCompact
-                ? new Padding(12, 4, 12, 4)
-                : new Padding(16, 6, 16, 6);
 
+            // Tight (1024x768 class) collapses the sidebar to an icon rail and
+            // hides its footer so navigation never eats the table width.
+            _navigation.Collapsed = profile.IsTight;
+            _navigation.Padding = profile.IsTight
+            ? new Padding(6, 12, 6, 8)
+            : new Padding(9, 14, 6, 8);
+            _sidebarFooter.Visible = !profile.IsTight;
+
+            _header.Padding = profile.IsCompact
+            ? new Padding(12, 4, 12, 4)
+            : new Padding(16, 6, 16, 6);
+
+            var navigationFontPixels = profile.IsTight
+            ? 12
+            : profile.IsCompact
+            ? 13
+            : 14;
             _navigation.Font = UiTheme.Font(
-                profile.IsCompact
-                    ? BookDeskUiSpec.PixelFontToPoints(13)
-                    : BookDeskUiSpec.PixelFontToPoints(14));
+            BookDeskUiSpec.PixelFontToPoints(navigationFontPixels));
 
             _pageTitle.Font = UiTheme.Font(profile.PageTitleFontPoints, FontStyle.Bold);
             _pageTitle.IconRatio = profile.IsCompact ? 0.86F : 0.9F;
             _pageTitle.IconGap = profile.IsCompact ? 7 : 8;
 
             _contentHost.Padding = new Padding(
-                profile.ContentPaddingX,
-                profile.ContentPaddingY,
-                profile.ContentPaddingX,
-                profile.ContentPaddingY);
+            profile.ContentPaddingX,
+            profile.ContentPaddingY,
+            profile.ContentPaddingX,
+            profile.ContentPaddingY);
 
             if (_currentPage == null)
-                return;
+            return;
 
             var specPage = _currentPage as IUiSpecPage;
             if (specPage != null)
             {
-                specPage.ApplyUiSpecProfile(profile);
-                return;
+            specPage.ApplyUiSpecProfile(profile);
+            return;
             }
 
             UiTheme.ApplyResponsiveDensity(
-                _currentPage,
-                Math.Max(1, _contentHost.ClientSize.Width));
-        }
-    }
-}
+            _currentPage,
+            Math.Max(1, _contentHost.ClientSize.Width));
+            }
+            }
+            }
