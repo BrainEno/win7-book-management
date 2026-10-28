@@ -19,9 +19,11 @@ namespace Win7BookManagement.Database
 
             using (var connection = _factory.Open())
             {
+                // P0-3：journal_mode / synchronous 已由连接字符串统一指定，
+                // 这里不再对单条连接执行 PRAGMA，避免池内连接持久性不一致。
                 using (var pragma = connection.CreateCommand())
                 {
-                    pragma.CommandText = "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;";
+                    pragma.CommandText = "PRAGMA journal_mode=WAL;";
                     pragma.ExecuteNonQuery();
                 }
 
