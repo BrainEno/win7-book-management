@@ -44,7 +44,7 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 4,
+                RowCount = 5,
                 BackColor = UiTheme.Background,
                 Padding = Padding.Empty,
                 Margin = Padding.Empty
@@ -53,15 +53,21 @@ namespace Win7BookManagement.Forms
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-            root.Controls.Add(CreateHero(), 0, 0);
+            var backupBanner = BackupStatusBanner.Create(_services.AutoBackup);
+            backupBanner.Height = 34;
+            backupBanner.Margin = new Padding(0, 0, 0, 8);
+            root.Controls.Add(backupBanner, 0, 0);
+
+            root.Controls.Add(CreateHero(), 0, 1);
             ConfigureMetricHost();
-            root.Controls.Add(_metrics, 0, 1);
+            root.Controls.Add(_metrics, 0, 2);
             BuildGuideCard();
-            root.Controls.Add(_guideCard, 0, 2);
+            root.Controls.Add(_guideCard, 0, 3);
             ConfigureLower();
-            root.Controls.Add(_lower, 0, 3);
+            root.Controls.Add(_lower, 0, 4);
 
             Controls.Add(root);
 

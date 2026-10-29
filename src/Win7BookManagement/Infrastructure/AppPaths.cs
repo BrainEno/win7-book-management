@@ -33,6 +33,7 @@ namespace Win7BookManagement.Infrastructure
         public static string DataDirectory { get { return Path.Combine(RootPath, "data"); } }
         public static string BackupDirectory { get { return Path.Combine(RootPath, "backup"); } }
         public static string ExportDirectory { get { return Path.Combine(RootPath, "exports"); } }
+        public static string LogsDirectory { get { return Path.Combine(RootPath, "logs"); } }
         public static string DatabasePath { get { return Path.Combine(DataDirectory, "bookstore.db"); } }
 
         public static void EnsureFolders()
@@ -41,6 +42,7 @@ namespace Win7BookManagement.Infrastructure
             Directory.CreateDirectory(DataDirectory);
             Directory.CreateDirectory(BackupDirectory);
             Directory.CreateDirectory(ExportDirectory);
+            Directory.CreateDirectory(LogsDirectory);
         }
     }
 }

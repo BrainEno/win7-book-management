@@ -118,6 +118,11 @@
     </Compile>
     <Compile Include="Infrastructure\AppPaths.cs" />
     <Compile Include="Infrastructure\ApplicationServices.cs" />
+    <Compile Include="Infrastructure\UserErrorText.cs" />
+    <Compile Include="Infrastructure\LowSpecMode.cs" />
+    <Compile Include="Infrastructure\InvariantChecks.cs" />
+    <Compile Include="Infrastructure\CrashReporter.cs" />
+    <Compile Include="Infrastructure\AppLog.cs" />
     <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
     <Compile Include="Infrastructure\Money.cs" />
     <Compile Include="Infrastructure\PersistentAntdTable.cs">
@@ -136,6 +141,8 @@
     <Compile Include="Models\SalesDraft.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TransactionLineInput.cs" />
+    <Compile Include="Infrastructure\BackupStatusBanner.cs" />
+    <Compile Include="Services\AutoBackupService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />
