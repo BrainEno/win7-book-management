@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
+using Win7BookManagement.Services;
 
 namespace Win7BookManagement.Forms
 {
@@ -555,26 +556,43 @@ namespace Win7BookManagement.Forms
         }
 
         private string BuildStatusText()
-        {
-            var status = _services.AutoBackup.GetStatus();
-            if (!status.LastBackupUtc.HasValue)
-            {
-                _status.ForeColor = UiTheme.Danger;
-                return "完全离线  |  数据库：" + _services.Database.DatabasePath + "  |  尚无备份";
-            }
+                {
+                    var autoBackup = _services?.AutoBackup;
+                    string dbPath;
+                    try
+                    {
+                        dbPath = _services?.Database?.DatabasePath ?? "未知路径";
+                    }
+                    catch
+                    {
+                        dbPath = "未知路径";
+                    }
 
-            _status.ForeColor = status.Level == BackupHealthLevel.Critical
-                ? UiTheme.Danger
-                : status.Level == BackupHealthLevel.Warning
-                    ? UiTheme.Warning
-                    : UiTheme.TextSecondary;
-            var ageDays = Math.Max(0, (int)Math.Floor(
-                (DateTime.UtcNow - status.LastBackupUtc.Value).TotalDays));
-            return "完全离线  |  最近备份：" + ageDays + " 天前  |  数据库：" + _services.Database.DatabasePath;
-        }
+                    if (autoBackup == null || _services?.Database == null)
+                    {
+                        return "完全离线  |  数据库：" + dbPath + "  |  备份服务未初始化";
+                    }
 
-        private void ApplyResponsiveLayout()
-            {
+                    var status = autoBackup.GetStatus();
+                    if (!status.LastBackupUtc.HasValue)
+                    {
+                        if (_status != null) _status.ForeColor = UiTheme.Danger;
+                        return "完全离线  |  数据库：" + dbPath + "  |  尚无备份";
+                    }
+
+                    var foreColor = status.Level == BackupHealthLevel.Critical
+                        ? UiTheme.Danger
+                        : status.Level == BackupHealthLevel.Warning
+                            ? UiTheme.Warning
+                            : UiTheme.TextSecondary;
+                    if (_status != null) _status.ForeColor = foreColor;
+                    var ageDays = Math.Max(0, (int)Math.Floor(
+                        (DateTime.UtcNow - status.LastBackupUtc.Value).TotalDays));
+                    return "完全离线  |  最近备份：" + ageDays + " 天前  |  数据库：" + dbPath;
+                }
+
+                private void ApplyResponsiveLayout()
+                {
             var profile = BookDeskUiSpec.Resolve(ClientSize.Width, ClientSize.Height);
 
             _sidebar.Width = profile.SidebarWidth;
