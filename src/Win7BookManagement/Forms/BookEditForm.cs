@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
+using Win7BookManagement.Services;
 
 namespace Win7BookManagement.Forms
 {
@@ -241,7 +242,7 @@ namespace Win7BookManagement.Forms
                 grid,
                 2,
                 CreateField("店内商品编码", _selfCode, "系统自动生成 BK-000001 形式的唯一编码，与 ISBN 完全解耦。"),
-                CreateField("ISBN（可选）", _isbn, "自出版物或无 ISBN 商品可以直接留空。"));
+                CreateField("ISBN（可选）", _isbn, "自出版物或无 ISBN 商品可以直接留空；如果填错，保存时可选择清空 ISBN 并继续建档。"));
 
             return WrapSection(
                 "核心信息",
@@ -575,11 +576,37 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
+            var isbnPlan = BookIsbnSavePolicy.CreatePlan(_isbn.Text, _note.Text);
+            if (isbnPlan.InvalidIsbnNeedsConfirmation)
+            {
+                var choice = MessageBox.Show(
+                    this,
+                    "ISBN 格式或校验位不正确，但 ISBN 不是必填项。\r\n\r\n" +
+                    "选择“是”：清空 ISBN 并继续保存，原始输入会记入备注，系统仍会自动生成店内编码。\r\n" +
+                    "选择“否”：返回修改 ISBN。\r\n\r\n" +
+                    "原始输入：" + isbnPlan.RawIsbnInput,
+                    "ISBN 可选，不影响建档",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information,
+                    MessageBoxDefaultButton.Button2);
+
+                if (choice != DialogResult.Yes)
+                {
+                    _errors.SetError(_isbn, "ISBN 格式不正确。可清空后保存，或改正后再保存。");
+                    _isbn.Focus();
+                    _isbn.SelectAll();
+                    return;
+                }
+
+                _isbn.Text = isbnPlan.Isbn;
+                _note.Text = isbnPlan.Note;
+            }
+
             try
             {
                 var target = _book ?? new Book();
                 target.SelfCode = _book == null ? "" : (_selfCode.Text ?? "").Trim();
-                target.Isbn = _isbn.Text;
+                target.Isbn = isbnPlan.Isbn;
                 target.Title = _title.Text;
                 target.Author = _author.Text;
                 target.Publisher = _publisher.Text;
@@ -588,7 +615,7 @@ namespace Win7BookManagement.Forms
                 target.Edition = _edition.Text;
                 target.Binding = _binding.Text;
                 target.ShelfCode = _shelfCode.Text;
-                target.Note = _note.Text;
+                target.Note = isbnPlan.Note;
 
                 var priceCent = Money.FromYuan(_price.Value);
                 target.ListPriceCent = priceCent;

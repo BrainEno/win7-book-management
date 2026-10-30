@@ -189,6 +189,7 @@
     <Compile Include="Repositories\SettingsRepository.cs" />
     <Compile Include="Repositories\SupplierRepository.cs" />
     <Compile Include="Services\BookImportService.cs" />
+    <Compile Include="Services\BookIsbnSavePolicy.cs" />
     <Compile Include="Services\BackupService.cs" />
     <Compile Include="Services\InventoryService.cs" />
     <Compile Include="Services\PurchaseService.cs" />
