@@ -101,6 +101,15 @@
     <Compile Include="Forms\OnboardingGuideForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\PurchaseForm.Layout.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\PurchaseForm.Workflow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\PurchaseForm.Cart.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\PurchaseForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -111,6 +120,12 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\ReturnDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\SalesForm.Dialogs.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\SalesForm.Layout.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\SalesForm.cs">
