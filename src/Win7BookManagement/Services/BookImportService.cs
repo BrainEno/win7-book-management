@@ -179,9 +179,10 @@ VALUES('book_category',@value,0,'批量导入',1,@now,@now);";
             {
                 var text = File.ReadAllText(path, Encoding.UTF8);
                 if (text.Length > 0 && text[0] == '\uFEFF') text = text.Substring(1);
+                var headerSeen = false;
                 foreach (var record in ParseCsv(text))
                 {
-                    if (result.Count == 0) { ValidateHeader(record); continue; }
+                    if (!headerSeen) { ValidateHeader(record); headerSeen = true; continue; }
                     if (record.All(string.IsNullOrWhiteSpace)) continue;
                     result.Add(Tuple.Create(result.Count + 2, record));
                 }
