@@ -64,14 +64,21 @@ jobs:
       - name: Release-folder smoke test
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
           $dir = "src\Win7BookManagement\bin\x86\Release"
-          $p = Start-Process "$dir\Win7BookManagement.exe" "--self-test" -Wait -PassThru -RedirectStandardOutput smoke-stdout.txt -RedirectStandardError smoke-stderr.txt
+          try {
+            $p = Start-Process "$dir\Win7BookManagement.exe" "--self-test" -Wait -PassThru -RedirectStandardOutput smoke-stdout.txt -RedirectStandardError smoke-stderr.txt
+          } catch {
+            Write-Host "::error::Smoke launch failed: $_"
+            Get-ChildItem $dir -ErrorAction SilentlyContinue | Select-Object -First 40 | ForEach-Object { Write-Host "::error::Release file: $($_.Name)" }
+            exit 1
+          }
           if ($p.ExitCode -ne 0) {
             Get-Content "$dir\smoke-error.txt" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::Smoke: $_" }
             Get-Content smoke-stderr.txt -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::Smoke: $_" }
             Get-Content "$dir\startup-error.txt" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::Startup: $_" }
             Write-Host "::error::Smoke exit code: $($p.ExitCode)"
-            throw "Release smoke test failed: $($p.ExitCode)"
+            exit 1
           }
       - name: Full business and UI regression suite (not shipped)
         shell: powershell
