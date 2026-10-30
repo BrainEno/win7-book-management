@@ -22,7 +22,7 @@ $dotnetInstaller = Join-Path $prereqDir "NDP48-x86-x64-AllOS-ENU.exe"
 $iconGenerator = Join-Path $root "scripts\generate-app-icon.ps1"
 $appIcon = Join-Path $root "src\Win7BookManagement\Resources\BookDesk.ico"
 
-$dotnetUrl = "https://download.microsoft.com/download/f/3/a/f3a6af84-da23-40a5-8d1c-49cc10c8e76f/NDP48-x86-x64-AllOS-ENU.exe"
+$dotnetUrl = "https://download.visualstudio.microsoft.com/download/pr/2d6bb6b2-226a-4baa-bdec-798822606ff1/8494001c276a4b96804cde7829c04d7f/ndp48-x86-x64-allos-enu.exe"
 $innoUrl = "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe"
 # Pinned official artifacts. .NET hash is the published Microsoft 4.8 offline installer;
 # Inno hash also matches the GitHub release asset digest for is-6_7_3.
@@ -174,6 +174,9 @@ try {
     $dotnetSignature = Get-AuthenticodeSignature $dotnetInstaller
     if ($dotnetSignature.Status -ne "Valid") {
         throw ".NET Framework 4.8 installer signature is not valid: $($dotnetSignature.Status)"
+    }
+    if ($dotnetSignature.SignerCertificate.Subject -notmatch "Microsoft") {
+        throw ".NET Framework 4.8 installer is not signed by Microsoft: $($dotnetSignature.SignerCertificate.Subject)"
     }
 
     $iscc = Ensure-InnoSetupCompiler
