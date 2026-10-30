@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Win7BookManagement.Forms;
@@ -14,16 +15,25 @@ namespace Win7BookManagement
         [STAThread]
         private static int Main(string[] args)
         {
-            // CI 布局检查必须与真实应用使用同一 WinForms 渲染模式。
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+            try
+            {
+                // CI 布局检查必须与真实应用使用同一 WinForms 渲染模式。
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
 
-            // P0-3 / P1-1 / P1-6 接线顺序：目录 → 日志 → 全局异常 → 主题 → 业务。
-            AppPaths.EnsureFolders();
-            AppLog.Info("app", "BOOK DESK 启动");
-            CrashReporter.Install();
-            UiTheme.InitializeAntdUi();
-            LowSpecMode.ApplyToAntdUi();
+                // P0-3 / P1-1 / P1-6 接线顺序：目录 → 日志 → 全局异常 → 主题 → 业务。
+                AppPaths.EnsureFolders();
+                AppLog.Info("app", "BOOK DESK 启动");
+                CrashReporter.Install();
+                UiTheme.InitializeAntdUi();
+                LowSpecMode.ApplyToAntdUi();
+            }
+            catch (Exception ex)
+            {
+                try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "startup-error.txt"), ex.ToString()); }
+                catch { }
+                return 1;
+            }
 
             if (args != null && args.Any(a => string.Equals(a, "--self-test", StringComparison.OrdinalIgnoreCase)))
                 return SmokeTest.Run();
