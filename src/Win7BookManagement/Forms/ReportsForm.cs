@@ -374,7 +374,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "查询失败：\r\n" + ex.Message, "报表查询失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "查询失败：\r\n" + UserErrorText.For(ex), "报表查询失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -724,21 +725,31 @@ namespace Win7BookManagement.Forms
 
                 using (var dialog = new SaveFileDialog())
                 {
-                    dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                    dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls|CSV 文本 (*.csv)|*.csv";
                     dialog.DefaultExt = "xlsx";
                     dialog.AddExtension = true;
                     dialog.InitialDirectory = AppPaths.ExportDirectory;
                     dialog.FileName = fileName;
 
                     if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                    _services.Excel.Export(_current, dialog.FileName, title);
-                    MessageBox.Show(this, "导出完成。\r\n" + dialog.FileName, "Excel 已生成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var data = _current; var path = dialog.FileName;
+                    UiTask.Run(this, "导出 " + title, (progress, token) =>
+                    {
+                        _services.Excel.Export(data, path, title, progress, token); return path;
+                    }, result => MessageBox.Show(this, "导出完成。\r\n" + result, "Excel 已生成", MessageBoxButtons.OK, MessageBoxIcon.Information));
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "导出失败：\r\n" + ex.Message, "无法导出 Excel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "导出失败：\r\n" + UserErrorText.For(ex), "无法导出 Excel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private void ShowMonthlyExportComplete(string path, bool sales)
+        {
+            MessageBox.Show(this, (sales ? "销售月报" : "采购月报") + "已生成，包含月汇总和当月每日明细。\r\n" + path,
+                "Excel 已生成", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void ExportSalesMonthly()
@@ -748,7 +759,7 @@ namespace Win7BookManagement.Forms
 
             using (var dialog = new SaveFileDialog())
             {
-                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls";
                 dialog.DefaultExt = "xlsx";
                 dialog.AddExtension = true;
                 dialog.InitialDirectory = AppPaths.ExportDirectory;
@@ -756,27 +767,18 @@ namespace Win7BookManagement.Forms
 
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
-                var detail = _services.Reports.SalesMonthlyExportDetail(month);
-                var returnDetail = _services.Reports.SalesMonthlyReturnExportDetail(month);
-                _services.SalesMonthlyExcel.Export(
-                    detail,
-                    returnDetail,
-                    dialog.FileName,
-                    month,
-                    _services.Settings.GetReportStoreName(),
-                    _services.Settings.GetReportNightShiftStartHour(),
-                    _services.Settings.GetReportCategoryMapping());
+                var path = dialog.FileName;
+                var store = _services.Settings.GetReportStoreName();
+                var shift = _services.Settings.GetReportNightShiftStartHour();
+                var mapping = _services.Settings.GetReportCategoryMapping();
+                UiTask.Run(this, "生成销售月报", (progress, token) =>
+                {
+                    var detail = _services.Reports.SalesMonthlyExportDetail(month);
+                    var returns = _services.Reports.SalesMonthlyReturnExportDetail(month);
+                    _services.SalesMonthlyExcel.Export(detail, returns, path, month, store, shift, mapping, progress, token);
+                    return path;
+                }, result => ShowMonthlyExportComplete(result, true));
 
-                MessageBox.Show(
-                    this,
-                    "销售月报已生成。\r\n\r\n包含：\r\n" +
-                    "• 销售月报表：销售额、销售退货、净销售以及各收款方式的收款 / 退款 / 净额\r\n" +
-                    "• 每日明细：按时间和单号排序，同一单号的单据级字段自动合并\r\n" +
-                    "• 参考成本口径与当月 / 累计退货数量均写入明细，便于复核\r\n\r\n" +
-                    dialog.FileName,
-                    "Excel 已生成",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
             }
         }
 
@@ -787,7 +789,7 @@ namespace Win7BookManagement.Forms
 
             using (var dialog = new SaveFileDialog())
             {
-                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls";
                 dialog.DefaultExt = "xlsx";
                 dialog.AddExtension = true;
                 dialog.InitialDirectory = AppPaths.ExportDirectory;
@@ -795,26 +797,14 @@ namespace Win7BookManagement.Forms
 
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
-                var detail = _services.Reports.PurchaseMonthlyExportDetail(month);
-                var returnDetail = _services.Reports.PurchaseMonthlyReturnExportDetail(month);
-                _services.PurchaseMonthlyExcel.Export(
-                    detail,
-                    returnDetail,
-                    dialog.FileName,
-                    month,
-                    _services.Settings.GetReportStoreName());
-
-                MessageBox.Show(
-                    this,
-                    "采购月报已生成。\r\n\r\n包含：\r\n" +
-                    "• 采购月报表：按日汇总采购入库、采购退货与净采购\r\n" +
-                    "• 供应商汇总：按供应商核对采购金额、退货金额与净采购金额\r\n" +
-                    "• 每日明细：采购入库与采购退货分区，同一单号字段自动合并\r\n" +
-                    "• 已配置 A4、横向打印、页边距、重复表头、打印区域与页码\r\n\r\n" +
-                    dialog.FileName,
-                    "Excel 已生成",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                var path = dialog.FileName; var store = _services.Settings.GetReportStoreName();
+                UiTask.Run(this, "生成采购月报", (progress, token) =>
+                {
+                    var detail = _services.Reports.PurchaseMonthlyExportDetail(month);
+                    var returns = _services.Reports.PurchaseMonthlyReturnExportDetail(month);
+                    _services.PurchaseMonthlyExcel.Export(detail, returns, path, month, store, progress, token);
+                    return path;
+                }, result => ShowMonthlyExportComplete(result, false));
             }
         }
 

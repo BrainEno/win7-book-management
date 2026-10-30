@@ -9,6 +9,8 @@ namespace Win7BookManagement.Forms
 {
     public sealed class MainForm : Form
     {
+        /// <summary>UI 自动化 / 自检生成快照时禁止弹出阻断式提醒。</summary>
+        public static bool SuppressStartupPrompts { get; set; }
         private readonly ApplicationServices _services;
         private readonly Panel _sidebar;
         private readonly AntdUI.Menu _navigation;
@@ -177,6 +179,10 @@ namespace Win7BookManagement.Forms
 
                 if (string.IsNullOrWhiteSpace(_currentKey))
                     Navigate("dashboard");
+                var backupStatus = _services.AutoBackup.GetStatus();
+                if (!SuppressStartupPrompts && backupStatus.Level == BackupHealthLevel.Critical)
+                    MessageBox.Show(this, backupStatus.Message + "\r\n请打开“备份与恢复”立即创建备份，并配置 U 盘或另一块硬盘作为第二备份位置。",
+                        "备份过期提醒", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 if (!_services.Settings.IsOnboardingCompleted())
                     BeginInvoke(new Action(StartOnboardingGuide));
             };

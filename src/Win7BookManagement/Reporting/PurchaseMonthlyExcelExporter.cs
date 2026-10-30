@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using NPOI.SS.UserModel;
 using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
+using NPOI.HSSF.UserModel;
 
 namespace Win7BookManagement.Reporting
 {
@@ -42,7 +44,9 @@ namespace Win7BookManagement.Reporting
             DataTable returnDetail,
             string path,
             DateTime month,
-            string storeName)
+            string storeName,
+            IProgress<int> progress = null,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             if (purchaseDetail == null) throw new ArgumentNullException("purchaseDetail");
             if (returnDetail == null) throw new ArgumentNullException("returnDetail");
@@ -61,7 +65,8 @@ namespace Win7BookManagement.Reporting
             var purchases = ReadPurchases(purchaseDetail);
             var returns = ReadReturns(returnDetail);
 
-            IWorkbook workbook = new XSSFWorkbook();
+            IWorkbook workbook = string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase)
+                ? (IWorkbook)new HSSFWorkbook() : new XSSFWorkbook();
             try
             {
                 var styles = new StyleFactory(workbook);
@@ -95,10 +100,13 @@ namespace Win7BookManagement.Reporting
                             normalizedMonth.Month,
                             day),
                         normalizedStoreName);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (progress != null) progress.Report(10 + day * 80 / days);
                 }
 
-                using (var stream = File.Create(path))
-                    workbook.Write(stream);
+                cancellationToken.ThrowIfCancellationRequested();
+                WorkbookFile.Publish(workbook, path);
+                if (progress != null) progress.Report(100);
             }
             finally
             {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using Win7BookManagement.Database;
+using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 
 namespace Win7BookManagement.Repositories
@@ -105,7 +106,7 @@ ORDER BY
 
         public Book FindByExactIdentifier(string identifier)
         {
-            var normalized = (identifier ?? "").Trim();
+            var normalized = Isbn.LooksLikeIsbn(identifier) ? Isbn.Normalize(identifier) : (identifier ?? "").Trim();
             if (normalized.Length == 0) return null;
 
             using (var connection = _factory.Open())
@@ -216,7 +217,7 @@ ORDER BY sort_order, value COLLATE NOCASE;";
 
         public Book FindByExactIsbn(string isbn)
         {
-            var normalized = (isbn ?? "").Trim();
+            var normalized = Isbn.Normalize(isbn);
             if (normalized.Length == 0) return null;
 
             using (var connection = _factory.Open())
@@ -304,6 +305,7 @@ WHERE id=@id;";
             if (book == null) throw new ArgumentNullException("book");
             if (string.IsNullOrWhiteSpace(book.Title))
                 throw new InvalidOperationException("书名不能为空。");
+            book.Isbn = Isbn.Normalize(book.Isbn);
             if (book.ListPriceCent < 0 || book.DefaultPurchasePriceCent < 0 || book.SalePriceCent < 0)
                 throw new InvalidOperationException("价格不能为负数。");
         }

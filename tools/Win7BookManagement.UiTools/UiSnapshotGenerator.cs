@@ -42,6 +42,7 @@ namespace Win7BookManagement.Infrastructure
                 outputDirectory = Path.GetFullPath(outputDirectory);
                 Directory.CreateDirectory(outputDirectory);
 
+                MainForm.SuppressStartupPrompts = true;
                 var services = new ApplicationServices(Path.Combine(root, "snapshot.db"));
                 services.Settings.SetOnboardingCompleted(true);
                 services.Settings.SetHomeGuideExpanded(false);
@@ -674,7 +675,7 @@ namespace Win7BookManagement.Infrastructure
                 new Book
                 {
                     SelfCode = "BK-0002",
-                    Isbn = "9780000000102",
+                    Isbn = "9780000000118",
                     Title = "博尔赫斯小说选",
                     Author = "豪尔赫·路易斯·博尔赫斯",
                     Publisher = "示例文艺出版社",
@@ -691,7 +692,7 @@ namespace Win7BookManagement.Infrastructure
                 new Book
                 {
                     SelfCode = "BK-0003",
-                    Isbn = "9780000000103",
+                    Isbn = "9780000000125",
                     Title = "现代主义文学导论",
                     Author = "示例作者",
                     Publisher = "北方学术出版社",
@@ -708,7 +709,7 @@ namespace Win7BookManagement.Infrastructure
                 new Book
                 {
                     SelfCode = "BK-0004",
-                    Isbn = "9780000000104",
+                    Isbn = "9780000000132",
                     Title = "独立书店经营手册",
                     Author = "编辑部",
                     Publisher = "城市文化出版社",
@@ -725,7 +726,7 @@ namespace Win7BookManagement.Infrastructure
                 new Book
                 {
                     SelfCode = "BK-0005",
-                    Isbn = "9780000000105",
+                    Isbn = "9780000000149",
                     Title = "摄影与城市漫游",
                     Author = "周屿",
                     Publisher = "光影出版社",
@@ -759,7 +760,7 @@ namespace Win7BookManagement.Infrastructure
                 new Book
                 {
                     SelfCode = "BK-0007",
-                    Isbn = "9780000000107",
+                    Isbn = "9780000000156",
                     Title = "设计中的秩序与留白",
                     Author = "宋一",
                     Publisher = "设计文化出版社",
@@ -776,7 +777,7 @@ namespace Win7BookManagement.Infrastructure
                 new Book
                 {
                     SelfCode = "BK-0008",
-                    Isbn = "9780000000108",
+                    Isbn = "9780000000163",
                     Title = "城市咖啡馆观察笔记",
                     Author = "林桥",
                     Publisher = "日常出版",

@@ -2,6 +2,7 @@ using System;
 using System.Data.SQLite;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using Win7BookManagement.Database;
 
 namespace Win7BookManagement.Services
@@ -17,7 +18,7 @@ namespace Win7BookManagement.Services
 
         public string LastSafetyBackupPath { get; private set; }
 
-        public string CreateBackup(string targetPath)
+        public string CreateBackup(string targetPath, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(targetPath))
                 throw new ArgumentException("备份路径不能为空。", "targetPath");
@@ -35,7 +36,8 @@ namespace Win7BookManagement.Services
             string previousBackupPath = null;
             try
             {
-                CreateLiveSnapshot(temporaryPath);
+                cancellationToken.ThrowIfCancellationRequested();
+                CreateLiveSnapshot(temporaryPath, progress, cancellationToken);
                 ValidateBackup(temporaryPath);
 
                 previousBackupPath = PublishValidatedBackup(temporaryPath, fullTargetPath);
@@ -63,7 +65,7 @@ namespace Win7BookManagement.Services
             }
         }
 
-        public string CreateTimestampedBackup(string directory)
+        public string CreateTimestampedBackup(string directory, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(directory))
                 throw new ArgumentException("备份目录不能为空。", "directory");
@@ -72,7 +74,16 @@ namespace Win7BookManagement.Services
             var file = "bookstore_" +
                        DateTime.Now.ToString("yyyyMMdd_HHmmssfff", CultureInfo.InvariantCulture) +
                        ".db";
-            return CreateBackup(Path.Combine(directory, file));
+            return CreateBackup(Path.Combine(directory, file), progress, cancellationToken);
+        }
+
+        public string CreateMigrationBackup(string directory)
+        {
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "before_migration_" + DateTime.Now.ToString("yyyyMMdd_HHmmssfff") + "_" + Guid.NewGuid().ToString("N").Substring(0, 6) + ".db");
+            CreateLiveSnapshot(path);
+            ValidateBackup(path, false);
+            return path;
         }
 
         public string Restore(string backupPath)
@@ -153,7 +164,7 @@ namespace Win7BookManagement.Services
             }
         }
 
-        private void CreateLiveSnapshot(string destinationPath)
+        private void CreateLiveSnapshot(string destinationPath, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             TryDelete(destinationPath);
             using (var source = _factory.Open())
@@ -161,7 +172,19 @@ namespace Win7BookManagement.Services
                 CheckpointWal(source);
                 using (var destination = OpenStandalone(destinationPath, false))
                 {
-                    source.BackupDatabase(destination, "main", "main", -1, null, 0);
+                    var lastPercent = -1;
+                    source.BackupDatabase(destination, "main", "main", 64,
+                        delegate(SQLiteConnection src, string sourceName, SQLiteConnection dst, string destinationName,
+                            int remainingPages, int pageCount, int totalPages, bool retry)
+                        {
+                            if (progress != null && totalPages > 0)
+                            {
+                                var percent = Math.Max(0, Math.Min(95, (int)((long)(totalPages - remainingPages) * 95 / totalPages)));
+                                if (percent != lastPercent) { progress.Report(percent); lastPercent = percent; }
+                            }
+                            return !cancellationToken.IsCancellationRequested;
+                        }, 10);
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
             }
         }
@@ -318,7 +341,7 @@ namespace Win7BookManagement.Services
             if (File.Exists(shm)) File.Delete(shm);
         }
 
-        private static void ValidateBackup(string path)
+        public static void ValidateBackup(string path, bool requireApplicationTables = true)
         {
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
                 throw new FileNotFoundException("数据库文件不存在。", path);
@@ -352,7 +375,7 @@ SELECT COUNT(*)
 FROM sqlite_master
 WHERE type='table'
   AND name IN ('schema_info','books','inventory_transactions','app_settings');";
-                        if (Convert.ToInt32(requiredTables.ExecuteScalar(), CultureInfo.InvariantCulture) != 4)
+                        if (requireApplicationTables && Convert.ToInt32(requiredTables.ExecuteScalar(), CultureInfo.InvariantCulture) != 4)
                             throw new InvalidOperationException("所选文件不是有效的本系统数据库备份。");
                     }
 

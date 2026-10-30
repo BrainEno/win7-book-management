@@ -190,6 +190,17 @@ namespace Win7BookManagement.Forms
                 Margin = new Padding(6, 7, 0, 0)
             };
             _stats.Controls.Add(_helperText);
+            var stocktake = UiTheme.CreateAntdButton("盘点单", false); stocktake.Width = 96;
+            stocktake.Margin = new Padding(12, 0, 0, 0);
+            stocktake.Click += delegate
+            {
+                using (var dialog = new StocktakeForm(_services))
+                {
+                    dialog.ShowDialog(this);
+                    if (dialog.Posted) Reload();
+                }
+            };
+            _stats.Controls.Add(stocktake);
 
             _searchSection.Controls.Add(_searchRow, 0, 0);
             _searchSection.Controls.Add(_stats, 0, 1);
@@ -627,7 +638,8 @@ namespace Win7BookManagement.Forms
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "调整失败：\r\n" + ex.Message, "请检查调整内容", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    AppLog.Error("ui", "界面操作失败", ex);
+                    MessageBox.Show(this, "调整失败：\r\n" + UserErrorText.For(ex), "请检查调整内容", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
         }

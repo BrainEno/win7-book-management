@@ -4,6 +4,7 @@ using System.Data.SQLite;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Win7BookManagement.Database;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Repositories;
@@ -62,6 +63,7 @@ namespace Win7BookManagement.Services
         public const string SecondaryBackupPathKey = "secondary_backup_path";
         public const string SecondaryBackupEnabledKey = "secondary_backup_enabled";
         public const string LastBackupUtcKey = "last_backup_utc";
+        public const string LastSecondaryErrorKey = "last_secondary_error";
 
         public const int DefaultRetention = 14;
         public const int MinRetention = 3;
@@ -155,16 +157,19 @@ namespace Win7BookManagement.Services
         }
 
         /// <summary>立即备份（UI 按钮 / 验证脚本使用）。失败向上抛出，由界面用中文提示。</summary>
-        public string CreateNow(string reason)
+        public string CreateNow(string reason, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             var directory = BackupDirectory;
             Directory.CreateDirectory(directory);
 
-            var path = _backup.CreateTimestampedBackup(directory);
+            var path = _backup.CreateTimestampedBackup(directory, progress, cancellationToken);
             _settings.SetString(LastBackupUtcKey, DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
 
+            cancellationToken.ThrowIfCancellationRequested();
             CopyToSecondaryLocations(path);
+            cancellationToken.ThrowIfCancellationRequested();
             Prune();
+            if (progress != null) progress.Report(100);
 
             AppLog.Info("backup", "备份完成（" + reason + "）：" + path);
             return path;
@@ -235,6 +240,11 @@ namespace Win7BookManagement.Services
                     "最近一次备份在 " + (int)age + " 天前，建议今天关闭前完成备份。");
             }
 
+            var secondaryError = _settings.GetString(LastSecondaryErrorKey, string.Empty);
+            if (!string.IsNullOrWhiteSpace(secondaryError))
+                return new BackupStatus(last, directory, BackupHealthLevel.Warning,
+                    "主备份已保存，但第二份备份未完成：" + secondaryError + " 请检查 U 盘或第二备份位置。");
+
             return new BackupStatus(last, directory, BackupHealthLevel.Ok,
                 "最近一次备份：" + last.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
         }
@@ -265,36 +275,15 @@ namespace Win7BookManagement.Services
 
             try
             {
-                using (var connection = new SQLiteConnection(
-                    "Data Source=" + newest.FullName + ";Version=3;Read Only=True;Pooling=False;"))
-                {
-                    connection.Open();
-
-                    using (var integrity = connection.CreateCommand())
-                    {
-                        integrity.CommandText = "PRAGMA integrity_check;";
-                        var verdict = Convert.ToString(integrity.ExecuteScalar());
-                        if (!string.Equals(verdict, "ok", StringComparison.OrdinalIgnoreCase))
-                        {
-                            result.Detail = "完整性检查未通过：" + verdict;
-                            return result;
-                        }
-                    }
-
-                    using (var count = connection.CreateCommand())
-                    {
-                        count.CommandText = "SELECT COUNT(*) FROM books;";
-                        var books = Convert.ToInt32(count.ExecuteScalar());
-                        result.Detail = "完整性检查通过；备份包含 " + books + " 条图书资料。";
-                    }
-                }
-
+                BackupService.ValidateBackup(newest.FullName);
                 result.Passed = true;
+                result.Detail = "完整性、核心业务表和外键检查全部通过。";
                 return result;
             }
             catch (Exception ex)
             {
-                result.Detail = "备份校验失败：" + ex.GetType().Name + " - " + ex.Message;
+                AppLog.Error("backup", "最近备份验证失败", ex);
+                result.Detail = UserErrorText.For(ex);
                 return result;
             }
         }
@@ -311,41 +300,72 @@ namespace Win7BookManagement.Services
 
         private void CopyToSecondaryLocations(string backupPath)
         {
-            if (!SecondaryBackupEnabled) return;
-
+            if (!SecondaryBackupEnabled)
+            {
+                _settings.SetString(LastSecondaryErrorKey, "第二份备份已关闭。");
+                return;
+            }
             var fileName = Path.GetFileName(backupPath);
-
+            var errors = new List<string>();
+            var copies = 0;
             var configured = SecondaryBackupPath;
-            if (!string.IsNullOrWhiteSpace(configured) && Directory.Exists(configured))
-                TryCopy(backupPath, configured, fileName);
-
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                if (TryCopy(backupPath, configured, fileName)) copies++;
+                else errors.Add("指定目录不可写或已断开");
+            }
             try
             {
                 foreach (var drive in DriveInfo.GetDrives())
                 {
                     if (drive.DriveType != DriveType.Removable || !drive.IsReady) continue;
                     var target = Path.Combine(drive.RootDirectory.FullName, "BookDeskBackup");
-                    TryCopy(backupPath, target, fileName);
+                    if (TryCopy(backupPath, target, fileName)) copies++;
+                    else errors.Add(drive.Name + " 写入失败");
                 }
             }
             catch (Exception ex)
             {
-                AppLog.Warn("backup", "枚举可移动磁盘失败：" + ex.GetType().Name);
+                AppLog.Error("backup", "枚举可移动磁盘失败", ex);
+                errors.Add("无法检查 U 盘");
             }
+            if (copies == 0) errors.Add("尚未检测到可用的第二备份位置");
+            _settings.SetString(LastSecondaryErrorKey, string.Join("；", errors.ToArray()));
         }
 
-        private static void TryCopy(string sourcePath, string targetDirectory, string fileName)
+        private bool TryCopy(string sourcePath, string targetDirectory, string fileName)
         {
+            var temporary = (string)null;
             try
             {
+                if (string.Equals(Path.GetFullPath(targetDirectory).TrimEnd(Path.DirectorySeparatorChar),
+                    Path.GetFullPath(BackupDirectory).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+                    return false;
                 Directory.CreateDirectory(targetDirectory);
                 var target = Path.Combine(targetDirectory, fileName);
-                File.Copy(sourcePath, target, true);
-                AppLog.Info("backup", "第二份备份写入：" + target);
+                temporary = target + ".writing-" + Guid.NewGuid().ToString("N");
+                File.Copy(sourcePath, temporary);
+                BackupService.ValidateBackup(temporary);
+                if (File.Exists(target)) File.Delete(target);
+                File.Move(temporary, target);
+                foreach (var stale in new DirectoryInfo(targetDirectory).GetFiles("bookstore_*.db")
+                    .OrderByDescending(f => f.LastWriteTimeUtc).Skip(Retention))
+                {
+                    try { stale.Delete(); }
+                    catch (Exception ex) { AppLog.Warn("backup", "第二位置旧备份清理失败：" + ex.GetType().Name); }
+                }
+                AppLog.Info("backup", "第二份备份写入并验证完成：" + target);
+                return true;
             }
             catch (Exception ex)
             {
-                AppLog.Warn("backup", "第二份备份写入失败：" + targetDirectory + " / " + ex.GetType().Name);
+                AppLog.Error("backup", "第二份备份写入失败：" + targetDirectory, ex);
+                return false;
+            }
+            finally
+            {
+                try { if (temporary != null && File.Exists(temporary)) File.Delete(temporary); }
+                catch (Exception ex) { AppLog.Warn("backup", "第二位置临时文件清理失败：" + ex.GetType().Name); }
             }
         }
     }

@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <BookDeskVersion>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</BookDeskVersion>
+    <Version>$(BookDeskVersion)</Version>
+    <AssemblyVersion>$(BookDeskVersion).0</AssemblyVersion>
+    <FileVersion>$(BookDeskVersion).0</FileVersion>
+    <InformationalVersion>$(BookDeskVersion)</InformationalVersion>
+  </PropertyGroup>
+</Project>

@@ -19,11 +19,13 @@ namespace Win7BookManagement.Infrastructure
             Sales = new SalesService(Database);
             Returns = new ReturnService(Database);
             Inventory = new InventoryService(Database);
+            Stocktake = new StocktakeService(Database);
             Reports = new ReportRepository(Database);
             Documents = new DocumentRepository(Database);
             Dashboard = new DashboardRepository(Database);
             Settings = new SettingsRepository(Database);
             Excel = new ExcelReportExporter();
+            Receipts = new ReceiptPrinter(Database, Settings);
             SalesMonthlyExcel = new SalesMonthlyExcelExporter();
             PurchaseMonthlyExcel = new PurchaseMonthlyExcelExporter();
             Backup = new BackupService(Database);
@@ -38,11 +40,13 @@ namespace Win7BookManagement.Infrastructure
         public SalesService Sales { get; private set; }
         public ReturnService Returns { get; private set; }
         public InventoryService Inventory { get; private set; }
+        public StocktakeService Stocktake { get; private set; }
         public ReportRepository Reports { get; private set; }
         public DocumentRepository Documents { get; private set; }
         public DashboardRepository Dashboard { get; private set; }
         public SettingsRepository Settings { get; private set; }
         public ExcelReportExporter Excel { get; private set; }
+        public ReceiptPrinter Receipts { get; private set; }
         public SalesMonthlyExcelExporter SalesMonthlyExcel { get; private set; }
         public PurchaseMonthlyExcelExporter PurchaseMonthlyExcel { get; private set; }
         public BackupService Backup { get; private set; }

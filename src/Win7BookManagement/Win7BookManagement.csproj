@@ -44,7 +44,10 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing.Design" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
@@ -62,6 +65,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\BackupForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\BookImportForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\BookEditForm.cs">
@@ -95,6 +101,15 @@
     <Compile Include="Forms\OnboardingGuideForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\PurchaseForm.Layout.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\PurchaseForm.Workflow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\PurchaseForm.Cart.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\PurchaseForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -107,15 +122,29 @@
     <Compile Include="Forms\ReturnDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\SalesForm.Dialogs.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\SalesForm.Layout.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\SalesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\SettingsForm.Maintenance.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\SettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\StocktakeForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\SupplierForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Infrastructure\SmokeTest.cs" />
+    <Compile Include="Infrastructure\UiTask.cs" />
     <Compile Include="Infrastructure\AppPaths.cs" />
     <Compile Include="Infrastructure\ApplicationServices.cs" />
     <Compile Include="Infrastructure\UserErrorText.cs" />
@@ -124,12 +153,11 @@
     <Compile Include="Infrastructure\CrashReporter.cs" />
     <Compile Include="Infrastructure\AppLog.cs" />
     <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
+    <Compile Include="Infrastructure\Isbn.cs" />
     <Compile Include="Infrastructure\Money.cs" />
     <Compile Include="Infrastructure\PersistentAntdTable.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Infrastructure\SelfTest.cs" />
-    <Compile Include="Infrastructure\UiSnapshotGenerator.cs" />
     <Compile Include="Infrastructure\UiTheme.cs" />
     <Compile Include="Infrastructure\WindowPlacement.cs" />
     <Compile Include="Models\Book.cs" />
@@ -138,12 +166,17 @@
     <Compile Include="Models\PurchaseDocument.cs" />
     <Compile Include="Models\ReturnLineInput.cs" />
     <Compile Include="Models\ReturnableDocumentLine.cs" />
+    <Compile Include="Models\SalesReceipt.cs" />
     <Compile Include="Models\SalesDraft.cs" />
+    <Compile Include="Models\StocktakeDocument.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TransactionLineInput.cs" />
     <Compile Include="Infrastructure\BackupStatusBanner.cs" />
     <Compile Include="Services\AutoBackupService.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="Reporting\WorkbookFile.cs" />
+    <Compile Include="Reporting\CsvReportExporter.cs" />
+    <Compile Include="Reporting\ReceiptPrinter.cs" />
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />
     <Compile Include="Reporting\PurchaseMonthlyExcelExporter.cs" />
@@ -155,11 +188,13 @@
     <Compile Include="Repositories\ReportRepository.cs" />
     <Compile Include="Repositories\SettingsRepository.cs" />
     <Compile Include="Repositories\SupplierRepository.cs" />
+    <Compile Include="Services\BookImportService.cs" />
     <Compile Include="Services\BackupService.cs" />
     <Compile Include="Services\InventoryService.cs" />
     <Compile Include="Services\PurchaseService.cs" />
     <Compile Include="Services\ReturnService.cs" />
     <Compile Include="Services\SalesService.cs" />
+    <Compile Include="Services\StocktakeService.cs" />
     <None Include="App.config" />
     <None Include="app.manifest" />
   </ItemGroup>
@@ -172,8 +207,5 @@
     <PackageReference Include="NPOI" Version="2.6.2" />
     <PackageReference Include="AntdUI" Version="2.4.12" />
   </ItemGroup>
-  <PropertyGroup>
-    <PreBuildEvent>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\scripts\generate-app-icon.ps1" -OutputPath "$(MSBuildProjectDirectory)\Resources\BookDesk.ico"</PreBuildEvent>
-  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

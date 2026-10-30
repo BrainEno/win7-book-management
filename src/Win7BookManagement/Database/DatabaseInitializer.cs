@@ -13,21 +13,132 @@ namespace Win7BookManagement.Database
             _factory = factory;
         }
 
+        public const int SupportedVersion = 11;
+        public string LastMigrationBackupPath { get; private set; }
+
+        private sealed class SchemaMigration
+        {
+            public readonly int Version;
+            public readonly string Name;
+            public readonly Action<SQLiteConnection, SQLiteTransaction> Apply;
+            public SchemaMigration(int version, string name, Action<SQLiteConnection, SQLiteTransaction> apply)
+            { Version = version; Name = name; Apply = apply; }
+        }
+
+        // Append-only: never edit a released migration. Each step and its version
+        // update share one transaction. The legacy baseline is deliberately
+        // idempotent because historical releases recorded 10 before v4-v9 too.
+        private static readonly SchemaMigration[] Migrations =
+        {
+            new SchemaMigration(10, "legacy-baseline", ApplyBaseline),
+            new SchemaMigration(11, "stocktake-documents", ApplyStocktake)
+        };
+
         public void EnsureCreated()
         {
-            var isNew = !File.Exists(_factory.DatabasePath);
+            var current = GetDatabaseVersion(_factory);
+            if (current > SupportedVersion)
+                throw new InvalidOperationException(
+                    "这个数据库由较新版本的 BOOK DESK 创建（数据库版本 " + current +
+                    "，本程序支持 " + SupportedVersion + "）。请先升级软件，勿用旧版本继续写入。");
 
-            using (var connection = _factory.Open())
+            LastMigrationBackupPath = null;
+            if (current < SupportedVersion && File.Exists(_factory.DatabasePath) &&
+                new FileInfo(_factory.DatabasePath).Length > 0)
             {
-                // P0-3：journal_mode / synchronous 已由连接字符串统一指定，
-                // 这里不再对单条连接执行 PRAGMA，避免池内连接持久性不一致。
-                using (var pragma = connection.CreateCommand())
-                {
-                    pragma.CommandText = "PRAGMA journal_mode=WAL;";
-                    pragma.ExecuteNonQuery();
-                }
+                var directory = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(_factory.DatabasePath)), "migration-safety");
+                LastMigrationBackupPath = new Services.BackupService(_factory).CreateMigrationBackup(directory);
+            }
 
-                using (var transaction = connection.BeginTransaction())
+            try
+            {
+                using (var connection = _factory.Open())
+                {
+                    // A second process may have upgraded the file while we waited.
+                    current = ReadVersion(connection);
+                    if (current > SupportedVersion)
+                        throw new InvalidOperationException("数据库版本高于本程序支持版本，请升级 BOOK DESK。");
+                    foreach (var migration in Migrations)
+                    {
+                        if (migration.Version <= current) continue;
+                        using (var transaction = connection.BeginTransaction(System.Data.IsolationLevel.Serializable))
+                        {
+                            try
+                            {
+                                migration.Apply(connection, transaction);
+                                WriteVersion(connection, transaction, migration.Version);
+                                using (var history = connection.CreateCommand())
+                                {
+                                    history.Transaction = transaction;
+                                    history.CommandText = @"INSERT INTO schema_migration_history(version, name, applied_at)
+VALUES(@version, @name, @at);";
+                                    history.Parameters.AddWithValue("@version", migration.Version);
+                                    history.Parameters.AddWithValue("@name", migration.Name);
+                                    history.Parameters.AddWithValue("@at", DateTime.UtcNow.ToString("o"));
+                                    history.ExecuteNonQuery();
+                                }
+                                transaction.Commit();
+                            }
+                            catch
+                            {
+                                transaction.Rollback();
+                                throw;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var safety = string.IsNullOrEmpty(LastMigrationBackupPath)
+                    ? "数据库尚未修改，或本次事务已回滚。"
+                    : "本次迁移事务已回滚；迁移前快照保存在：" + LastMigrationBackupPath;
+                throw new InvalidOperationException("数据库升级未完成，请停止录入并联系维护人员。" + safety, ex);
+            }
+        }
+
+        public static int GetDatabaseVersion(DatabaseConnectionFactory factory)
+        {
+            if (!File.Exists(factory.DatabasePath) || new FileInfo(factory.DatabasePath).Length == 0) return 0;
+            using (var connection = factory.OpenReadOnly())
+                return ReadVersion(connection);
+        }
+
+        private static int ReadVersion(SQLiteConnection connection)
+        {
+            int schema = 0;
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_info';";
+                if (Convert.ToInt64(command.ExecuteScalar()) > 0)
+                {
+                    command.CommandText = "SELECT COALESCE(MAX(version), 0) FROM schema_info;";
+                    schema = Convert.ToInt32(command.ExecuteScalar());
+                }
+                command.CommandText = "PRAGMA user_version;";
+                return Math.Max(schema, Convert.ToInt32(command.ExecuteScalar()));
+            }
+        }
+
+        private static void WriteVersion(SQLiteConnection connection, SQLiteTransaction transaction, int version)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"CREATE TABLE IF NOT EXISTS schema_migration_history(
+    version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL);
+UPDATE schema_info SET version=@version;
+INSERT INTO schema_info(version) SELECT @version WHERE NOT EXISTS(SELECT 1 FROM schema_info);";
+                command.Parameters.AddWithValue("@version", version);
+                command.ExecuteNonQuery();
+                // user_version is part of SQLite's transactional database header.
+                command.CommandText = "PRAGMA user_version=" + version.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";";
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void ApplyBaseline(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
                 using (var command = connection.CreateCommand())
                 {
                     command.Transaction = transaction;
@@ -334,30 +445,40 @@ SET updated_at=created_at
 WHERE updated_at IS NULL OR trim(updated_at)='';";
                         normalizePurchases.ExecuteNonQuery();
                     }
-
-                    using (var version = connection.CreateCommand())
-                    {
-                        version.Transaction = transaction;
-                        version.CommandText = @"
-INSERT INTO schema_info(version)
-SELECT 10 WHERE NOT EXISTS (SELECT 1 FROM schema_info);
-
-UPDATE schema_info
-SET version = 10
-WHERE version < 10;
-
-INSERT OR IGNORE INTO app_settings(key, value, updated_at)
-VALUES('low_stock_threshold', '3', @now);";
-                        version.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                        version.ExecuteNonQuery();
-                    }
-
-                    transaction.Commit();
                 }
+            using (var defaults = connection.CreateCommand())
+            {
+                defaults.Transaction = transaction;
+                defaults.CommandText = @"INSERT OR IGNORE INTO app_settings(key, value, updated_at)
+VALUES('low_stock_threshold', '3', @now);";
+                defaults.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                defaults.ExecuteNonQuery();
             }
+        }
 
-            if (isNew && !File.Exists(_factory.DatabasePath))
-                throw new InvalidOperationException("数据库创建失败。");
+        private static void ApplyStocktake(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"CREATE TABLE stock_counts(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_no TEXT NOT NULL UNIQUE,
+    shelf_code TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL CHECK(status IN ('draft','posted')),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    posted_at TEXT NULL);
+CREATE TABLE stock_count_items(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_id INTEGER NOT NULL REFERENCES stock_counts(id),
+    book_id INTEGER NOT NULL REFERENCES books(id),
+    expected_quantity INTEGER NOT NULL CHECK(expected_quantity >= 0),
+    actual_quantity INTEGER NULL CHECK(actual_quantity >= 0),
+    UNIQUE(count_id, book_id));
+CREATE INDEX ix_stock_counts_status_date ON stock_counts(status, created_at);";
+                command.ExecuteNonQuery();
+            }
         }
 
         private static void EnsureBookMetadataColumns(SQLiteConnection connection, SQLiteTransaction transaction)

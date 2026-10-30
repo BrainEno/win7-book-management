@@ -51,8 +51,10 @@ namespace Win7BookManagement.Infrastructure
                 return "可用内存不足。请关闭其它程序，或使用较小的日期范围再导出。";
             if (exception is ArgumentException)
                 return "输入的内容有问题：" + exception.Message;
+            // Domain validation and recovery instructions are already written in
+            // Chinese. Preserve them (including the safety-backup location).
             if (exception is InvalidOperationException)
-                return "当前状态不允许这个操作，请先刷新数据或重新打开该页面。";
+                return exception.Message;
 
             return "操作失败（" + exception.GetType().Name + "）。请重试；如果持续出现，请导出诊断日志。";
         }

@@ -607,9 +607,10 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
+                AppLog.Error("ui", "界面操作失败", ex);
                 MessageBox.Show(
                     this,
-                    "无法保存图书资料：\r\n" + ex.Message,
+                    "无法保存图书资料：\r\n" + UserErrorText.For(ex),
                     "请检查输入",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);

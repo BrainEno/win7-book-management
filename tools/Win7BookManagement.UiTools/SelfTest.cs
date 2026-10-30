@@ -16,6 +16,7 @@ namespace Win7BookManagement.Infrastructure
     {
         public static int Run()
         {
+            Win7BookManagement.Forms.MainForm.SuppressStartupPrompts = true;
             var root = Path.Combine(Path.GetTempPath(), "Win7BookManagement-SelfTest-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
 
@@ -45,7 +46,7 @@ namespace Win7BookManagement.Infrastructure
                 var supplierId = services.Suppliers.Insert(new Supplier { Name = "测试供应商" });
                 var bookId = services.Books.Insert(new Book
                 {
-                    Isbn = "9780000000001",
+                    Isbn = "9780000000002",
                     Title = "自检图书",
                     Author = "Test",
                     Publisher = "测试出版社",
@@ -123,7 +124,7 @@ namespace Win7BookManagement.Infrastructure
                     isbnMatches.Count != 1 || isbnMatches[0].Id != bookId)
                     throw new InvalidOperationException("采购入库 ISBN / 书名模糊搜索自检失败。");
 
-                var exactByIsbn = services.Books.FindByExactIdentifier("9780000000001");
+                var exactByIsbn = services.Books.FindByExactIdentifier("9780000000002");
                 var exactBySelfCode = services.Books.FindByExactIdentifier("BK-TEST-001");
                 var advancedMatches = services.Books.SearchAdvanced(new BookSearchCriteria
                 {

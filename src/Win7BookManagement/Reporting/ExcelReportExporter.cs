@@ -2,15 +2,17 @@ using System;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using NPOI.SS.UserModel;
 using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
+using NPOI.HSSF.UserModel;
 
 namespace Win7BookManagement.Reporting
 {
     public sealed class ExcelReportExporter
     {
-        public void Export(DataTable table, string path, string sheetName)
+        public void Export(DataTable table, string path, string sheetName, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (table == null) throw new ArgumentNullException("table");
             if (string.IsNullOrWhiteSpace(path))
@@ -19,8 +21,16 @@ namespace Win7BookManagement.Reporting
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
-
-            IWorkbook workbook = new XSSFWorkbook();
+            if (string.Equals(Path.GetExtension(path), ".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                CsvReportExporter.Export(table, path);
+                if (progress != null) progress.Report(100);
+                return;
+            }
+            if (string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase) && table.Rows.Count + 2 > 65536)
+                throw new InvalidOperationException("旧版 .xls 最多 65536 行，请缩小日期范围或改用 .xlsx。");
+            IWorkbook workbook = string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase)
+                ? (IWorkbook)new HSSFWorkbook() : new XSSFWorkbook();
             try
             {
                 var sheet = workbook.CreateSheet(SanitizeSheetName(sheetName));
@@ -86,6 +96,8 @@ namespace Win7BookManagement.Reporting
 
                 for (var rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (progress != null) progress.Report((rowIndex + 1) * 90 / Math.Max(1, table.Rows.Count));
                     var source = table.Rows[rowIndex];
                     var row = sheet.CreateRow(rowIndex + 2);
                     row.HeightInPoints = 21F;
@@ -144,8 +156,9 @@ namespace Win7BookManagement.Reporting
                     Math.Max(0, table.Columns.Count - 1),
                     Math.Max(1, table.Rows.Count + 1));
 
-                using (var stream = File.Create(path))
-                    workbook.Write(stream);
+                cancellationToken.ThrowIfCancellationRequested();
+                WorkbookFile.Publish(workbook, path);
+                if (progress != null) progress.Report(100);
             }
             finally
             {
