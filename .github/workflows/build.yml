@@ -97,6 +97,17 @@ jobs:
             throw "UI snapshots failed: $($p.ExitCode)"
           }
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win7-book-management-x86
+          path: src/Win7BookManagement/bin/x86/Release/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-snapshots
+          path: ui-snapshots/*.png
+          if-no-files-found: error
+
       - name: Build offline installer (hash-pinned prerequisites; optional signing)
         shell: powershell
         env:
@@ -111,18 +122,9 @@ jobs:
             $arguments.SignCertificatePassword = $env:BOOKDESK_SIGNING_PASSWORD
           }
           try { .\scripts\build-installer.ps1 @arguments }
+          catch { Write-Host "::error::Installer: $_"; exit 1 }
           finally { if ($certificate -and (Test-Path $certificate)) { Remove-Item $certificate -Force } }
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: win7-book-management-x86
-          path: src/Win7BookManagement/bin/x86/Release/
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ui-snapshots
-          path: ui-snapshots/*.png
-          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: win7-book-management-offline-installer
