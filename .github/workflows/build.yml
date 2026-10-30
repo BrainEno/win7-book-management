@@ -64,20 +64,27 @@ jobs:
       - name: Release-folder smoke test
         shell: powershell
         run: |
-          $p = Start-Process "src\Win7BookManagement\bin\x86\Release\Win7BookManagement.exe" "--self-test" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "Release smoke test failed: $($p.ExitCode)" }
+          $dir = "src\Win7BookManagement\bin\x86\Release"
+          $p = Start-Process "$dir\Win7BookManagement.exe" "--self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) {
+            Get-Content "$dir\smoke-error.txt" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::Smoke: $_" }
+            throw "Release smoke test failed: $($p.ExitCode)"
+          }
       - name: Full business and UI regression suite (not shipped)
         shell: powershell
         run: |
           $exe = "tools\Win7BookManagement.UiTools\bin\x86\Release\Win7BookManagement.UiTools.exe"
           $p = Start-Process $exe "--self-test" -Wait -PassThru
           if ($p.ExitCode -ne 0) {
-            Get-Content "tools\Win7BookManagement.UiTools\bin\x86\Release\self-test-error.txt" -ErrorAction SilentlyContinue
+            Get-Content "tools\Win7BookManagement.UiTools\bin\x86\Release\selftest-error.txt" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::SelfTest: $_" }
             throw "Full self-test failed: $($p.ExitCode)"
           }
           New-Item -ItemType Directory -Force ui-snapshots | Out-Null
           $p = Start-Process $exe -ArgumentList @("--ui-snapshots", (Join-Path $PWD "ui-snapshots")) -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "UI snapshots failed: $($p.ExitCode)" }
+          if ($p.ExitCode -ne 0) {
+            Get-Content "tools\Win7BookManagement.UiTools\bin\x86\Release\ui-snapshot-error.txt" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::Snapshots: $_" }
+            throw "UI snapshots failed: $($p.ExitCode)"
+          }
 
       - name: Build offline installer (hash-pinned prerequisites; optional signing)
         shell: powershell
