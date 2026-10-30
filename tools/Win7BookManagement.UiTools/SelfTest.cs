@@ -16,6 +16,7 @@ namespace Win7BookManagement.Infrastructure
     {
         public static int Run()
         {
+            Win7BookManagement.Forms.MainForm.SuppressStartupPrompts = true;
             var root = Path.Combine(Path.GetTempPath(), "Win7BookManagement-SelfTest-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
 

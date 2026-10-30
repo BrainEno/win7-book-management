@@ -42,6 +42,7 @@ namespace Win7BookManagement.Infrastructure
                 outputDirectory = Path.GetFullPath(outputDirectory);
                 Directory.CreateDirectory(outputDirectory);
 
+                MainForm.SuppressStartupPrompts = true;
                 var services = new ApplicationServices(Path.Combine(root, "snapshot.db"));
                 services.Settings.SetOnboardingCompleted(true);
                 services.Settings.SetHomeGuideExpanded(false);

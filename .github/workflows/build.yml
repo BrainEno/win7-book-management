@@ -81,6 +81,7 @@ jobs:
             exit 1
           }
       - name: Full business and UI regression suite (not shipped)
+        timeout-minutes: 10
         shell: powershell
         run: |
           $exe = "tools\Win7BookManagement.UiTools\bin\x86\Release\Win7BookManagement.UiTools.exe"
