@@ -19,6 +19,7 @@ namespace Win7BookManagement.Infrastructure
             Sales = new SalesService(Database);
             Returns = new ReturnService(Database);
             Inventory = new InventoryService(Database);
+            Stocktake = new StocktakeService(Database);
             Reports = new ReportRepository(Database);
             Documents = new DocumentRepository(Database);
             Dashboard = new DashboardRepository(Database);
@@ -38,6 +39,7 @@ namespace Win7BookManagement.Infrastructure
         public SalesService Sales { get; private set; }
         public ReturnService Returns { get; private set; }
         public InventoryService Inventory { get; private set; }
+        public StocktakeService Stocktake { get; private set; }
         public ReportRepository Reports { get; private set; }
         public DocumentRepository Documents { get; private set; }
         public DashboardRepository Dashboard { get; private set; }

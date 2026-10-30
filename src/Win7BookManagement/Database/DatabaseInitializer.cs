@@ -13,7 +13,7 @@ namespace Win7BookManagement.Database
             _factory = factory;
         }
 
-        public const int SupportedVersion = 10;
+        public const int SupportedVersion = 11;
         public string LastMigrationBackupPath { get; private set; }
 
         private sealed class SchemaMigration
@@ -30,7 +30,8 @@ namespace Win7BookManagement.Database
         // idempotent because historical releases recorded 10 before v4-v9 too.
         private static readonly SchemaMigration[] Migrations =
         {
-            new SchemaMigration(10, "legacy-baseline", ApplyBaseline)
+            new SchemaMigration(10, "legacy-baseline", ApplyBaseline),
+            new SchemaMigration(11, "stocktake-documents", ApplyStocktake)
         };
 
         public void EnsureCreated()
@@ -452,6 +453,31 @@ WHERE updated_at IS NULL OR trim(updated_at)='';";
 VALUES('low_stock_threshold', '3', @now);";
                 defaults.Parameters.AddWithValue("@now", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 defaults.ExecuteNonQuery();
+            }
+        }
+
+        private static void ApplyStocktake(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"CREATE TABLE stock_counts(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_no TEXT NOT NULL UNIQUE,
+    shelf_code TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL CHECK(status IN ('draft','posted')),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    posted_at TEXT NULL);
+CREATE TABLE stock_count_items(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_id INTEGER NOT NULL REFERENCES stock_counts(id),
+    book_id INTEGER NOT NULL REFERENCES books(id),
+    expected_quantity INTEGER NOT NULL CHECK(expected_quantity >= 0),
+    actual_quantity INTEGER NULL CHECK(actual_quantity >= 0),
+    UNIQUE(count_id, book_id));
+CREATE INDEX ix_stock_counts_status_date ON stock_counts(status, created_at);";
+                command.ExecuteNonQuery();
             }
         }
 

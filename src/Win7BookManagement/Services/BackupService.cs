@@ -175,7 +175,7 @@ namespace Win7BookManagement.Services
                     var lastPercent = -1;
                     source.BackupDatabase(destination, "main", "main", 64,
                         delegate(SQLiteConnection src, string sourceName, SQLiteConnection dst, string destinationName,
-                            int remainingPages, int pageCount, int totalPages, ref bool retry)
+                            int remainingPages, int pageCount, int totalPages, bool retry)
                         {
                             if (progress != null && totalPages > 0)
                             {

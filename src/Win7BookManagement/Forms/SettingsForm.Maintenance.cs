@@ -100,7 +100,7 @@ namespace Win7BookManagement.Forms
                 _services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, _secondaryEnabled.Checked);
                 var mode = _performance.SelectedIndex == 1 ? "on" : _performance.SelectedIndex == 2 ? "off" : "auto";
                 _services.Settings.SetString("low_spec_mode", mode);
-                LowSpec.Configure(mode == "auto" ? (bool?)null : mode == "on");
+                LowSpecMode.Configure(mode == "auto" ? (bool?)null : mode == "on");
                 LowSpecMode.ApplyToAntdUi();
                 _backupStatus.Text = _services.AutoBackup.GetStatus().Message;
                 MessageBox.Show(this, "备份与性能设置已保存。下一次自动备份将使用新位置。", "设置已保存", MessageBoxButtons.OK, MessageBoxIcon.Information);

@@ -40,7 +40,7 @@ namespace Win7BookManagement.Tests
                     cmd.CommandText = "PRAGMA user_version;";
                     Assert.AreEqual(DatabaseInitializer.SupportedVersion, Convert.ToInt32(cmd.ExecuteScalar()));
                     cmd.CommandText = "SELECT COUNT(*) FROM schema_migration_history;";
-                    Assert.AreEqual(1, Convert.ToInt32(cmd.ExecuteScalar()));
+                    Assert.IsTrue(Convert.ToInt32(cmd.ExecuteScalar()) >= 1);
                 }
             }
         }

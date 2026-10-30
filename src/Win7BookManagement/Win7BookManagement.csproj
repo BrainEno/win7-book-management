@@ -121,6 +121,9 @@
     <Compile Include="Forms\SettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\StocktakeForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\SupplierForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -148,6 +151,7 @@
     <Compile Include="Models\ReturnLineInput.cs" />
     <Compile Include="Models\ReturnableDocumentLine.cs" />
     <Compile Include="Models\SalesDraft.cs" />
+    <Compile Include="Models\StocktakeDocument.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Models\TransactionLineInput.cs" />
     <Compile Include="Infrastructure\BackupStatusBanner.cs" />
@@ -171,6 +175,7 @@
     <Compile Include="Services\PurchaseService.cs" />
     <Compile Include="Services\ReturnService.cs" />
     <Compile Include="Services\SalesService.cs" />
+    <Compile Include="Services\StocktakeService.cs" />
     <None Include="App.config" />
     <None Include="app.manifest" />
   </ItemGroup>

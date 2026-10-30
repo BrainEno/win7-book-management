@@ -77,3 +77,40 @@ namespace Win7BookManagement.Tests
         }
     }
 }
+
+namespace Win7BookManagement.Tests
+{
+    [TestClass]
+    public class StocktakeTests
+    {
+        [TestMethod]
+        public void Stocktake_PostsOnlyDifferencesOnce_AndPreservesLedger()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var id = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "盘点书", ShelfCode = "A", SalePriceCent = 1000 });
+                db.Services.Inventory.Adjust(id, 5, "opening");
+                var document = db.Services.Stocktake.Create("A", "test");
+                db.Services.Stocktake.SaveActual(document.Id, new System.Collections.Generic.Dictionary<long, int> { { id, 3 } });
+                Assert.AreEqual(1, db.Services.Stocktake.Post(document.Id));
+                Assert.AreEqual(3, db.Services.Books.GetById(id).StockQuantity);
+                Assert.ThrowsException<System.InvalidOperationException>(() => db.Services.Stocktake.Post(document.Id));
+                Assert.AreEqual(3, db.Services.Books.GetById(id).StockQuantity);
+            }
+        }
+
+        [TestMethod]
+        public void Stocktake_RejectsStaleExpectedStock()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var id = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "盘点书", ShelfCode = "A", SalePriceCent = 1000 });
+                db.Services.Inventory.Adjust(id, 5, "opening");
+                var document = db.Services.Stocktake.Create("A", "test");
+                db.Services.Inventory.Adjust(id, -1, "sale-like change");
+                Assert.ThrowsException<System.InvalidOperationException>(() => db.Services.Stocktake.Post(document.Id));
+                Assert.AreEqual(4, db.Services.Books.GetById(id).StockQuantity);
+            }
+        }
+    }
+}
