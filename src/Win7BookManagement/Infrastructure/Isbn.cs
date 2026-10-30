@@ -25,7 +25,7 @@ namespace Win7BookManagement.Infrastructure
                 for (var i = 0; i < 9; i++) sum += (s[i] - '0') * (10 - i);
                 var check = s[9] == 'X' ? 10 : s[9] - '0';
                 if (s[9] != 'X' && !char.IsDigit(s[9])) throw Invalid();
-                if ((sum + check) % 10 != 0) throw Invalid();
+                if ((sum + check) % 11 != 0) throw Invalid();
                 s = "978" + s.Substring(0, 9);
             }
             if (s.Length != 13 || s.IndexOf('X') >= 0) throw Invalid();
