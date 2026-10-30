@@ -2,7 +2,7 @@
 
 面向小书店的**完全离线**进销存与收银软件：图书、采购、销售、退货、库存、报表和备份，一台 Windows 7 老电脑也能用。
 
-[下载安装包](https://github.com/BrainEno/win7-book-management/releases/latest) · [真实界面截图（Windows CI）](https://github.com/BrainEno/win7-book-management/actions/workflows/build.yml) · [使用手册](docs/USER_GUIDE.md) · [常见问题](docs/FAQ.md)
+[下载安装包](https://github.com/BrainEno/win7-book-management/releases/latest) · [真实界面截图（Windows CI）](https://github.com/BrainEno/win7-book-management/actions/workflows/build.yml) · [使用手册](docs/USER_GUIDE.md) · [常见问题](docs/FAQ.md) · [Win7 验收清单](docs/WIN7_ACCEPTANCE.md)
 
 ## 界面截图（Windows CI 实机渲染）
 
