@@ -65,9 +65,10 @@ jobs:
         shell: powershell
         run: |
           $dir = "src\Win7BookManagement\bin\x86\Release"
-          $p = Start-Process "$dir\Win7BookManagement.exe" "--self-test" -Wait -PassThru
+          $p = Start-Process "$dir\Win7BookManagement.exe" "--self-test" -Wait -PassThru -RedirectStandardOutput smoke-stdout.txt -RedirectStandardError smoke-stderr.txt
           if ($p.ExitCode -ne 0) {
             Get-Content "$dir\smoke-error.txt" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::Smoke: $_" }
+            Get-Content smoke-stderr.txt -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::Smoke: $_" }
             throw "Release smoke test failed: $($p.ExitCode)"
           }
       - name: Full business and UI regression suite (not shipped)

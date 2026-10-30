@@ -31,7 +31,13 @@ namespace Win7BookManagement.Infrastructure
                 Console.WriteLine("BOOK DESK release smoke test passed.");
                 return 0;
             }
-            catch (Exception ex) { Console.Error.WriteLine(ex.ToString()); return 1; }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.ToString());
+                try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "smoke-error.txt"), ex.ToString()); }
+                catch { }
+                return 1;
+            }
             finally
             {
                 SQLiteConnection.ClearAllPools();
