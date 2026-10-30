@@ -216,7 +216,7 @@ VALUES('book_category',@value,0,'批量导入',1,@now,@now);";
         private static void ValidateHeader(string[] cells)
         {
             if (cells.Length < Headers.Length || !Headers.SequenceEqual(cells.Take(Headers.Length).Select(c => (c ?? "").Trim().TrimStart('\uFEFF'))))
-                throw new InvalidOperationException("表头与模板不一致，请下载模板后填写。必需列：" + string.Join("、", Headers));
+                throw new InvalidOperationException("表头与模板不一致，请下载模板后填写。必需列：" + string.Join("、", Headers) + "；实际列：" + string.Join("|", cells));
         }
 
         public static IEnumerable<string[]> ParseCsv(string text)
