@@ -1118,7 +1118,14 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            var book = _services.Books.FindByExactIdentifier(identifier);
+            Book book;
+            try { book = _services.Books.FindByExactIdentifier(identifier); }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(this, ex.Message, "扫码内容需要核对", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                FocusGridForScanner();
+                return;
+            }
             if (book != null)
             {
                 AddBook(book);

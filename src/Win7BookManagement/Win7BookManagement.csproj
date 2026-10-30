@@ -131,6 +131,7 @@
     <Compile Include="Infrastructure\CrashReporter.cs" />
     <Compile Include="Infrastructure\AppLog.cs" />
     <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
+    <Compile Include="Infrastructure\Isbn.cs" />
     <Compile Include="Infrastructure\Money.cs" />
     <Compile Include="Infrastructure\PersistentAntdTable.cs">
       <SubType>Component</SubType>

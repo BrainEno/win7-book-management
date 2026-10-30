@@ -12,6 +12,12 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
 		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Debug|x86.ActiveCfg = Debug|x86
+		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Debug|x86.Build.0 = Debug|x86
+		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Release|x86.ActiveCfg = Release|x86
+		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Release|x86.Build.0 = Release|x86
 		{1E6A2C6D-8E47-4A62-9E64-4D0A8A6D7F31}.Debug|x86.ActiveCfg = Debug|x86
 		{1E6A2C6D-8E47-4A62-9E64-4D0A8A6D7F31}.Debug|x86.Build.0 = Debug|x86
 		{1E6A2C6D-8E47-4A62-9E64-4D0A8A6D7F31}.Release|x86.ActiveCfg = Release|x86
@@ -20,11 +26,5 @@ Global
 		{7B7B6D14-5A2E-4D7B-B8D0-8C6A0C6E9B42}.Debug|x86.Build.0 = Debug|x86
 		{7B7B6D14-5A2E-4D7B-B8D0-8C6A0C6E9B42}.Release|x86.ActiveCfg = Release|x86
 		{7B7B6D14-5A2E-4D7B-B8D0-8C6A0C6E9B42}.Release|x86.Build.0 = Release|x86
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Debug|x86.ActiveCfg = Debug|x86
-		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Debug|x86.Build.0 = Debug|x86
-		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Release|x86.ActiveCfg = Release|x86
-		{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 EndGlobal

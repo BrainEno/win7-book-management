@@ -539,7 +539,13 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            var exactBook = _services.Books.FindByExactIsbn(text);
+            Book exactBook;
+            try { exactBook = _services.Books.FindByExactIsbn(text); }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(this, ex.Message, "ISBN 需要核对", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _isbn.SelectAll(); _isbn.Focus(); return;
+            }
             if (exactBook != null)
             {
                 AddBook(exactBook);

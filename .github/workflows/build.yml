@@ -29,7 +29,13 @@ jobs:
           .\scripts\test-build-guards.ps1
 
       - name: Restore
-        run: msbuild Win7BookManagement.sln /t:Restore /p:Configuration=Release /p:Platform=x86
+        shell: powershell
+        run: |
+          msbuild Win7BookManagement.sln /t:Restore /p:Configuration=Release /p:Platform=x86 /v:minimal 2>&1 | Tee-Object -Variable restoreOutput
+          if ($LASTEXITCODE -ne 0) {
+            $restoreOutput | Select-Object -Last 30 | ForEach-Object { Write-Host "::error::Restore: $_" }
+            exit 1
+          }
       - name: Build Debug x86
         run: msbuild Win7BookManagement.sln /m /p:Configuration=Debug /p:Platform=x86
       - name: Build Release x86
