@@ -554,7 +554,7 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            var matches = _services.Books.SearchActiveByIsbnOrTitle(text);
+            var matches = _services.Books.SearchActiveByIsbnOrTitle(Isbn.LooksLikeIsbn(text) ? Isbn.Normalize(text) : text);
             if (matches.Count == 0)
             {
                 MessageBox.Show(this, "没有找到匹配的启用图书。可以输入店内编码、ISBN、书名或作者。", "未找到图书", MessageBoxButtons.OK, MessageBoxIcon.Information);

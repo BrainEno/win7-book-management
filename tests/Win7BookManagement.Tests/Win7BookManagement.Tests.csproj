@@ -12,7 +12,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="DatabaseSafetyTests.cs" /><Compile Include="InfrastructureTests.cs" />
+    <Compile Include="DatabaseSafetyTests.cs" /><Compile Include="InfrastructureTests.cs" /><Compile Include="BookFeatureTests.cs" />
     <ProjectReference Include="..\..\src\Win7BookManagement\Win7BookManagement.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />

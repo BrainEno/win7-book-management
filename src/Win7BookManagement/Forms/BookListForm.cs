@@ -192,7 +192,7 @@ namespace Win7BookManagement.Forms
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 Margin = new Padding(0, 10, 0, 0),
                 Padding = Padding.Empty
             };
@@ -219,6 +219,17 @@ namespace Win7BookManagement.Forms
 
             _stats.Controls.Add(_resultChip);
             _stats.Controls.Add(_lowStockChip);
+            var import = UiTheme.CreateAntdButton("批量导入", false); import.Width = 104;
+            import.Margin = new Padding(12, 0, 0, 0);
+            import.Click += delegate
+            {
+                using (var dialog = new BookImportForm(_services))
+                {
+                    dialog.ShowDialog(this);
+                    if (dialog.Imported) Reload();
+                }
+            };
+            _stats.Controls.Add(import);
 
             _searchSection.Controls.Add(_searchRow, 0, 0);
             _searchSection.Controls.Add(_stats, 0, 1);

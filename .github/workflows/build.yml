@@ -37,9 +37,21 @@ jobs:
             exit 1
           }
       - name: Build Debug x86
-        run: msbuild Win7BookManagement.sln /m /p:Configuration=Debug /p:Platform=x86
+        shell: powershell
+        run: |
+          msbuild Win7BookManagement.sln /m /p:Configuration=Debug /p:Platform=x86 /v:minimal 2>&1 | Tee-Object -Variable buildOutput
+          if ($LASTEXITCODE -ne 0) {
+            $buildOutput | Select-String -Pattern ': error ' | Select-Object -First 30 | ForEach-Object { Write-Host "::error::$($_.Line)" }
+            exit 1
+          }
       - name: Build Release x86
-        run: msbuild Win7BookManagement.sln /m /p:Configuration=Release /p:Platform=x86
+        shell: powershell
+        run: |
+          msbuild Win7BookManagement.sln /m /p:Configuration=Release /p:Platform=x86 /v:minimal 2>&1 | Tee-Object -Variable buildOutput
+          if ($LASTEXITCODE -ne 0) {
+            $buildOutput | Select-String -Pattern ': error ' | Select-Object -First 30 | ForEach-Object { Write-Host "::error::$($_.Line)" }
+            exit 1
+          }
 
       - name: Focused unit tests (net48/x86)
         run: dotnet test tests/Win7BookManagement.Tests/Win7BookManagement.Tests.csproj -c Release -p:Platform=x86 --no-build --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
