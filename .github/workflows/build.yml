@@ -108,6 +108,26 @@ jobs:
           path: ui-snapshots/*.png
           if-no-files-found: error
 
+      - name: Publish selected real UI screenshots to docs/images
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -e
+          git fetch origin "$GITHUB_HEAD_REF"
+          git checkout --detach FETCH_HEAD
+          mkdir -p docs/images
+          for f in 01-main-dashboard-1366x768.png 02-sales-1366x768.png 04-book-master-1366x768.png 10-inventory-1366x768.png 12-reports-1366x768.png 14-settings-1024x768.png 15-backup-1024x768.png 19-main-dashboard-1024x768.png; do
+            cp "ui-snapshots/$f" "docs/images/$f"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/images
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: add real Windows CI screenshots [skip ci]"
+            git push origin HEAD:"$GITHUB_HEAD_REF"
+          fi
+
       - name: Build offline installer (hash-pinned prerequisites; optional signing)
         shell: powershell
         env:

@@ -4,6 +4,19 @@
 
 [下载安装包](https://github.com/BrainEno/win7-book-management/releases/latest) · [真实界面截图（Windows CI）](https://github.com/BrainEno/win7-book-management/actions/workflows/build.yml) · [使用手册](docs/USER_GUIDE.md) · [常见问题](docs/FAQ.md)
 
+## 界面截图（Windows CI 实机渲染）
+
+以下截图由 Windows CI 上的真实 WinForms 界面生成，非设计稿；完整分辨率矩阵见每次构建的 `ui-snapshots` 工件。
+
+| 首页仪表盘 | 销售开单 |
+| --- | --- |
+| ![首页仪表盘](docs/images/01-main-dashboard-1366x768.png) | ![销售开单](docs/images/02-sales-1366x768.png) |
+| 图书资料 | 库存管理 |
+| ![图书资料](docs/images/04-book-master-1366x768.png) | ![库存管理](docs/images/10-inventory-1366x768.png) |
+| 报表中心 | 小屏 1024×768 首页 |
+| ![报表中心](docs/images/12-reports-1366x768.png) | ![小屏首页](docs/images/19-main-dashboard-1024x768.png) |
+
+
 ## 系统要求
 
 - Windows 7 SP1 或更高，x86 / x64；建议 2 GB 内存，支持 1024×768 与高 DPI。
