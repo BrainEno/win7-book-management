@@ -116,7 +116,8 @@ namespace Win7BookManagement.Forms
                 dialog.Filter = "错误行 (*.csv)|*.csv"; dialog.FileName = "图书导入错误行.csv";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 var rows = new List<string[]> { new[] { "行号", "错误" }.Concat(BookImportService.Headers).ToArray() };
-                rows.AddRange(_rows.Where(r => r.Error != null).Select(r => new[] { r.RowNumber.ToString(), r.Error, r.Book.SelfCode, r.Book.Isbn, r.Book.Title, r.Book.Author, r.Book.Publisher, r.Book.Category, r.Book.PublicationYear, r.Book.Edition, r.Book.Binding, r.Book.ShelfCode, Money.ToYuan(r.Book.SalePriceCent).ToString("0.00"), Money.ToYuan(r.Book.DefaultPurchasePriceCent).ToString("0.00"), r.Book.Note }));
+                rows.AddRange(_rows.Where(r => r.Error != null).Select(r =>
+                    new[] { r.RowNumber.ToString(), r.Error }.Concat(r.Raw ?? new string[0]).ToArray()));
                 File.WriteAllText(dialog.FileName, BookImportService.ToCsv(rows), new UTF8Encoding(true));
             }
         }

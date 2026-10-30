@@ -19,6 +19,7 @@ namespace Win7BookManagement.Services
         public Book Book { get; set; }
         public bool IsUpdate { get; set; }
         public string Error { get; set; }
+        public string[] Raw { get; set; }
         public string Status { get { return Error != null ? "错误" : IsUpdate ? "更新" : "新增"; } }
     }
 
@@ -50,7 +51,7 @@ namespace Win7BookManagement.Services
             var result = new List<BookImportRow>();
             foreach (var cells in rows)
             {
-                var row = new BookImportRow { RowNumber = cells.Item1, Book = new Book() };
+                var row = new BookImportRow { RowNumber = cells.Item1, Book = new Book(), Raw = cells.Item2 };
                 result.Add(row);
                 try
                 {
@@ -176,7 +177,9 @@ VALUES('book_category',@value,0,'批量导入',1,@now,@now);";
             var result = new List<Tuple<int, string[]>>();
             if (extension == ".csv")
             {
-                foreach (var record in ParseCsv(File.ReadAllText(path, Encoding.UTF8)))
+                var text = File.ReadAllText(path, Encoding.UTF8);
+                if (text.Length > 0 && text[0] == '\uFEFF') text = text.Substring(1);
+                foreach (var record in ParseCsv(text))
                 {
                     if (result.Count == 0) { ValidateHeader(record); continue; }
                     if (record.All(string.IsNullOrWhiteSpace)) continue;
@@ -212,7 +215,7 @@ VALUES('book_category',@value,0,'批量导入',1,@now,@now);";
 
         private static void ValidateHeader(string[] cells)
         {
-            if (cells.Length < Headers.Length || !Headers.SequenceEqual(cells.Take(Headers.Length)))
+            if (cells.Length < Headers.Length || !Headers.SequenceEqual(cells.Take(Headers.Length).Select(c => (c ?? "").Trim().TrimStart('\uFEFF'))))
                 throw new InvalidOperationException("表头与模板不一致，请下载模板后填写。必需列：" + string.Join("、", Headers));
         }
 
