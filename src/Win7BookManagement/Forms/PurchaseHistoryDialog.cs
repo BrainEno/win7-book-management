@@ -361,9 +361,10 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
+                AppLog.Error("ui", "界面操作失败", ex);
                 MessageBox.Show(
                     this,
-                    "删除采购草稿失败：\r\n" + ex.Message,
+                    "删除采购草稿失败：\r\n" + UserErrorText.For(ex),
                     "无法删除",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);

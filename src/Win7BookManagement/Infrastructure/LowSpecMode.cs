@@ -11,18 +11,15 @@ namespace Win7BookManagement.Infrastructure
     {
         private static readonly bool DetectedLowSpec = DetectLowSpec();
 
-        public static bool IsLowSpec
-        {
-            get { return DetectedLowSpec; }
-        }
+        private static bool? _override;
+        public static bool IsDetectedLowSpec { get { return DetectedLowSpec; } }
+        public static bool IsLowSpec { get { return _override ?? DetectedLowSpec; } }
+        public static void Configure(bool? enabled) { _override = enabled; }
 
         public static void ApplyToAntdUi()
         {
-            if (!IsLowSpec)
-                return;
-
-            AntdUI.Config.Animation = false;
-            AntdUI.Config.TextRenderingHighQuality = false;
+            AntdUI.Config.Animation = !IsLowSpec;
+            AntdUI.Config.TextRenderingHighQuality = !IsLowSpec;
             AntdUI.Config.ShadowEnabled = false;
         }
 
@@ -39,8 +36,8 @@ namespace Win7BookManagement.Infrastructure
                     memory.TotalPhysicalMemory < 3UL * 1024UL * 1024UL * 1024UL)
                     return true;
             }
-            catch (DllNotFoundException) { }
-            catch (EntryPointNotFoundException) { }
+            catch (DllNotFoundException) { /* Optional Win7 API unavailable: use the other hardware checks. */ }
+            catch (EntryPointNotFoundException) { /* Optional Win7 API unavailable. */ }
 
             bool compositionEnabled;
             if (TryGetCompositionEnabled(out compositionEnabled) && !compositionEnabled)

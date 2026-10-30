@@ -1,8 +1,12 @@
 param(
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [string]$SignCertificatePath,
+    [string]$SignCertificatePassword,
+    [string]$TimestampUrl = "http://timestamp.digicert.com"
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "build-prerequisites.ps1")
 $ProgressPreference = "SilentlyContinue"
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
@@ -20,6 +24,15 @@ $appIcon = Join-Path $root "src\Win7BookManagement\Resources\BookDesk.ico"
 
 $dotnetUrl = "https://download.microsoft.com/download/f/3/a/f3a6af84-da23-40a5-8d1c-49cc10c8e76f/NDP48-x86-x64-AllOS-ENU.exe"
 $innoUrl = "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe"
+# Pinned official artifacts. .NET hash is the published Microsoft 4.8 offline installer;
+# Inno hash also matches the GitHub release asset digest for is-6_7_3.
+$dotnetSha256 = "68C9986A8DCC0214D909AA1F31BEE9FB5461BB839EDCA996A75B08DDFFC1483F"
+$innoSha256 = "9C73C3BAE7ED48D44112A0F48E66742C00090BDB5BEF71D9D3C056C66E97B732"
+$version = (Get-Content -LiteralPath (Join-Path $root "VERSION") -Raw).Trim()
+if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "VERSION must be a stable semantic version." }
+if ($env:GITHUB_REF -match '^refs/tags/v(.+)$' -and $Matches[1] -ne $version) {
+    throw "Release tag v$($Matches[1]) does not match VERSION $version."
+}
 
 function Find-MSBuild {
     $cmd = Get-Command msbuild.exe -ErrorAction SilentlyContinue
@@ -47,54 +60,15 @@ function Invoke-Checked {
     }
 }
 
-function Test-PortableExe {
-    param(
-        [Parameter(Mandatory=$true)][string]$Path,
-        [Parameter(Mandatory=$true)][long]$MinimumBytes
-    )
-
-    if (-not (Test-Path $Path)) { return $false }
-    if ((Get-Item $Path).Length -lt $MinimumBytes) { return $false }
-
-    $stream = [System.IO.File]::OpenRead($Path)
-    try {
-        $first = $stream.ReadByte()
-        $second = $stream.ReadByte()
-        return ($first -eq 0x4D -and $second -eq 0x5A)
-    }
-    finally {
-        $stream.Dispose()
-    }
-}
-
-function Ensure-Download {
-    param(
-        [Parameter(Mandatory=$true)][string]$Url,
-        [Parameter(Mandatory=$true)][string]$Path,
-        [Parameter(Mandatory=$true)][long]$MinimumBytes,
-        [switch]$RequireExe
-    )
-
-    if (Test-Path $Path) {
-        $validSize = (Get-Item $Path).Length -ge $MinimumBytes
-        $validType = (-not $RequireExe) -or (Test-PortableExe -Path $Path -MinimumBytes $MinimumBytes)
-        if ($validSize -and $validType) { return }
-        Remove-Item -Force $Path
-    }
-
-    $parent = Split-Path $Path -Parent
-    New-Item -ItemType Directory -Force -Path $parent | Out-Null
-
-    Write-Host "Downloading build prerequisite: $Url"
-    Invoke-WebRequest -UseBasicParsing -Headers @{ "User-Agent" = "Wget" } -Uri $Url -OutFile $Path
-
-    if (-not (Test-Path $Path) -or ((Get-Item $Path).Length -lt $MinimumBytes)) {
-        throw "Downloaded file is incomplete: $Path"
-    }
-
-    if ($RequireExe -and -not (Test-PortableExe -Path $Path -MinimumBytes $MinimumBytes)) {
-        throw "Downloaded file is not a valid Windows executable: $Path"
-    }
+function Invoke-CodeSign {
+    param([Parameter(Mandatory=$true)][string]$Path)
+    if ([string]::IsNullOrWhiteSpace($SignCertificatePath)) { return }
+    $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+    if (-not $signtool) { throw "Signing was requested but signtool.exe was not found." }
+    Invoke-Checked $signtool.FullName @("sign", "/fd", "SHA256", "/tr", $TimestampUrl, "/td", "SHA256", "/f", $SignCertificatePath, "/p", $SignCertificatePassword, $Path)
+    $signature = Get-AuthenticodeSignature -LiteralPath $Path
+    if ($signature.Status -ne "Valid") { throw "Code signature is not valid: $Path ($($signature.Status))" }
 }
 
 function Find-ISCC {
@@ -110,7 +84,7 @@ function Ensure-InnoSetupCompiler {
     Write-Host "== Prepare Inno Setup 6.7.3 compiler =="
     New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
 
-    Ensure-Download -Url $innoUrl -Path $innoInstaller -MinimumBytes 3000000 -RequireExe
+    Ensure-Download -Url $innoUrl -Path $innoInstaller -MinimumBytes 3000000 -ExpectedSha256 $innoSha256
 
     $signature = Get-AuthenticodeSignature $innoInstaller
     if ($signature.Status -ne "Valid") {
@@ -145,16 +119,7 @@ function Ensure-InnoSetupCompiler {
 
 Push-Location $root
 try {
-    Write-Host "== Generate BOOK DESK application icon =="
-    Invoke-Checked "powershell.exe" @(
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        $iconGenerator,
-        "-OutputPath",
-        $appIcon
-    )
+    if (-not (Test-Path -LiteralPath $appIcon)) { throw "The checked-in application icon is missing: $appIcon. Run scripts/generate-app-icon.ps1 explicitly to regenerate it." }
 
     if (-not $SkipBuild) {
         $msbuild = Find-MSBuild
@@ -185,6 +150,9 @@ try {
         throw "Application self-test failed with exit code $($selfTest.ExitCode)"
     }
 
+    Invoke-CodeSign $exe
+    if ([string]::IsNullOrWhiteSpace($SignCertificatePath)) { Write-Warning "No signing certificate configured; this build is UNSIGNED." }
+
     Write-Host "== Validate offline runtime files =="
     $requiredFiles = @(
         "Win7BookManagement.exe",
@@ -201,11 +169,11 @@ try {
     }
 
     Write-Host "== Prepare .NET Framework 4.8 offline runtime =="
-    Ensure-Download -Url $dotnetUrl -Path $dotnetInstaller -MinimumBytes 100000000 -RequireExe
+    Ensure-Download -Url $dotnetUrl -Path $dotnetInstaller -MinimumBytes 100000000 -ExpectedSha256 $dotnetSha256
 
     $dotnetSignature = Get-AuthenticodeSignature $dotnetInstaller
     if ($dotnetSignature.Status -ne "Valid") {
-        Write-Warning ".NET Framework 4.8 installer signature status: $($dotnetSignature.Status)"
+        throw ".NET Framework 4.8 installer signature is not valid: $($dotnetSignature.Status)"
     }
 
     $iscc = Ensure-InnoSetupCompiler
@@ -215,7 +183,7 @@ try {
 
     Push-Location $installerDir
     try {
-        Invoke-Checked $iscc @((Split-Path $issFile -Leaf))
+        Invoke-Checked $iscc @("/DAppVersion=$version", (Split-Path $issFile -Leaf))
     }
     finally {
         Pop-Location
@@ -224,6 +192,7 @@ try {
     $output = Join-Path $installerDir "output\Win7BookManagement-Offline-Setup.exe"
     if (-not (Test-Path $output)) { throw "Installer output was not found: $output" }
 
+    Invoke-CodeSign $output
     $outputSize = (Get-Item $output).Length
     if ($outputSize -lt 100000000) {
         throw "Installer is unexpectedly small and may not contain the .NET Framework 4.8 offline runtime."
@@ -233,6 +202,8 @@ try {
     Write-Host ""
     Write-Host "==============================================="
     Write-Host "Installer ready: $output"
+    Write-Host "Version: $version"
+    Write-Host "SHA-256: $((Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash)"
     Write-Host "Size: $sizeMb MB"
     Write-Host "Builder: Inno Setup 6.7.3"
     Write-Host "Minimum target OS: Windows 7 SP1"

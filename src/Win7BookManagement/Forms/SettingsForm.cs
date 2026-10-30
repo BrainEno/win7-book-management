@@ -8,7 +8,7 @@ using Win7BookManagement.Reporting;
 
 namespace Win7BookManagement.Forms
 {
-    public sealed class SettingsForm : Form
+    public sealed partial class SettingsForm : Form
     {
         private readonly ApplicationServices _services;
         private readonly AntdUI.InputNumber _lowStock = new AntdUI.InputNumber();
@@ -26,12 +26,16 @@ namespace Win7BookManagement.Forms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3,
+                RowCount = 4,
                 BackColor = UiTheme.Background,
                 Padding = Padding.Empty,
                 Margin = Padding.Empty
             };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.AutoSize = true;
+            root.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            root.Dock = DockStyle.Top;
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -39,7 +43,10 @@ namespace Win7BookManagement.Forms
             root.Controls.Add(CreateStockSection(), 0, 0);
             root.Controls.Add(CreateReportSection(), 0, 1);
             root.Controls.Add(CreateDataSection(), 0, 2);
-            Controls.Add(root);
+            root.Controls.Add(CreateMaintenanceSection(), 0, 3);
+            var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+            scroll.Controls.Add(root);
+            Controls.Add(scroll);
 
             UiTheme.Apply(this);
 
@@ -49,6 +56,7 @@ namespace Win7BookManagement.Forms
                 _reportStoreName.Text = _services.Settings.GetReportStoreName();
                 _nightShiftStartHour.Value = _services.Settings.GetReportNightShiftStartHour();
                 _dataPath.Text = _services.Database.DatabasePath;
+                LoadMaintenance();
             };
         }
 
@@ -506,7 +514,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "保存失败：\r\n" + ex.Message, "无法保存设置", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "保存失败：\r\n" + UserErrorText.For(ex), "无法保存设置", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -518,7 +527,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "无法打开数据目录：\r\n" + ex.Message, "打开失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "无法打开数据目录：\r\n" + UserErrorText.For(ex), "打开失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

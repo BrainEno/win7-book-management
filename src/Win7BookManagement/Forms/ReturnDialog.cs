@@ -512,7 +512,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "退货失败：\r\n" + ex.Message, "请检查退货内容", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "退货失败：\r\n" + UserErrorText.For(ex), "请检查退货内容", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

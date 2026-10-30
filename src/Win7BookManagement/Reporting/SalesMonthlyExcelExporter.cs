@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using NPOI.SS.UserModel;
 using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
@@ -80,7 +81,9 @@ namespace Win7BookManagement.Reporting
             DateTime month,
             string storeName,
             int nightShiftStartHour,
-            string categoryMapping)
+            string categoryMapping,
+            IProgress<int> progress = null,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             if (detail == null) throw new ArgumentNullException("detail");
             if (returnDetail == null) throw new ArgumentNullException("returnDetail");
@@ -122,11 +125,14 @@ namespace Win7BookManagement.Reporting
                         workbook,
                         styles,
                         rows,
-                        new DateTime(normalizedMonth.Year, normalizedMonth.Month, day));
+                        new DateTime(normalizedMonth.Year, normalizedMonth.Month, day), cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (progress != null) progress.Report(10 + day * 80 / days);
                 }
 
-                using (var stream = File.Create(path))
-                    workbook.Write(stream);
+                cancellationToken.ThrowIfCancellationRequested();
+                WorkbookFile.Publish(workbook, path);
+                if (progress != null) progress.Report(100);
             }
             finally
             {
@@ -588,7 +594,8 @@ namespace Win7BookManagement.Reporting
             IWorkbook workbook,
             StyleFactory styles,
             IList<MonthlySalesRow> rows,
-            DateTime date)
+            DateTime date,
+            CancellationToken cancellationToken)
         {
             var sheet = workbook.CreateSheet(date.ToString("MMdd", CultureInfo.InvariantCulture));
             sheet.CreateFreezePane(0, 2);
@@ -638,6 +645,7 @@ namespace Win7BookManagement.Reporting
             var index = 0;
             while (index < dayRows.Count)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var orderId = dayRows[index].OrderId;
                 var start = index;
                 var end = index;

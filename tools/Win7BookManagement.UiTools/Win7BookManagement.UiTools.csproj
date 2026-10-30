@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.props" Condition="Exists('$(MSBuildToolsPath)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{1E6A2C6D-8E47-4A62-9E64-4D0A8A6D7F31}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Win7BookManagement.UiTools</RootNamespace>
+    <AssemblyName>Win7BookManagement.UiTools</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <OutputPath>bin\$(Platform)\$(Configuration)\</OutputPath>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" /><Reference Include="System.Core" /><Reference Include="System.Data" />
+    <Reference Include="System.Drawing" /><Reference Include="System.Windows.Forms" />
+    <Reference Include="System.IO.Compression" /><Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" /><Compile Include="SelfTest.cs" /><Compile Include="UiSnapshotGenerator.cs" />
+    <ProjectReference Include="..\..\src\Win7BookManagement\Win7BookManagement.csproj">
+      <Project>{B50A2F63-97A7-4ED3-BC6D-1196F1F81C5C}</Project><Name>Win7BookManagement</Name>
+    </ProjectReference>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3"><PrivateAssets>all</PrivateAssets></PackageReference>
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageReference Include="NPOI" Version="2.6.2" />
+    <PackageReference Include="AntdUI" Version="2.4.12" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

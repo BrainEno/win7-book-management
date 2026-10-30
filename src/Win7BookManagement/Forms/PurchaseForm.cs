@@ -1294,9 +1294,10 @@ namespace Win7BookManagement.Forms
                         }
                         catch (Exception ex)
                         {
+                            AppLog.Error("ui", "界面操作失败", ex);
                             MessageBox.Show(
                                 this,
-                                "复制采购单失败：\r\n" + ex.Message,
+                                "复制采购单失败：\r\n" + UserErrorText.For(ex),
                                 "无法复制",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Warning);
@@ -1435,7 +1436,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "保存草稿失败：\r\n" + ex.Message, "请检查采购单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "保存草稿失败：\r\n" + UserErrorText.For(ex), "请检查采购单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
         }
@@ -1479,7 +1481,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "复核失败：\r\n" + ex.Message, "采购未入库", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "复核失败：\r\n" + UserErrorText.For(ex), "采购未入库", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -1512,7 +1515,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "反复核失败：\r\n" + ex.Message, "无法取消复核", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "反复核失败：\r\n" + UserErrorText.For(ex), "无法取消复核", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -1549,12 +1553,16 @@ namespace Win7BookManagement.Forms
 
                 try
                 {
-                    _services.Excel.Export(BuildExportTable(document), dialog.FileName, "采购单");
-                    MessageBox.Show(this, "采购单已导出：\r\n" + dialog.FileName, "导出完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var data = BuildExportTable(document); var path = dialog.FileName;
+                    UiTask.Run(this, "导出采购单", (progress, token) =>
+                    {
+                        _services.Excel.Export(data, path, "采购单", progress, token); return path;
+                    }, result => MessageBox.Show(this, "采购单已导出：\r\n" + result, "导出完成", MessageBoxButtons.OK, MessageBoxIcon.Information));
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "导出失败：\r\n" + ex.Message, "无法导出", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    AppLog.Error("ui", "界面操作失败", ex);
+                    MessageBox.Show(this, "导出失败：\r\n" + UserErrorText.For(ex), "无法导出", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
         }

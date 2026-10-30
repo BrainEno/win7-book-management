@@ -44,6 +44,8 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
@@ -110,12 +112,17 @@
     <Compile Include="Forms\SalesForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\SettingsForm.Maintenance.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\SettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\SupplierForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Infrastructure\SmokeTest.cs" />
+    <Compile Include="Infrastructure\UiTask.cs" />
     <Compile Include="Infrastructure\AppPaths.cs" />
     <Compile Include="Infrastructure\ApplicationServices.cs" />
     <Compile Include="Infrastructure\UserErrorText.cs" />
@@ -128,8 +135,6 @@
     <Compile Include="Infrastructure\PersistentAntdTable.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Infrastructure\SelfTest.cs" />
-    <Compile Include="Infrastructure\UiSnapshotGenerator.cs" />
     <Compile Include="Infrastructure\UiTheme.cs" />
     <Compile Include="Infrastructure\WindowPlacement.cs" />
     <Compile Include="Models\Book.cs" />
@@ -144,6 +149,7 @@
     <Compile Include="Infrastructure\BackupStatusBanner.cs" />
     <Compile Include="Services\AutoBackupService.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="Reporting\WorkbookFile.cs" />
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />
     <Compile Include="Reporting\PurchaseMonthlyExcelExporter.cs" />
@@ -172,8 +178,5 @@
     <PackageReference Include="NPOI" Version="2.6.2" />
     <PackageReference Include="AntdUI" Version="2.4.12" />
   </ItemGroup>
-  <PropertyGroup>
-    <PreBuildEvent>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(MSBuildProjectDirectory)\..\..\scripts\generate-app-icon.ps1" -OutputPath "$(MSBuildProjectDirectory)\Resources\BookDesk.ico"</PreBuildEvent>
-  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

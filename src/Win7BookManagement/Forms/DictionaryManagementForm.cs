@@ -166,7 +166,7 @@ namespace Win7BookManagement.Forms
             AntdUI.MenuItem item;
             if (!_items.TryGetValue(key, out item)) return;
             try { _menu.Select(item, false); }
-            catch { }
+            catch (Exception ex) { AppLog.Warn("ui", "恢复字典导航选择失败：" + ex.GetType().Name); }
         }
 
         private void ShowProvider(string key)
@@ -635,9 +635,10 @@ namespace Win7BookManagement.Forms
                 }
                 catch (Exception ex)
                 {
+                    AppLog.Error("ui", "界面操作失败", ex);
                     MessageBox.Show(
                         this,
-                        "无法保存字典值：\r\n" + ex.Message,
+                        "无法保存字典值：\r\n" + UserErrorText.For(ex),
                         "请检查输入",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning);

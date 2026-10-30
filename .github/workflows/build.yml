@@ -2,87 +2,108 @@ name: build-win7
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    tags: ['v*']
   pull_request:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: windows-2022
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Validate C# source manifest
+      - name: Validate source manifests and supply-chain guards
         shell: powershell
         run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\validate-csproj-sources.ps1"
+          .\scripts\validate-csproj-sources.ps1
+          .\scripts\test-build-guards.ps1
 
       - name: Restore
         run: msbuild Win7BookManagement.sln /t:Restore /p:Configuration=Release /p:Platform=x86
-
       - name: Build Debug x86
         run: msbuild Win7BookManagement.sln /m /p:Configuration=Debug /p:Platform=x86
-
       - name: Build Release x86
         run: msbuild Win7BookManagement.sln /m /p:Configuration=Release /p:Platform=x86
 
-      - name: Run self test
+      - name: Focused unit tests (net48/x86)
+        run: dotnet test tests/Win7BookManagement.Tests/Win7BookManagement.Tests.csproj -c Release -p:Platform=x86 --no-build --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+      - name: Release-folder smoke test
         shell: powershell
         run: |
-          $exe = Resolve-Path "src\Win7BookManagement\bin\x86\Release\Win7BookManagement.exe"
-          $process = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru
-          if ($process.ExitCode -ne 0) {
-            $errorFile = Join-Path (Split-Path $exe) "self-test-error.txt"
-            if (Test-Path $errorFile) {
-              Write-Host "Self-test diagnostics:"
-              Get-Content $errorFile | Write-Host
-            }
-            throw "Self test failed with exit code $($process.ExitCode)"
+          $p = Start-Process "src\Win7BookManagement\bin\x86\Release\Win7BookManagement.exe" "--self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Release smoke test failed: $($p.ExitCode)" }
+      - name: Full business and UI regression suite (not shipped)
+        shell: powershell
+        run: |
+          $exe = "tools\Win7BookManagement.UiTools\bin\x86\Release\Win7BookManagement.UiTools.exe"
+          $p = Start-Process $exe "--self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) {
+            Get-Content "tools\Win7BookManagement.UiTools\bin\x86\Release\self-test-error.txt" -ErrorAction SilentlyContinue
+            throw "Full self-test failed: $($p.ExitCode)"
           }
+          New-Item -ItemType Directory -Force ui-snapshots | Out-Null
+          $p = Start-Process $exe -ArgumentList @("--ui-snapshots", (Join-Path $PWD "ui-snapshots")) -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "UI snapshots failed: $($p.ExitCode)" }
 
-      - name: Generate UI snapshots
+      - name: Build offline installer (hash-pinned prerequisites; optional signing)
         shell: powershell
+        env:
+          BOOKDESK_SIGNING_CERT: ${{ secrets.BOOKDESK_SIGNING_CERT }}
+          BOOKDESK_SIGNING_PASSWORD: ${{ secrets.BOOKDESK_SIGNING_PASSWORD }}
         run: |
-          $exe = Resolve-Path "src\Win7BookManagement\bin\x86\Release\Win7BookManagement.exe"
-          $output = Join-Path $PWD "ui-snapshots"
-          New-Item -ItemType Directory -Force -Path $output | Out-Null
-          $process = Start-Process -FilePath $exe -ArgumentList "--ui-snapshots", $output -Wait -PassThru
-          if ($process.ExitCode -ne 0) {
-            $errorFile = Join-Path (Split-Path $exe) "ui-snapshot-error.txt"
-            if (Test-Path $errorFile) {
-              Write-Host "UI snapshot diagnostics:"
-              Get-Content $errorFile | Write-Host
-            }
-            throw "UI snapshot generation failed with exit code $($process.ExitCode)"
+          $arguments = @{ SkipBuild = $true }
+          if ($env:BOOKDESK_SIGNING_CERT) {
+            $certificate = Join-Path $env:RUNNER_TEMP "bookdesk-signing.pfx"
+            [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:BOOKDESK_SIGNING_CERT))
+            $arguments.SignCertificatePath = $certificate
+            $arguments.SignCertificatePassword = $env:BOOKDESK_SIGNING_PASSWORD
           }
+          try { .\scripts\build-installer.ps1 @arguments }
+          finally { if ($certificate -and (Test-Path $certificate)) { Remove-Item $certificate -Force } }
 
-      - name: Build offline installer
-        shell: powershell
-        run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\build-installer.ps1" -SkipBuild
-
-      - name: Upload Windows executable
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: win7-book-management-x86
           path: src/Win7BookManagement/bin/x86/Release/
           if-no-files-found: error
-
-      - name: Upload UI snapshots
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ui-snapshots
           path: ui-snapshots/*.png
           if-no-files-found: error
-
-      - name: Upload offline installer
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: win7-book-management-offline-installer
           path: installer/output/Win7BookManagement-Offline-Setup.exe
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: TestResults/*.trx
+          if-no-files-found: warn
+
+      - name: Publish tagged release with SHA256SUMS
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw "Tag and VERSION differ." }
+          $installer = "installer/output/Win7BookManagement-Offline-Setup.exe"
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("installer/output/SHA256SUMS", "$hash  Win7BookManagement-Offline-Setup.exe`n")
+          $signed = if ($env:BOOKDESK_SIGNING_CERT) { "Signed build." } else { "UNSIGNED build: verify SHA256SUMS; configure a code-signing certificate before commercial distribution." }
+          gh release create $env:GITHUB_REF_NAME $installer "installer/output/SHA256SUMS" --title "BOOK DESK v$version" --notes "Windows 7 SP1 / .NET Framework 4.8 / x86. $signed See CHANGELOG.md and docs/WIN7_SMOKE_TEST.md. CI is not a substitute for the documented physical Win7 acceptance run."
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOOKDESK_SIGNING_CERT: ${{ secrets.BOOKDESK_SIGNING_CERT }}

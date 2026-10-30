@@ -751,7 +751,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "结账失败：\r\n" + ex.Message, "请检查销售单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "结账失败：\r\n" + UserErrorText.For(ex), "请检查销售单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -826,7 +827,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "挂单失败：\r\n" + ex.Message, "无法挂单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "挂单失败：\r\n" + UserErrorText.For(ex), "无法挂单", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 

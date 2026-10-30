@@ -432,7 +432,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "查询单据失败：\r\n" + ex.Message, "查询失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "查询单据失败：\r\n" + UserErrorText.For(ex), "查询失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -773,8 +774,9 @@ namespace Win7BookManagement.Forms
                 else _items.BringToFront();
                 ApplyResponsiveColumns();
             }
-            catch
+            catch (Exception ex)
             {
+                AppLog.Error("documents", "读取单据明细失败", ex);
                 _items.DataSource = null;
                 _detailTitle.Text = "单据明细";
                 _emptyItems.Visible = true;
@@ -820,7 +822,8 @@ namespace Win7BookManagement.Forms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "无法发起退货：\r\n" + ex.Message, "退货准备失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppLog.Error("ui", "界面操作失败", ex);
+                MessageBox.Show(this, "无法发起退货：\r\n" + UserErrorText.For(ex), "退货准备失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 

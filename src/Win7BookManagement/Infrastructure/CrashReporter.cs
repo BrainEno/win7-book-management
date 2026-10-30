@@ -77,7 +77,7 @@ namespace Win7BookManagement.Infrastructure
             var message = new StringBuilder();
             message.AppendLine(fatal
                 ? "程序遇到无法继续的问题，需要退出。"
-                : "刚才的操作没有完成，业务数据没有被修改。");
+                : "刚才的操作没有完成。请刷新页面核对结果，不要连续重复提交。");
             message.AppendLine();
             message.AppendLine("操作：" + (operation ?? "未知"));
             message.AppendLine("原因：" + UserErrorText.For(exception));
@@ -101,34 +101,45 @@ namespace Win7BookManagement.Infrastructure
                 {
                     System.Diagnostics.Process.Start("explorer.exe", AppPaths.LogsDirectory);
                 }
-                catch
+                catch (Exception logFailure)
                 {
+                    AppLog.Warn("crash", "无法打开日志目录：" + logFailure.GetType().Name);
                 }
             }
         }
 
-        /// <summary>导出诊断包：日志 + 版本 + 数据库健康摘要，写入用户选择的目录。</summary>
+        /// <summary>Exports a ZIP of recent logs and environment information, never the database.</summary>
         public static string ExportDiagnostics(string targetDirectory)
         {
-            var folder = Path.Combine(
-                targetDirectory,
-                "BOOKDESK-Diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
-            Directory.CreateDirectory(folder);
-
-            AppLog.ExportRecentLogs(7, folder);
-
-            var summary = new StringBuilder();
-            summary.AppendLine("BOOK DESK 诊断信息");
-            summary.AppendLine("时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            summary.AppendLine("版本：" + typeof(CrashReporter).Assembly.GetName().Version.ToString());
-            summary.AppendLine("系统：" + Environment.OSVersion.VersionString + " / " + Environment.Is64BitOperatingSystem);
-            summary.AppendLine("CLR：" + Environment.Version);
-            summary.AppendLine("数据库：" + AppPaths.DatabasePath);
-            summary.AppendLine("低配模式：" + LowSpecMode.IsLowSpec);
-            summary.AppendLine("服务：见 logs 目录");
-
-            File.WriteAllText(Path.Combine(folder, "diagnostics.txt"), summary.ToString(), Encoding.UTF8);
-            return folder;
+            if (string.IsNullOrWhiteSpace(targetDirectory)) throw new ArgumentException("请选择诊断包保存位置。", "targetDirectory");
+            Directory.CreateDirectory(targetDirectory);
+            var staging = Path.Combine(Path.GetTempPath(), "BookDesk-Diagnostics-" + Guid.NewGuid().ToString("N"));
+            var zip = Path.Combine(targetDirectory, "BOOKDESK-Diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + ".zip");
+            try
+            {
+                AppLog.ExportRecentLogs(7, staging);
+                var summary = new StringBuilder();
+                summary.AppendLine("BOOK DESK 诊断信息（不包含数据库或顾客单据）");
+                summary.AppendLine("时间：" + DateTime.Now.ToString("o"));
+                summary.AppendLine("版本：" + typeof(CrashReporter).Assembly.GetName().Version);
+                summary.AppendLine("系统：" + Environment.OSVersion.VersionString);
+                summary.AppendLine("64 位系统：" + Environment.Is64BitOperatingSystem);
+                summary.AppendLine("CLR：" + Environment.Version);
+                summary.AppendLine("CPU 逻辑核心：" + Environment.ProcessorCount);
+                summary.AppendLine("低配模式：" + LowSpecMode.IsLowSpec);
+                summary.AppendLine("工作区：" + Screen.PrimaryScreen.WorkingArea);
+                using (var graphics = Graphics.FromHwnd(IntPtr.Zero))
+                    summary.AppendLine("DPI：" + graphics.DpiX + " x " + graphics.DpiY);
+                summary.AppendLine("已安装字体：" + string.Join(", ", System.Linq.Enumerable.Select(FontFamily.Families, f => f.Name)));
+                File.WriteAllText(Path.Combine(staging, "diagnostics.txt"), summary.ToString(), Encoding.UTF8);
+                System.IO.Compression.ZipFile.CreateFromDirectory(staging, zip);
+                return zip;
+            }
+            finally
+            {
+                try { Directory.Delete(staging, true); }
+                catch (Exception ex) { AppLog.Warn("diagnostics", "清理诊断临时目录失败：" + ex.GetType().Name); }
+            }
         }
     }
 }
