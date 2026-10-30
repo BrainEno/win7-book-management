@@ -27,6 +27,9 @@ namespace Win7BookManagement.Infrastructure
                 if (s[9] != 'X' && !char.IsDigit(s[9])) throw Invalid();
                 if ((sum + check) % 11 != 0) throw Invalid();
                 s = "978" + s.Substring(0, 9);
+                var prefixTotal = 0;
+                for (var i = 0; i < 12; i++) prefixTotal += (s[i] - '0') * (i % 2 == 0 ? 1 : 3);
+                s += ((10 - prefixTotal % 10) % 10).ToString();
             }
             if (s.Length != 13 || s.IndexOf('X') >= 0) throw Invalid();
             var total = 0;
