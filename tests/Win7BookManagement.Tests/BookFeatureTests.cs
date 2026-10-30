@@ -19,6 +19,107 @@ namespace Win7BookManagement.Tests
             Assert.AreEqual("", Isbn.Normalize("  "));
             Assert.ThrowsException<InvalidOperationException>(() => Isbn.Normalize("9787111213827"));
             Assert.ThrowsException<InvalidOperationException>(() => Isbn.Normalize("0306406153"));
+
+            string normalized;
+            Assert.IsTrue(Isbn.TryNormalize(null, out normalized));
+            Assert.AreEqual("", normalized);
+            Assert.IsTrue(Isbn.TryNormalize("0-306-40615-2", out normalized));
+            Assert.AreEqual("9780306406157", normalized);
+            Assert.IsFalse(Isbn.TryNormalize("9787111213827", out normalized));
+            Assert.IsFalse(Isbn.TryNormalize("BK-000001", out normalized));
+        }
+    }
+
+    [TestClass]
+    public class BookIsbnSavePolicyTests
+    {
+        [TestMethod]
+        public void BlankAndValidIsbn_DoNotRequireConfirmation()
+        {
+            var blank = BookIsbnSavePolicy.CreatePlan("  ", "自出版");
+            Assert.IsFalse(blank.InvalidIsbnNeedsConfirmation);
+            Assert.AreEqual("", blank.Isbn);
+            Assert.AreEqual("自出版", blank.Note);
+
+            var valid = BookIsbnSavePolicy.CreatePlan("0-306-40615-2", "原有备注");
+            Assert.IsFalse(valid.InvalidIsbnNeedsConfirmation);
+            Assert.AreEqual("9780306406157", valid.Isbn);
+            Assert.AreEqual("原有备注", valid.Note);
+        }
+
+        [TestMethod]
+        public void InvalidIsbn_RequiresConfirmation_AndPreservesRawInputInNote()
+        {
+            var plan = BookIsbnSavePolicy.CreatePlan("9787111213827", "签名本");
+            Assert.IsTrue(plan.InvalidIsbnNeedsConfirmation);
+            Assert.AreEqual("", plan.Isbn);
+            Assert.AreEqual("9787111213827", plan.RawIsbnInput);
+            StringAssert.Contains(plan.Note, "签名本");
+            StringAssert.Contains(plan.Note, BookIsbnSavePolicy.UnverifiedIsbnNotePrefix + "9787111213827");
+        }
+
+        [TestMethod]
+        public void InvalidIsbn_NoteIsNotDuplicated()
+        {
+            var first = BookIsbnSavePolicy.CreatePlan("BK-000001", "");
+            var second = BookIsbnSavePolicy.CreatePlan("BK-000001", first.Note);
+            Assert.AreEqual(first.Note, second.Note);
+        }
+
+        [TestMethod]
+        public void ConfirmedInvalidIsbnPlan_CanInsertBookWithoutIsbn()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var plan = BookIsbnSavePolicy.CreatePlan("9787111213827", "自出版画册");
+                Assert.IsTrue(plan.InvalidIsbnNeedsConfirmation);
+
+                var id = db.Services.Books.Insert(new Win7BookManagement.Models.Book
+                {
+                    Title = "自出版画册",
+                    Isbn = plan.Isbn,
+                    Note = plan.Note,
+                    SalePriceCent = 1000
+                });
+
+                var stored = db.Services.Books.GetById(id);
+                Assert.AreEqual("", stored.Isbn);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(stored.SelfCode));
+                StringAssert.Contains(stored.Note, "9787111213827");
+            }
+        }
+    }
+
+    [TestClass]
+    public class BookRepositoryIsbnOptionalTests
+    {
+        [TestMethod]
+        public void BlankIsbn_AllowsManyBooks_WithUniqueSelfCodes()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var first = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "自出版一" });
+                var second = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "自出版二", Isbn = "" });
+
+                var a = db.Services.Books.GetById(first);
+                var b = db.Services.Books.GetById(second);
+                Assert.AreEqual("", a.Isbn);
+                Assert.AreEqual("", b.Isbn);
+                Assert.AreNotEqual(a.SelfCode, b.SelfCode);
+                Assert.IsTrue(a.SelfCode.StartsWith("BK-", StringComparison.Ordinal));
+                Assert.IsTrue(b.SelfCode.StartsWith("BK-", StringComparison.Ordinal));
+            }
+        }
+
+        [TestMethod]
+        public void Repository_StillRejectsInvalidNonEmptyIsbn()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                Assert.ThrowsException<InvalidOperationException>(() =>
+                    db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "错误ISBN", Isbn = "9787111213827" }));
+                Assert.AreEqual(0, db.Services.Books.Search("", true).Count);
+            }
         }
     }
 

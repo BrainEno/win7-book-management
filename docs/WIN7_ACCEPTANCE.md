@@ -6,7 +6,7 @@ Windows CI（windows-2022）可以证明代码、依赖、安装器与界面布�
 ## 已自动验证（每次 PR / push）
 
 - `msbuild` Debug / Release x86；生产包不包含测试 / UiTools。
-- 19 个 MSTest（net48/x86）：迁移安全、备份、ISBN、批量导入、盘点、xls / CSV、小票快照等。
+- 25 个 MSTest（net48/x86）：迁移安全、备份、ISBN 可选 / 错误 ISBN 不阻断建档、批量导入、盘点、xls / CSV、小票快照等。
 - Release 目录 `--self-test` 冒烟：schema 版本、FULL synchronous、备份可校验。
 - UiTools 全量业务 / UI 自检与多分辨率截图（1024×768、1366×768、1800×900 等）。
 - 离线安装器：Inno Setup 6.7.3 与 .NET 4.8 离线包均做 SHA-256 固定 + Authenticode 校验；无证书时产物标记 UNSIGNED。
