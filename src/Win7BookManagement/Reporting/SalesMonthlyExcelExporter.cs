@@ -7,6 +7,7 @@ using System.Threading;
 using NPOI.SS.UserModel;
 using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
+using NPOI.HSSF.UserModel;
 
 namespace Win7BookManagement.Reporting
 {
@@ -104,7 +105,8 @@ namespace Win7BookManagement.Reporting
             var rows = ReadRows(detail);
             var returns = ReadReturns(returnDetail);
             var categoryMap = BuildCategoryMap(categoryMapping);
-            IWorkbook workbook = new XSSFWorkbook();
+            IWorkbook workbook = string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase)
+                ? (IWorkbook)new HSSFWorkbook() : new XSSFWorkbook();
             try
             {
                 var styles = new StyleFactory(workbook);

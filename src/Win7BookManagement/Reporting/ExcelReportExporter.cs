@@ -6,6 +6,7 @@ using System.Threading;
 using NPOI.SS.UserModel;
 using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
+using NPOI.HSSF.UserModel;
 
 namespace Win7BookManagement.Reporting
 {
@@ -20,8 +21,16 @@ namespace Win7BookManagement.Reporting
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
-
-            IWorkbook workbook = new XSSFWorkbook();
+            if (string.Equals(Path.GetExtension(path), ".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                CsvReportExporter.Export(table, path);
+                if (progress != null) progress.Report(100);
+                return;
+            }
+            if (string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase) && table.Rows.Count + 2 > 65536)
+                throw new InvalidOperationException("旧版 .xls 最多 65536 行，请缩小日期范围或改用 .xlsx。");
+            IWorkbook workbook = string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase)
+                ? (IWorkbook)new HSSFWorkbook() : new XSSFWorkbook();
             try
             {
                 var sheet = workbook.CreateSheet(SanitizeSheetName(sheetName));

@@ -14,6 +14,7 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.InputNumber _retention = new AntdUI.InputNumber();
         private readonly AntdUI.Checkbox _secondaryEnabled = new AntdUI.Checkbox { Text = "同时保存第二份备份", AutoSize = true };
         private readonly AntdUI.Select _performance = new AntdUI.Select();
+        private readonly AntdUI.Select _receiptWidth = new AntdUI.Select();
         private readonly Label _backupStatus = new Label { AutoSize = true, MaximumSize = new Size(880, 0) };
 
         private Control CreateMaintenanceSection()
@@ -58,6 +59,12 @@ namespace Win7BookManagement.Forms
             performanceRow.Controls.Add(_performance);
             performanceRow.Controls.Add(new Label { Text = "低配模式关闭动画和高质量文字渲染，不影响账务数据。", AutoSize = true, Margin = new Padding(8, 8, 0, 0) });
             section.Controls.Add(performanceRow);
+            var receiptRow = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true };
+            receiptRow.Controls.Add(new Label { Text = "小票纸宽", AutoSize = true, Margin = new Padding(0, 8, 8, 0) });
+            _receiptWidth.Width = 120; _receiptWidth.Items.Add("80 mm"); _receiptWidth.Items.Add("58 mm");
+            receiptRow.Controls.Add(_receiptWidth);
+            receiptRow.Controls.Add(new Label { Text = "销售结账后可打印 / 重打小票。", AutoSize = true, Margin = new Padding(8, 8, 0, 0) });
+            section.Controls.Add(receiptRow);
             return section;
         }
 
@@ -79,6 +86,7 @@ namespace Win7BookManagement.Forms
             _secondaryEnabled.Checked = _services.AutoBackup.SecondaryBackupEnabled;
             var mode = _services.Settings.GetString("low_spec_mode", "auto");
             _performance.SelectedIndex = mode == "on" ? 1 : mode == "off" ? 2 : 0;
+            _receiptWidth.SelectedIndex = _services.Settings.GetInt("receipt_width_mm", 80) == 58 ? 1 : 0;
             _backupStatus.Text = _services.AutoBackup.GetStatus().Message;
         }
 
@@ -100,6 +108,7 @@ namespace Win7BookManagement.Forms
                 _services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, _secondaryEnabled.Checked);
                 var mode = _performance.SelectedIndex == 1 ? "on" : _performance.SelectedIndex == 2 ? "off" : "auto";
                 _services.Settings.SetString("low_spec_mode", mode);
+                _services.Settings.SetInt("receipt_width_mm", _receiptWidth.SelectedIndex == 1 ? 58 : 80);
                 LowSpecMode.Configure(mode == "auto" ? (bool?)null : mode == "on");
                 LowSpecMode.ApplyToAntdUi();
                 _backupStatus.Text = _services.AutoBackup.GetStatus().Message;

@@ -12,6 +12,7 @@ namespace Win7BookManagement.Forms
     public sealed class SalesForm : Form, INavigationGuard
     {
         private readonly ApplicationServices _services;
+        private Win7BookManagement.Models.SalesReceipt _lastReceipt;
         private readonly AntdUI.Input _isbn = UiTheme.CreateAntdInput("扫码或输入店内编码 / ISBN / 书名 / 作者");
         private readonly AntdUI.Input _note = UiTheme.CreateAntdInput("可选：填写销售备注");
         private readonly AntdUI.InputNumber _orderDiscount = new AntdUI.InputNumber();
@@ -279,13 +280,14 @@ namespace Win7BookManagement.Forms
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 MinimumSize = new Size(0, 42),
-                ColumnCount = 3,
+                ColumnCount = 4,
                 RowCount = 1,
                 BackColor = UiTheme.Surface,
                 Padding = new Padding(12, 5, 12, 5),
                 Margin = Padding.Empty
             };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
@@ -301,7 +303,7 @@ namespace Win7BookManagement.Forms
 
             header.Controls.Add(new Label
             {
-                Text = "数量、销售价和单品折扣可直接编辑；折扣按百分比输入",
+                Text = "数量 / 折扣可编辑",
                 AutoSize = true,
                 Anchor = AnchorStyles.Right,
                 ForeColor = UiTheme.TextSecondary,
@@ -313,6 +315,15 @@ namespace Win7BookManagement.Forms
             remove.Width = 92;
             remove.Click += delegate { RemoveSelected(); };
             header.Controls.Add(remove, 2, 0);
+            var reprint = UiTheme.CreateAntdButton("重打上一张", false);
+            reprint.Width = 112; reprint.Margin = new Padding(6, 0, 0, 0);
+            reprint.Click += delegate
+            {
+                if (_lastReceipt == null) { MessageBox.Show(this, "本次打开页面后还没有已结账小票。", "没有可重打的小票", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+                try { _services.Receipts.Print(this, _lastReceipt); }
+                catch (Exception ex) { CrashReporter.Handle(this, ex, "重打小票"); }
+            };
+            header.Controls.Add(reprint, 3, 0);
 
             var content = new Panel { Dock = DockStyle.Fill, BackColor = UiTheme.Surface };
 
@@ -733,7 +744,7 @@ namespace Win7BookManagement.Forms
                         {
                             draftCleanupWarning =
                                 "\r\n\r\n提示：销售已经成功，但原挂单未能自动删除：" +
-                                cleanupEx.Message;
+                                UserErrorText.For(cleanupEx);
                         }
                     }
 
@@ -752,6 +763,13 @@ namespace Win7BookManagement.Forms
 
                     message += draftCleanupWarning;
                     MessageBox.Show(this, message, "结账成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    try
+                    {
+                        _lastReceipt = _services.Receipts.Load(orderNo);
+                        if (MessageBox.Show(this, "是否打印本单小票？", "打印小票", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                            _services.Receipts.Print(this, _lastReceipt);
+                    }
+                    catch (Exception printEx) { CrashReporter.Handle(this, printEx, "打印销售小票"); }
                     ResetOrder();
                 }
             }

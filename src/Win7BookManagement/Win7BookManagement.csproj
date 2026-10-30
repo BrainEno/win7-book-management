@@ -47,6 +47,7 @@
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing.Design" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
@@ -150,6 +151,7 @@
     <Compile Include="Models\PurchaseDocument.cs" />
     <Compile Include="Models\ReturnLineInput.cs" />
     <Compile Include="Models\ReturnableDocumentLine.cs" />
+    <Compile Include="Models\SalesReceipt.cs" />
     <Compile Include="Models\SalesDraft.cs" />
     <Compile Include="Models\StocktakeDocument.cs" />
     <Compile Include="Models\Supplier.cs" />
@@ -158,6 +160,8 @@
     <Compile Include="Services\AutoBackupService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Reporting\WorkbookFile.cs" />
+    <Compile Include="Reporting\CsvReportExporter.cs" />
+    <Compile Include="Reporting\ReceiptPrinter.cs" />
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />
     <Compile Include="Reporting\PurchaseMonthlyExcelExporter.cs" />

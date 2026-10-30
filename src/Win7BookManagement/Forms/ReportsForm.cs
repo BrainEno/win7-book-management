@@ -725,7 +725,7 @@ namespace Win7BookManagement.Forms
 
                 using (var dialog = new SaveFileDialog())
                 {
-                    dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                    dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls|CSV 文本 (*.csv)|*.csv";
                     dialog.DefaultExt = "xlsx";
                     dialog.AddExtension = true;
                     dialog.InitialDirectory = AppPaths.ExportDirectory;
@@ -759,7 +759,7 @@ namespace Win7BookManagement.Forms
 
             using (var dialog = new SaveFileDialog())
             {
-                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls";
                 dialog.DefaultExt = "xlsx";
                 dialog.AddExtension = true;
                 dialog.InitialDirectory = AppPaths.ExportDirectory;
@@ -789,7 +789,7 @@ namespace Win7BookManagement.Forms
 
             using (var dialog = new SaveFileDialog())
             {
-                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
+                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls";
                 dialog.DefaultExt = "xlsx";
                 dialog.AddExtension = true;
                 dialog.InitialDirectory = AppPaths.ExportDirectory;

@@ -442,7 +442,7 @@ namespace Win7BookManagement.Forms
 
             section.Controls.Add(new Label
             {
-                Text = "本机数据",
+                Text = "本机数据 · v" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(),
                 AutoSize = true,
                 Font = UiTheme.Font(12F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
