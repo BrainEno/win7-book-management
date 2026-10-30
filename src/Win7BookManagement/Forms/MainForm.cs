@@ -9,6 +9,8 @@ namespace Win7BookManagement.Forms
 {
     public sealed class MainForm : Form
     {
+        /// <summary>UI 自动化 / 自检生成快照时禁止弹出阻断式提醒。</summary>
+        public static bool SuppressStartupPrompts { get; set; }
         private readonly ApplicationServices _services;
         private readonly Panel _sidebar;
         private readonly AntdUI.Menu _navigation;
