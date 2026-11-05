@@ -61,6 +61,9 @@ namespace Win7BookManagement.Infrastructure
 
         private const string HostedInputTag = "ui-input-hosted";
         private static readonly string FontFamilyName = ResolveFontFamily();
+        // Isolated UiTools font-compatibility tests set this via reflection.
+        // Production startup never changes it.
+        private static string _fontFamilyOverrideForTests;
         private static Icon _applicationIcon;
 
         public static void InitializeAntdUi()
@@ -82,7 +85,7 @@ namespace Win7BookManagement.Infrastructure
 
         public static Font Font(float size, FontStyle style)
         {
-            return new Font(FontFamilyName, size, style, GraphicsUnit.Point);
+            return new Font(_fontFamilyOverrideForTests ?? FontFamilyName, size, style, GraphicsUnit.Point);
         }
 
         public static int ResponsiveInputHeight(int availableWidth)
@@ -797,15 +800,16 @@ namespace Win7BookManagement.Infrastructure
 
         private static string ResolveFontFamily()
         {
-            var preferred = new[]
-            {
-                "Microsoft YaHei UI",
-                "Microsoft YaHei",
-                "Segoe UI",
-                "SimSun"
-            };
+            return SelectFontFamily(FontFamily.Families.Select(family => family.Name).ToArray(),
+                SystemFonts.MessageBoxFont.FontFamily.Name);
+        }
 
-            var installed = FontFamily.Families.Select(family => family.Name).ToArray();
+        public static string SelectFontFamily(string[] installed, string fallback)
+        {
+            // Prefer an installed Chinese font to Segoe UI, which does not
+            // cover Chinese glyphs on many Windows 7 configurations.
+            var preferred = new[] { "Microsoft YaHei UI", "Microsoft YaHei", "SimSun", "Segoe UI" };
+            installed = installed ?? new string[0];
             foreach (var candidate in preferred)
             {
                 if (installed.Any(name =>
@@ -815,7 +819,7 @@ namespace Win7BookManagement.Infrastructure
                 }
             }
 
-            return SystemFonts.MessageBoxFont.FontFamily.Name;
+            return fallback;
         }
     }
 }

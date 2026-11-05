@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
@@ -741,6 +742,46 @@ namespace Win7BookManagement.Infrastructure
                     }
                 }
 
+                // Verify real BIFF8 workbooks by reopening both legacy monthly
+                // exports, including totals and print settings, not just file size.
+                var salesXls = Path.Combine(root, "sales-monthly.xls");
+                services.SalesMonthlyExcel.Export(monthlyDetail, monthlyReturns, salesXls, DateTime.Today,
+                    services.Settings.GetReportStoreName(), services.Settings.GetReportNightShiftStartHour(),
+                    services.Settings.GetReportCategoryMapping());
+                using (var stream = File.OpenRead(salesXls))
+                {
+                    var workbook = WorkbookFactory.Create(stream);
+                    try
+                    {
+                        var sheet = workbook.GetSheet("销售月报表");
+                        if (!(workbook is NPOI.HSSF.UserModel.HSSFWorkbook) || sheet == null ||
+                            workbook.NumberOfSheets != DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month) + 1 ||
+                            Math.Abs(sheet.GetRow(28).GetCell(3).NumericCellValue - 14.40) > 0.001 ||
+                            sheet.PrintSetup.PaperSize != 9 || sheet.RepeatingRows == null ||
+                            string.IsNullOrEmpty(workbook.GetPrintArea(workbook.GetSheetIndex(sheet))))
+                            throw new InvalidOperationException("旧版 XLS 销售月报结构 / 净销售 / 打印设置自检失败。");
+                    }
+                    finally { workbook.Close(); }
+                }
+                var purchaseXls = Path.Combine(root, "purchase-monthly.xls");
+                services.PurchaseMonthlyExcel.Export(purchaseMonthlyDetail, purchaseMonthlyReturns, purchaseXls,
+                    DateTime.Today, services.Settings.GetReportStoreName());
+                using (var stream = File.OpenRead(purchaseXls))
+                {
+                    var workbook = WorkbookFactory.Create(stream);
+                    try
+                    {
+                        var sheet = workbook.GetSheet("采购月报表");
+                        if (!(workbook is NPOI.HSSF.UserModel.HSSFWorkbook) || sheet == null ||
+                            workbook.NumberOfSheets != DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month) + 2 ||
+                            Math.Abs(sheet.GetRow(DateTime.Today.Day + 1).GetCell(8).NumericCellValue - 30.00) > 0.001 ||
+                            sheet.PrintSetup.PaperSize != 9 || sheet.RepeatingRows == null ||
+                            string.IsNullOrEmpty(workbook.GetPrintArea(workbook.GetSheetIndex(sheet))))
+                            throw new InvalidOperationException("旧版 XLS 采购月报结构 / 净采购 / 打印设置自检失败。");
+                    }
+                    finally { workbook.Close(); }
+                }
+
                 var backupSnapshotStock = services.Books.GetById(bookId).StockQuantity;
                 var backupPath = Path.Combine(root, "backup.db");
                 services.Backup.CreateBackup(backupPath);
@@ -826,6 +867,100 @@ namespace Win7BookManagement.Infrastructure
                 SQLiteConnection.ClearAllPools();
                 try { Directory.Delete(root, true); } catch { }
             }
+        }
+
+        // Separate process: unavailable SimSun must be reported as skipped (2),
+        // never silently substituted by GDI and reported as a passed font test.
+        public static int RunSimSunLayout()
+        {
+            var output = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "simsun-test-result.txt");
+            var root = Path.Combine(Path.GetTempPath(), "BookDesk-SimSun-" + Guid.NewGuid().ToString("N"));
+            var field = typeof(UiTheme).GetField("_fontFamilyOverrideForTests", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            object previous = null;
+            var originalAntdFont = AntdUI.Config.Font;
+            try
+            {
+                if (!System.Drawing.FontFamily.Families.Any(f => string.Equals(f.Name, "SimSun", StringComparison.OrdinalIgnoreCase)))
+                {
+                    File.WriteAllText(output, "SKIPPED: SimSun is not installed. This is not a pass.");
+                    return 2;
+                }
+                if (field == null) throw new InvalidOperationException("宋体自检无法设置字体。");
+                previous = field.GetValue(null);
+                field.SetValue(null, "SimSun");
+                using (var actual = UiTheme.Font(9F))
+                    if (!string.Equals(actual.FontFamily.Name, "SimSun", StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("宋体被系统替换，自检不能算通过。");
+                AntdUI.Config.Font = UiTheme.Font(9F);
+                MainForm.SuppressStartupPrompts = true;
+                var services = new ApplicationServices(Path.Combine(root, "test.db"));
+                services.Settings.SetOnboardingCompleted(true);
+                var id = services.Books.Insert(new Book { Title = "宋体自检图书" });
+                var book = services.Books.GetById(id);
+                VerifyHostedShellSmallScreen(services);
+                var forms = new Form[] { new SalesForm(services), new PurchaseForm(services), new BookEditForm(services, book), new BookLabelForm(services, book) };
+                try
+                {
+                    foreach (var form in forms)
+                    {
+                        form.ShowInTaskbar = false;
+                        form.Show();
+                        Application.DoEvents();
+                        form.Size = new Size(1024, 680);
+                        var profile = form as IUiSpecPage;
+                        if (profile != null)
+                        {
+                            // MainForm applies the UI spec profile to hosted pages.
+                            profile.ApplyUiSpecProfile(BookDeskUiSpec.Resolve(1024, 680));
+                        }
+                        form.PerformLayout();
+                        Application.DoEvents();
+                        if (VerifySimSunText(form, form.GetType().Name) == 0)
+                            throw new InvalidOperationException(form.GetType().Name + " 没有可见的宋体文本控件。");
+                    }
+                }
+                finally { foreach (var form in forms) form.Dispose(); }
+                File.WriteAllText(output, "PASSED: SimSun was installed and used for visible layout checks at 1024x680 logical size.");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText(output, "FAILED: " + ex);
+                return 1;
+            }
+            finally
+            {
+                if (field != null) field.SetValue(null, previous);
+                AntdUI.Config.Font = originalAntdFont;
+                SQLiteConnection.ClearAllPools();
+                try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch { }
+            }
+        }
+
+        private static int VerifySimSunText(Control control, string formName)
+        {
+            var count = 0;
+            var label = control as Label;
+            var button = control as AntdUI.Button;
+            if (control.Visible && (label != null || button != null) &&
+                !string.IsNullOrWhiteSpace(control.Text) &&
+                string.Equals(control.Font.FontFamily.Name, "SimSun", StringComparison.OrdinalIgnoreCase))
+            {
+                count++;
+                // Single-line controls must be tall enough for their actual font.
+                // Tight-profile controls intentionally use 32px, not the generic 34px density.
+                if (!control.Text.Contains("\n"))
+                {
+                    var size = TextRenderer.MeasureText(control.Text, control.Font, Size.Empty,
+                        TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                    if (control.Height < size.Height + control.Padding.Vertical ||
+                        (button != null && control.Width < size.Width + control.Padding.Horizontal))
+                        throw new InvalidOperationException(formName + " 宋体文本空间不足：" + control.Text +
+                            " 控件=" + control.Size + " 文字=" + size);
+                }
+            }
+            foreach (Control child in control.Controls) count += VerifySimSunText(child, formName);
+            return count;
         }
 
         private static void VerifyPersistentTableWidths(ApplicationServices services)

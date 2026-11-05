@@ -16,6 +16,7 @@ namespace Win7BookManagement.UiTools
             CrashReporter.Install();
             UiTheme.InitializeAntdUi();
             LowSpecMode.ApplyToAntdUi();
+            if (args.Any(a => a == "--self-test-simsun")) return SelfTest.RunSimSunLayout();
             if (args.Any(a => a == "--ui-snapshots"))
             {
                 var index = Array.FindIndex(args, a => a == "--ui-snapshots");
