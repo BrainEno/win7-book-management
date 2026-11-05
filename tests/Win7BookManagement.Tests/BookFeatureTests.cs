@@ -390,3 +390,90 @@ namespace Win7BookManagement.Tests
         }
     }
 }
+
+namespace Win7BookManagement.Tests
+{
+    [TestClass]
+    public class BookLabelTests
+    {
+        [TestMethod]
+        public void Code128B_KnownVectorHasCorrectChecksumAndStop()
+        {
+            var widths = Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode("ABC");
+            Assert.AreEqual("2112141113231311231313212221222331112", string.Concat(widths.Select(x => x.ToString())));
+            Assert.AreEqual(88, Win7BookManagement.Reporting.BookLabelPrinter.ModuleCount("ABC"));
+        }
+
+        [TestMethod]
+        public void Code128B_PrintableCharacterPatternsAllHaveCorrectWidth()
+        {
+            for (var c = 32; c <= 126; c++)
+            {
+                var result = Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode(new string((char)c, 1));
+                Assert.AreEqual(6, result.Skip(6).Take(6).Count());
+                Assert.AreEqual(11, result.Skip(6).Take(6).Sum(), "character " + c);
+            }
+            // The symbols for c and d independently guard against accidental table corruption.
+            Assert.AreEqual("141122", string.Concat(Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode("c").Skip(6).Take(6)));
+            Assert.AreEqual("141221", string.Concat(Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode("d").Skip(6).Take(6)));
+        }
+
+        [TestMethod]
+        public void Labels_RejectUnsupportedAndTooLongCodesInsteadOfPrintingUnscannableBars()
+        {
+            Assert.ThrowsException<InvalidOperationException>(() => Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode(""));
+            Assert.ThrowsException<InvalidOperationException>(() => Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode("中文"));
+            Assert.ThrowsException<InvalidOperationException>(() => Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode("A\nB"));
+            var book = new Win7BookManagement.Models.Book { Title = "自出版", SelfCode = "BK-000001" };
+            Win7BookManagement.Reporting.BookLabelPrinter.ValidateFit(book, 185, 203);
+            Assert.IsTrue(Win7BookManagement.Reporting.BookLabelPrinter.ModuleDots(book.SelfCode, 185, 203) >= 2);
+            book.SelfCode = new string('A', 40);
+            Assert.ThrowsException<InvalidOperationException>(() => Win7BookManagement.Reporting.BookLabelPrinter.ValidateFit(book, 185, 203));
+        }
+
+        [TestMethod]
+        public void RenderedLabel_BarPatternAndQuietZonesMatchEncodedStoreCode()
+        {
+            const int dpi = 300;
+            var book = new Win7BookManagement.Models.Book { Title = "自出版", SelfCode = "BK-000001", SalePriceCent = 1234 };
+            var widths = Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode(book.SelfCode);
+            var bits = new System.Collections.Generic.List<bool>();
+            for (var i = 0; i < widths.Length; i++)
+                for (var j = 0; j < widths[i]; j++) bits.Add(i % 2 == 0);
+            using (var image = new System.Drawing.Bitmap(600, 360))
+            {
+                image.SetResolution(dpi, dpi);
+                using (var graphics = System.Drawing.Graphics.FromImage(image))
+                {
+                    graphics.Clear(System.Drawing.Color.White);
+                    graphics.PageUnit = System.Drawing.GraphicsUnit.Pixel;
+                    graphics.ScaleTransform(3, 3); // 300 dpi, drawing units are 1/100 inch
+                    Win7BookManagement.Reporting.BookLabelPrinter.DrawLabel(graphics, new System.Drawing.RectangleF(10, 10, 180, 100), book, dpi);
+                }
+                var dots = Win7BookManagement.Reporting.BookLabelPrinter.ModuleDots(book.SelfCode, 180, dpi);
+                var quiet = Win7BookManagement.Reporting.BookLabelPrinter.QuietModules * dots;
+                var total = (bits.Count + 20) * dots;
+                var start = (int)Math.Round((10 + (180 - total / 3f) / 2f) * 3);
+                var y = (int)((10 + 100 * .58f) * 3);
+                Func<int, bool> black = x => image.GetPixel(x, y).R < 128;
+                Assert.IsFalse(black(start + quiet / 2));
+                for (var i = 0; i < bits.Count; i++)
+                    Assert.AreEqual(bits[i], black(start + quiet + i * dots + dots / 2), "module " + i);
+                Assert.IsFalse(black(start + quiet + bits.Count * dots + quiet / 2));
+            }
+        }
+
+        [TestMethod]
+        public void SelfPublishedLabel_UsesRealStoreCodeAndCanBeLookedUpForSales()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var id = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "无ISBN的书", Isbn = "" });
+                var book = db.Services.Books.GetById(id);
+                Assert.IsTrue(Win7BookManagement.Reporting.BookLabelPrinter.EncodeStoreCode(book.SelfCode).Length > 0);
+                Assert.AreEqual("", book.Isbn);
+                Assert.AreEqual(id, db.Services.Books.FindByExactIdentifier(book.SelfCode).Id);
+            }
+        }
+    }
+}

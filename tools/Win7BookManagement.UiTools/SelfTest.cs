@@ -861,6 +861,7 @@ namespace Win7BookManagement.Infrastructure
                 new DashboardForm(services, delegate(string key) { }, delegate { }),
                 new BookListForm(services),
                 new BookEditForm(services, storedBook),
+                new BookLabelForm(services, storedBook),
                 new BookLookupDialog(services),
                 new AdvancedBookLookupDialog(services, "", null),
                 new PurchaseForm(services),
