@@ -25,8 +25,11 @@ namespace Win7BookManagement.Services
 
             var sourcePath = Path.GetFullPath(_factory.DatabasePath);
             var fullTargetPath = Path.GetFullPath(targetPath);
-            if (PathsEqual(sourcePath, fullTargetPath))
-                throw new InvalidOperationException("备份文件不能覆盖当前正在使用的数据库。请选择其他位置。");
+            if (PathsEqual(sourcePath, fullTargetPath) ||
+                PathsEqual(sourcePath + "-wal", fullTargetPath) ||
+                PathsEqual(sourcePath + "-shm", fullTargetPath) ||
+                PathsEqual(sourcePath + "-journal", fullTargetPath))
+                throw new InvalidOperationException("备份文件不能覆盖当前数据库及其日志文件。请选择其他位置。");
 
             var directory = Path.GetDirectoryName(fullTargetPath);
             if (!string.IsNullOrWhiteSpace(directory))
@@ -43,6 +46,7 @@ namespace Win7BookManagement.Services
                 // backup is replaced, finish validation/rollback atomically.
                 cancellationToken.ThrowIfCancellationRequested();
 
+                EnsureTargetHasNoSidecars(fullTargetPath);
                 previousBackupPath = PublishValidatedBackup(temporaryPath, fullTargetPath);
                 ValidateBackup(fullTargetPath);
 
@@ -52,7 +56,7 @@ namespace Win7BookManagement.Services
             }
             catch
             {
-                TryDelete(temporaryPath);
+                TryDeleteOwnedSnapshot(temporaryPath);
                 if (!string.IsNullOrWhiteSpace(previousBackupPath) && File.Exists(previousBackupPath))
                 {
                     TryDelete(fullTargetPath);
@@ -63,7 +67,7 @@ namespace Win7BookManagement.Services
             }
             finally
             {
-                TryDelete(temporaryPath);
+                TryDeleteOwnedSnapshot(temporaryPath);
                 TryDelete(previousBackupPath);
             }
         }
@@ -165,43 +169,113 @@ namespace Win7BookManagement.Services
             finally
             {
                 SQLiteConnection.ClearAllPools();
-                TryDelete(stagePath);
+                TryDeleteOwnedSnapshot(stagePath);
             }
         }
 
         private void CreateLiveSnapshot(string destinationPath, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            TryDelete(destinationPath);
-            using (var source = _factory.Open())
+            // destinationPath is a freshly generated, exclusively owned path.
+            try
             {
-                CheckpointWal(source);
-                using (var destination = OpenStandalone(destinationPath, false))
+                using (var source = _factory.Open())
                 {
-                    var lastPercent = -1;
-                    source.BackupDatabase(destination, "main", "main", 64,
-                        delegate(SQLiteConnection src, string sourceName, SQLiteConnection dst, string destinationName,
-                            int remainingPages, int pageCount, int totalPages, bool retry)
-                        {
-                            if (progress != null && totalPages > 0)
+                    CheckpointWal(source);
+                    using (var destination = OpenStandalone(destinationPath, false))
+                    {
+                        var lastPercent = -1;
+                        source.BackupDatabase(destination, "main", "main", 64,
+                            delegate(SQLiteConnection src, string sourceName, SQLiteConnection dst, string destinationName,
+                                int remainingPages, int pageCount, int totalPages, bool retry)
                             {
-                                var percent = Math.Max(0, Math.Min(95, (int)((long)(totalPages - remainingPages) * 95 / totalPages)));
-                                if (percent != lastPercent) { progress.Report(percent); lastPercent = percent; }
-                            }
-                            return !cancellationToken.IsCancellationRequested;
-                        }, 10);
-                    cancellationToken.ThrowIfCancellationRequested();
+                                if (progress != null && totalPages > 0)
+                                {
+                                    var percent = Math.Max(0, Math.Min(95, (int)((long)(totalPages - remainingPages) * 95 / totalPages)));
+                                    if (percent != lastPercent) { progress.Report(percent); lastPercent = percent; }
+                                }
+                                return !cancellationToken.IsCancellationRequested;
+                            }, 10);
+                        cancellationToken.ThrowIfCancellationRequested();
+                    }
                 }
+                cancellationToken.ThrowIfCancellationRequested();
+                NormalizeOwnedSnapshot(destinationPath);
+            }
+            catch
+            {
+                TryDeleteOwnedSnapshot(destinationPath);
+                throw;
             }
         }
 
         private static void CreateStandaloneSnapshot(string sourcePath, string destinationPath)
         {
-            TryDelete(destinationPath);
-            using (var source = OpenStandalone(sourcePath, true))
-            using (var destination = OpenStandalone(destinationPath, false))
+            // Restore and rollback stage paths are freshly generated and owned.
+            try
             {
-                source.BackupDatabase(destination, "main", "main", -1, null, 0);
+                using (var source = OpenStandalone(sourcePath, true))
+                using (var destination = OpenStandalone(destinationPath, false))
+                {
+                    source.BackupDatabase(destination, "main", "main", -1, null, 0);
+                }
+                NormalizeOwnedSnapshot(destinationPath);
             }
+            catch
+            {
+                TryDeleteOwnedSnapshot(destinationPath);
+                throw;
+            }
+        }
+
+        private static void NormalizeOwnedSnapshot(string path)
+        {
+            // SQLite's backup copies the source journal mode into the snapshot.
+            // Complete its WAL checkpoint, then switch this private snapshot to
+            // rollback-journal mode before it can be validated or published.
+            using (var connection = OpenStandalone(path, false))
+            {
+                using (var checkpoint = connection.CreateCommand())
+                {
+                    checkpoint.CommandText = "PRAGMA wal_checkpoint(TRUNCATE);";
+                    using (var reader = checkpoint.ExecuteReader())
+                    {
+                        if (!reader.Read() || Convert.ToInt32(reader.GetValue(0), CultureInfo.InvariantCulture) != 0)
+                            throw new InvalidOperationException("备份暂存文件的 WAL 检查点未完成，未发布备份。");
+                    }
+                }
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "PRAGMA journal_mode=DELETE;";
+                    if (!string.Equals(Convert.ToString(command.ExecuteScalar(), CultureInfo.InvariantCulture), "delete", StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("无法将备份转换为独立数据库，未发布备份。");
+                }
+            }
+
+            // This is only ever called for our unique, closed staging files.
+            // A nonempty WAL must never be discarded as though it were empty.
+            var wal = path + "-wal";
+            if (File.Exists(wal) && new FileInfo(wal).Length != 0)
+                throw new InvalidOperationException("备份暂存文件仍有未合并的 WAL，未发布备份。");
+            DeleteSidecars(path);
+        }
+
+        private static void EnsureTargetHasNoSidecars(string path)
+        {
+            // Never move/replace a potentially live SQLite database while its
+            // journal files remain at the original name. Do not delete them.
+            if (File.Exists(path + "-wal") || File.Exists(path + "-shm") || File.Exists(path + "-journal"))
+                throw new InvalidOperationException("备份目标旁存在 SQLite 日志文件，可能正在使用或包含未合并数据。请关闭相关程序并选择新的备份文件名，不要删除日志文件。");
+        }
+
+        private static void TryDeleteOwnedSnapshot(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+            // Only unique staging paths created by this operation are passed in.
+            // They are unpublished and all associated SQLite handles are closed.
+            TryDelete(path);
+            TryDelete(path + "-wal");
+            TryDelete(path + "-shm");
+            TryDelete(path + "-journal");
         }
 
         private static SQLiteConnection OpenStandalone(string path, bool readOnly)
@@ -265,7 +339,7 @@ namespace Win7BookManagement.Services
             finally
             {
                 SQLiteConnection.ClearAllPools();
-                TryDelete(rollbackStage);
+                TryDeleteOwnedSnapshot(rollbackStage);
             }
         }
 
