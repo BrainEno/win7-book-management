@@ -81,7 +81,12 @@ namespace Win7BookManagement.Forms
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 _path = dialog.FileName;
                 _rows = new List<BookImportRow>(); BindPreview();
-                UiTask.Run(this, "预览图书导入", (progress, token) => _import.Preview(_path), rows =>
+                UiTask.Run(this, "预览图书导入", (progress, token) =>
+                {
+                    var rows = _import.Preview(_path);
+                    token.ThrowIfCancellationRequested();
+                    return rows;
+                }, rows =>
                 {
                     _rows = rows; BindPreview();
                 });
@@ -110,7 +115,7 @@ namespace Win7BookManagement.Forms
             {
                 Imported = true; _commit.Enabled = false;
                 MessageBox.Show(this, "已导入 " + count + " 行图书资料。库存未从模板修改。", "导入完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            });
+            }, false);
         }
 
         private void ExportErrors()

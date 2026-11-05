@@ -45,7 +45,7 @@ namespace Win7BookManagement.Forms
                     (progress, token) => _services.AutoBackup.VerifyLatestBackup(),
                     result => MessageBox.Show(this, result.Detail + "\r\n" + result.Path,
                         result.Passed ? "备份可以使用" : "备份不可使用", MessageBoxButtons.OK,
-                        result.Passed ? MessageBoxIcon.Information : MessageBoxIcon.Warning));
+                        result.Passed ? MessageBoxIcon.Information : MessageBoxIcon.Warning), false);
             };
             actions.Controls.Add(verify);
             var diagnostics = UiTheme.CreateAntdButton("导出诊断包", false); diagnostics.Width = 130;
@@ -144,7 +144,7 @@ namespace Win7BookManagement.Forms
                         File.Move(actual, path);
                     }
                     return path;
-                }, result => MessageBox.Show(this, "诊断包已保存（不包含数据库）：\r\n" + result, "导出完成", MessageBoxButtons.OK, MessageBoxIcon.Information));
+                }, result => MessageBox.Show(this, "诊断包已保存（不包含数据库）：\r\n" + result, "导出完成", MessageBoxButtons.OK, MessageBoxIcon.Information), false);
             }
         }
     }
