@@ -963,6 +963,148 @@ namespace Win7BookManagement.Infrastructure
             return count;
         }
 
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr FindWindow(string className, string windowName);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+        // Runs in a separate STA process with a CI timeout: a broken modal close
+        // must fail the test instead of hanging the entire build indefinitely.
+        public static int RunUiTaskRegression()
+        {
+            var output = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ui-task-test-result.txt");
+            var root = Path.Combine(Path.GetTempPath(), "BookDesk-UiTask-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var services = new ApplicationServices(Path.Combine(root, "test.db"));
+                using (var owner = new Form { Text = "UiTask regression owner", ShowInTaskbar = false })
+                {
+                    owner.Show();
+                    Application.DoEvents();
+                    var backupPath = Path.Combine(root, "backup.db");
+                    var backup = ExerciseUiTask(owner, "测试备份", (progress, token) =>
+                    {
+                        System.Threading.Thread.Sleep(350);
+                        return services.Backup.CreateBackup(backupPath, progress, token);
+                    }, true, false, null);
+                    if (!backup.Completed || backup.Value != backupPath || !File.Exists(backupPath) || backup.Ticks == 0)
+                        throw new InvalidOperationException("后台备份未正确结束或 UI 未响应。");
+                    BackupService.ValidateBackup(backupPath);
+
+                    var exportPath = Path.Combine(root, "report.xlsx");
+                    var table = new System.Data.DataTable();
+                    table.Columns.Add("金额", typeof(int));
+                    table.Rows.Add(123);
+                    var export = ExerciseUiTask(owner, "测试不可取消导出", (progress, token) =>
+                    {
+                        System.Threading.Thread.Sleep(350);
+                        services.Excel.Export(table, exportPath, "测试", progress, token);
+                        return exportPath;
+                    }, false, true, null);
+                    if (!export.AttemptedClose || !export.Completed || !File.Exists(exportPath))
+                        throw new InvalidOperationException("不可取消任务被提前关闭或未完成。");
+                    using (var stream = File.OpenRead(exportPath))
+                    {
+                        var workbook = WorkbookFactory.Create(stream);
+                        try { if (workbook.GetSheetAt(0).GetRow(2).GetCell(0).NumericCellValue != 123) throw new InvalidOperationException("导出内容不正确。"); }
+                        finally { workbook.Close(); }
+                    }
+
+                    var cancelled = ExerciseUiTask(owner, "测试取消", (progress, token) =>
+                    {
+                        if (!token.WaitHandle.WaitOne(4000)) throw new InvalidOperationException("没有收到取消请求。");
+                        progress.Report(50);
+                        token.ThrowIfCancellationRequested();
+                        return "unexpected";
+                    }, true, true, "已取消");
+                    if (!cancelled.AttemptedClose || cancelled.Completed || !cancelled.MessageClosed)
+                        throw new InvalidOperationException("取消任务没有正确结束或提示。");
+
+                    var failure = ExerciseUiTask(owner, "测试失败", (progress, token) =>
+                    {
+                        System.Threading.Thread.Sleep(250);
+                        return FailUiTaskForTest();
+                    }, true, false, "BOOK DESK 提示");
+                    if (failure.Completed || !failure.MessageClosed)
+                        throw new InvalidOperationException("任务失败没有显示错误提示。");
+
+                    var late = ExerciseUiTask(owner, "测试取消后已完成", (progress, token) =>
+                    {
+                        if (!token.WaitHandle.WaitOne(4000)) throw new InvalidOperationException("没有收到取消请求。");
+                        // Once a result is published, success must not be reported as cancellation.
+                        return "published";
+                    }, true, true, null);
+                    if (!late.AttemptedClose || !late.Completed || late.Value != "published")
+                        throw new InvalidOperationException("已发布的结果没有报告成功。");
+                    owner.Close();
+                }
+                File.WriteAllText(output, "PASSED: responsive modal backup/export, close prevention, cancellation, failure and completed result.");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText(output, "FAILED: " + ex);
+                return 1;
+            }
+            finally
+            {
+                SQLiteConnection.ClearAllPools();
+                try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch { }
+            }
+        }
+
+        private static string FailUiTaskForTest()
+        {
+            throw new InvalidOperationException("测试失败提示");
+        }
+
+        private sealed class UiTaskObservation
+        {
+            public bool Completed, AttemptedClose, MessageClosed;
+            public string Value;
+            public int Ticks;
+        }
+
+        private static UiTaskObservation ExerciseUiTask(Form owner, string title,
+            Func<IProgress<int>, System.Threading.CancellationToken, string> work,
+            bool canCancel, bool attemptClose, string messageTitle)
+        {
+            var observation = new UiTaskObservation();
+            using (var timer = new System.Windows.Forms.Timer { Interval = 30 })
+            {
+                timer.Tick += delegate
+                {
+                    observation.Ticks++;
+                    if (attemptClose && !observation.AttemptedClose)
+                    {
+                        var dialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Text == title && f.Visible);
+                        if (dialog != null)
+                        {
+                            observation.AttemptedClose = true;
+                            dialog.Close();
+                        }
+                    }
+                    if (messageTitle != null && !observation.MessageClosed)
+                    {
+                        var window = FindWindow("#32770", messageTitle);
+                        if (window != IntPtr.Zero)
+                        {
+                            observation.MessageClosed = true;
+                            // Dismiss only the test's notice: OK for cancellation,
+                            // No for the error dialog (do not open Explorer).
+                            PostMessage(window, 0x0111, new IntPtr(messageTitle == "已取消" ? 1 : 7), IntPtr.Zero);
+                        }
+                    }
+                };
+                timer.Start();
+                UiTask.Run(owner, title, work, value => { observation.Completed = true; observation.Value = value; }, canCancel);
+                timer.Stop();
+                Application.DoEvents();
+            }
+            return observation;
+        }
+
         private static void VerifyPersistentTableWidths(ApplicationServices services)
         {
             const string layoutKey = "self-test";

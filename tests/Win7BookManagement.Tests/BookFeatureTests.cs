@@ -372,6 +372,32 @@ namespace Win7BookManagement.Tests
             }
         }
 
+        private sealed class CancelOnProgress : IProgress<int>
+        {
+            private readonly System.Threading.CancellationTokenSource _source;
+            public CancelOnProgress(System.Threading.CancellationTokenSource source) { _source = source; }
+            public void Report(int value) { _source.Cancel(); }
+        }
+
+        [TestMethod]
+        public void CsvCancellation_PreservesPreviousFileAndCleansUp()
+        {
+            using (var db = new TemporaryDatabase())
+            using (var source = new System.Threading.CancellationTokenSource())
+            {
+                var table = new System.Data.DataTable();
+                table.Columns.Add("书名");
+                table.Rows.Add("第一本"); table.Rows.Add("第二本");
+                var path = Path.Combine(db.Root, "report.csv");
+                File.WriteAllText(path, "existing export");
+                var before = File.ReadAllBytes(path);
+                Assert.ThrowsException<OperationCanceledException>(() =>
+                    db.Services.Excel.Export(table, path, "测试", new CancelOnProgress(source), source.Token));
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "report.csv.writing-*").Length);
+            }
+        }
+
         [TestMethod]
         public void Receipt_LoadsImmutableCheckoutSnapshot()
         {

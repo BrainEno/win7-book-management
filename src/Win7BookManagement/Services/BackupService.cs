@@ -39,6 +39,9 @@ namespace Win7BookManagement.Services
                 cancellationToken.ThrowIfCancellationRequested();
                 CreateLiveSnapshot(temporaryPath, progress, cancellationToken);
                 ValidateBackup(temporaryPath);
+                // Cancellation is safe until publishing starts. Once the old
+                // backup is replaced, finish validation/rollback atomically.
+                cancellationToken.ThrowIfCancellationRequested();
 
                 previousBackupPath = PublishValidatedBackup(temporaryPath, fullTargetPath);
                 ValidateBackup(fullTargetPath);

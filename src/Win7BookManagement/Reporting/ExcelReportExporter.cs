@@ -23,8 +23,7 @@ namespace Win7BookManagement.Reporting
                 Directory.CreateDirectory(directory);
             if (string.Equals(Path.GetExtension(path), ".csv", StringComparison.OrdinalIgnoreCase))
             {
-                CsvReportExporter.Export(table, path);
-                if (progress != null) progress.Report(100);
+                CsvReportExporter.Export(table, path, progress, cancellationToken);
                 return;
             }
             if (string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase) && table.Rows.Count + 2 > 65536)

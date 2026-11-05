@@ -128,6 +128,24 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void CancelledBackup_PreservesExistingTargetAndLeavesNoTemporaryFile()
+        {
+            using (var db = new TemporaryDatabase())
+            using (var cancellation = new CancellationTokenSource())
+            {
+                var path = Path.Combine(db.Root, "existing.db");
+                db.Services.Backup.CreateBackup(path);
+                var before = File.ReadAllBytes(path);
+                cancellation.Cancel();
+                Assert.ThrowsException<OperationCanceledException>(
+                    () => db.Services.Backup.CreateBackup(path, null, cancellation.Token));
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+                BackupService.ValidateBackup(path);
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "existing.db.writing-*").Length);
+            }
+        }
+
+        [TestMethod]
         public void AutomaticBackup_PublishesValidatedSecondCopyAndPrunesBoth()
         {
             using (var db = new TemporaryDatabase())

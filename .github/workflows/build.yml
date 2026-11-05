@@ -97,6 +97,23 @@ jobs:
             throw "UI snapshots failed: $($p.ExitCode)"
           }
 
+      - name: Background task dialog regression
+        shell: powershell
+        run: |
+          $exe = "tools\Win7BookManagement.UiTools\bin\x86\Release\Win7BookManagement.UiTools.exe"
+          $result = "tools\Win7BookManagement.UiTools\bin\x86\Release\ui-task-test-result.txt"
+          $p = Start-Process $exe "--self-test-ui-task" -PassThru
+          if (-not $p.WaitForExit(60000)) {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            throw "Background task regression timed out; a modal dialog may be stuck."
+          }
+          if (Test-Path $result) { Get-Content $result -Encoding UTF8 | ForEach-Object { Write-Host $_ } }
+          if ($p.ExitCode -ne 0) {
+            $details = if (Test-Path $result) { (Get-Content $result -Encoding UTF8 -Raw) -replace "`r?`n", " | " } else { "result file missing" }
+            Write-Host "::error::Background task regression failed: $details"
+            throw "Background task regression failed: $($p.ExitCode)"
+          }
+
       - name: SimSun fallback layout test (when font installed)
         shell: powershell
         run: |
@@ -151,6 +168,7 @@ jobs:
           path: |
             TestResults/*.trx
             tools/Win7BookManagement.UiTools/bin/x86/Release/simsun-test-result.txt
+            tools/Win7BookManagement.UiTools/bin/x86/Release/ui-task-test-result.txt
           if-no-files-found: warn
 
       - name: Publish tagged release with SHA256SUMS
