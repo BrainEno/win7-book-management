@@ -128,7 +128,7 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
-        public void CancelledBackup_PreservesExistingTargetAndLeavesNoTemporaryFile()
+        public void CancelledBackup_PreservesExistingTargetAndCreatesNoAdditionalTemporaryFiles()
         {
             using (var db = new TemporaryDatabase())
             using (var cancellation = new CancellationTokenSource())
