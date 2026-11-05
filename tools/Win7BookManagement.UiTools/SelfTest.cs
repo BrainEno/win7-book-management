@@ -877,6 +877,12 @@ namespace Win7BookManagement.Infrastructure
                     if (!screen.Contains(shell.Bounds) || shell.Size != windowSize)
                         throw new InvalidOperationException("主窗口没有完整位于工作区：" + shell.Bounds + " / " + screen);
 
+                    foreach (var key in new[] { "dashboard", "sales", "books", "purchase", "inventory", "documents", "suppliers", "reports", "backup", "help", "settings" })
+                    {
+                        var nav = shell.GetNavigationScreenBounds(key);
+                        if (nav.IsEmpty || !screen.Contains(nav))
+                            throw new InvalidOperationException("小屏侧边导航不可达：" + key + " " + windowSize + " / " + nav);
+                    }
                     foreach (var key in new[] { "sales", "purchase" })
                     {
                         shell.Navigate(key);
@@ -894,11 +900,25 @@ namespace Win7BookManagement.Infrastructure
                             if (!parent.Visible || !parent.RectangleToScreen(parent.ClientRectangle).Contains(buttonBounds))
                                 throw new InvalidOperationException("主按钮被容器裁切：" + key + " " + windowSize + " / " + parent.GetType().Name + " " + buttonBounds + " / " + parent.RectangleToScreen(parent.ClientRectangle));
                         }
-                        var nav = shell.GetNavigationScreenBounds(key);
-                        if (nav.IsEmpty || !screen.Contains(nav))
-                            throw new InvalidOperationException("小屏侧边导航不可达：" + key + " " + windowSize + " / " + nav);
                     }
                 }
+
+                // Resize out of tight mode and back without losing the page or
+                // navigation entries. This part does not assert screen bounds.
+                shell.Navigate("sales");
+                Application.DoEvents();
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                var pageField = typeof(MainForm).GetField("_currentPage", flags);
+                var menu = (AntdUI.Menu)typeof(MainForm).GetField("_navigation", flags).GetValue(shell);
+                var page = pageField.GetValue(shell);
+                shell.Size = new Size(1300, 728);
+                Application.DoEvents();
+                if (menu.Collapsed || menu.Items.Count != 4 || !ReferenceEquals(page, pageField.GetValue(shell)))
+                    throw new InvalidOperationException("放大后未恢复分组导航或当前页面丢失。");
+                shell.Size = new Size(1024, 680);
+                Application.DoEvents();
+                if (!menu.Collapsed || menu.Items.Count != 11 || !ReferenceEquals(page, pageField.GetValue(shell)))
+                    throw new InvalidOperationException("缩小后未恢复小屏导航或当前页面丢失。");
             }
         }
 

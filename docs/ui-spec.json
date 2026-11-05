@@ -338,7 +338,7 @@
         "tableFontSize": 11,
         "secondaryFontSize": 10,
         "rules": [
-          "Sidebar collapses to an icon rail (AntdUI.Menu Collapsed) and its footer is hidden.",
+          "Sidebar uses a flat icon rail (AntdUI.Menu Collapsed) so grouped destinations remain directly accessible; its footer is hidden. Restore grouped navigation when expanded.",
           "The shell must fit inside Screen.WorkingArea; never open a 1024x768 screen with the bottom action bar outside the display.",
           "Keep the sales checkout and purchase review actions reachable without scrolling the workspace horizontally.",
           "Pages that already implement a compact layout must also apply it for tight (IsCompact is true for both profiles)."
