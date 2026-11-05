@@ -13,6 +13,18 @@ namespace Win7BookManagement.Infrastructure
             Func<IProgress<int>, CancellationToken, T> work, Action<T> completed,
             bool canCancel = true)
         {
+            RunCore(owner, title, work, completed,
+                () => MessageBox.Show(owner, "操作已取消。未完成的临时文件不会作为有效结果发布。", "已取消",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information),
+                failure => CrashReporter.Handle(owner, failure, title), canCancel);
+        }
+
+        // Separate outcome notification from the modal work lifecycle so that
+        // all paths can be exercised without blocking automated tests on a popup.
+        private static void RunCore<T>(IWin32Window owner, string title,
+            Func<IProgress<int>, CancellationToken, T> work, Action<T> completed,
+            Action onCancelled, Action<Exception> onFailure, bool canCancel)
+        {
             T result = default(T);
             Exception failure = null;
             var cancelled = false;
@@ -38,13 +50,12 @@ namespace Win7BookManagement.Infrastructure
             }
             if (cancelled)
             {
-                MessageBox.Show(owner, "操作已取消。未完成的临时文件不会作为有效结果发布。", "已取消",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                onCancelled();
                 return;
             }
             if (failure != null)
             {
-                CrashReporter.Handle(owner, failure, title);
+                onFailure(failure);
                 return;
             }
             completed(result);

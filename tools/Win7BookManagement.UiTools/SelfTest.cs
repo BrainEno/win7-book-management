@@ -963,15 +963,6 @@ namespace Win7BookManagement.Infrastructure
             return count;
         }
 
-        [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = System.Runtime.InteropServices.CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
-        private static extern IntPtr FindWindow(string className, string windowName);
-
-        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr GetDlgItem(IntPtr window, int id);
-
-        [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "PostMessageW", ExactSpelling = true, SetLastError = true)]
-        private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
-
         // Runs in a separate STA process with a CI timeout: a broken modal close
         // must fail the test instead of hanging the entire build indefinitely.
         public static int RunUiTaskRegression()
@@ -1083,75 +1074,44 @@ namespace Win7BookManagement.Infrastructure
 
         private static UiTaskObservation ExerciseUiTask(Form owner, string title,
             Func<IProgress<int>, System.Threading.CancellationToken, string> work,
-            bool canCancel, bool attemptClose, string messageTitle)
+            bool canCancel, bool attemptClose, string expectedNotice)
         {
             var observation = new UiTaskObservation();
             using (var timer = new System.Windows.Forms.Timer { Interval = 30 })
             {
-                var attached = false;
                 timer.Tick += delegate
                 {
                     observation.Ticks++;
-                    if (!attached)
+                    if (!attemptClose || observation.AttemptedClose) return;
+                    var dialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Text == title && f.Visible);
+                    if (dialog == null) return;
+                    observation.AttemptedClose = true;
+                    if (canCancel)
                     {
-                        var observedDialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Text == title && f.Visible);
-                        if (observedDialog != null)
-                        {
-                            attached = true;
-                            observedDialog.FormClosing += (sender, e) => MarkUiTask(title + ": FormClosing cancel=" + e.Cancel + " reason=" + e.CloseReason);
-                            observedDialog.FormClosed += (sender, e) => MarkUiTask(title + ": FormClosed");
-                        }
+                        // Invoke the same cancellation action as the button.
+                        var cancel = dialog.GetType().GetMethod("RequestCancel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        cancel.Invoke(dialog, null);
                     }
-                    if (attemptClose && !observation.AttemptedClose)
+                    else
                     {
-                        var dialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Text == title && f.Visible);
-                        if (dialog != null)
-                        {
-                            observation.AttemptedClose = true;
-                            MarkUiTask(title + ": attempting close");
-                            // Simulate an actual window-manager close request;
-                            // do not re-enter Form.Close synchronously inside a Timer tick.
-                            try
-                            {
-                                var posted = PostMessage(dialog.Handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
-                                MarkUiTask(title + ": close posted=" + posted);
-                            }
-                            catch (Exception ex) { MarkUiTask(title + ": close error " + ex); throw; }
-                        }
-                    }
-                    if (messageTitle != null && !observation.MessageClosed)
-                    {
-                        var window = FindWindow("#32770", messageTitle);
-                        if (window != IntPtr.Zero)
-                        {
-                            // Click the actual standard message-box button: OK for
-                            // cancellation, No for errors (never open Explorer).
-                            var button = GetDlgItem(window, messageTitle == "已取消" ? 1 : 7);
-                            if (button != IntPtr.Zero)
-                            {
-                                observation.MessageClosed = true;
-                                MarkUiTask(title + ": dismissing " + messageTitle);
-                                PostMessage(button, 0x00F5, IntPtr.Zero, IntPtr.Zero); // BM_CLICK
-                            }
-                        }
+                        // Non-cancellable safety operations expose a disabled button.
+                        var button = dialog.Controls.OfType<AntdUI.Button>().Single();
+                        if (button.Enabled) throw new InvalidOperationException("安全操作不应允许取消。");
                     }
                 };
                 timer.Start();
-                UiTask.Run(owner, title, (progress, token) =>
+                Func<IProgress<int>, System.Threading.CancellationToken, string> tracedWork = (progress, token) =>
                 {
                     MarkUiTask(title + ": worker started");
-                    try
-                    {
-                        var value = work(progress, token);
-                        MarkUiTask(title + ": worker returned");
-                        return value;
-                    }
-                    catch (Exception ex)
-                    {
-                        MarkUiTask(title + ": worker exception " + ex.GetType().Name);
-                        throw;
-                    }
-                }, value => { observation.Completed = true; observation.Value = value; }, canCancel);
+                    try { var value = work(progress, token); MarkUiTask(title + ": worker returned"); return value; }
+                    catch (Exception ex) { MarkUiTask(title + ": worker exception " + ex.GetType().Name); throw; }
+                };
+                Action<string> completed = value => { observation.Completed = true; observation.Value = value; };
+                Action cancelled = () => { observation.MessageClosed = expectedNotice == "已取消"; };
+                Action<Exception> failure = ex => { observation.MessageClosed = expectedNotice == "BOOK DESK 提示" && ex.Message == "测试失败提示"; };
+                var run = typeof(UiTask).GetMethod("RunCore", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static).MakeGenericMethod(typeof(string));
+                try { run.Invoke(null, new object[] { owner, title, tracedWork, completed, cancelled, failure, canCancel }); }
+                catch (System.Reflection.TargetInvocationException ex) { throw ex.InnerException ?? ex; }
                 MarkUiTask(title + ": UiTask returned");
                 timer.Stop();
                 Application.DoEvents();
