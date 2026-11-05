@@ -128,6 +128,37 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void Diagnostic_BackupTemporaryPaths()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var title = "独立备份诊断";
+                db.Services.Books.Insert(new Book { Title = title });
+                var path = Path.Combine(db.Root, "existing.db");
+                db.Services.Backup.CreateBackup(path);
+                var files = Directory.GetFiles(db.Root, "existing.db.writing-*")
+                    .Select(p => Path.GetFileName(p) + " (" + new FileInfo(p).Length + " bytes)").ToArray();
+                var isolatedDir = Path.Combine(db.Root, "isolated");
+                Directory.CreateDirectory(isolatedDir);
+                var isolated = Path.Combine(isolatedDir, "copy.db");
+                File.Copy(path, isolated);
+                BackupService.ValidateBackup(isolated);
+                using (var c = new SQLiteConnection("Data Source=" + isolated + ";Version=3;Read Only=True;Pooling=False;"))
+                {
+                    c.Open();
+                    using (var cmd = c.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT COUNT(*) FROM books WHERE title='独立备份诊断';";
+                        var count = Convert.ToInt32(cmd.ExecuteScalar());
+                        cmd.CommandText = "PRAGMA journal_mode;";
+                        var journal = Convert.ToString(cmd.ExecuteScalar());
+                        Assert.Fail("Diagnostic paths: " + string.Join("; ", files) + "; isolated count=" + count + "; journal=" + journal);
+                    }
+                }
+            }
+        }
+
+        [TestMethod]
         public void CancelledBackup_PreservesExistingTargetAndCreatesNoAdditionalTemporaryFiles()
         {
             using (var db = new TemporaryDatabase())
