@@ -977,12 +977,14 @@ namespace Win7BookManagement.Infrastructure
             var root = Path.Combine(Path.GetTempPath(), "BookDesk-UiTask-" + Guid.NewGuid().ToString("N"));
             try
             {
+                File.WriteAllText(output, "START\r\n");
                 var services = new ApplicationServices(Path.Combine(root, "test.db"));
                 using (var owner = new Form { Text = "UiTask regression owner", ShowInTaskbar = false })
                 {
                     owner.Show();
                     Application.DoEvents();
                     var backupPath = Path.Combine(root, "backup.db");
+                    MarkUiTask("backup starting");
                     var backup = ExerciseUiTask(owner, "测试备份", (progress, token) =>
                     {
                         System.Threading.Thread.Sleep(350);
@@ -996,6 +998,7 @@ namespace Win7BookManagement.Infrastructure
                     var table = new System.Data.DataTable();
                     table.Columns.Add("金额", typeof(int));
                     table.Rows.Add(123);
+                    MarkUiTask("export starting");
                     var export = ExerciseUiTask(owner, "测试不可取消导出", (progress, token) =>
                     {
                         System.Threading.Thread.Sleep(350);
@@ -1011,6 +1014,7 @@ namespace Win7BookManagement.Infrastructure
                         finally { workbook.Close(); }
                     }
 
+                    MarkUiTask("cancellation starting");
                     var cancelled = ExerciseUiTask(owner, "测试取消", (progress, token) =>
                     {
                         if (!token.WaitHandle.WaitOne(4000)) throw new InvalidOperationException("没有收到取消请求。");
@@ -1021,6 +1025,7 @@ namespace Win7BookManagement.Infrastructure
                     if (!cancelled.AttemptedClose || cancelled.Completed || !cancelled.MessageClosed)
                         throw new InvalidOperationException("取消任务没有正确结束或提示。");
 
+                    MarkUiTask("failure starting");
                     var failure = ExerciseUiTask(owner, "测试失败", (progress, token) =>
                     {
                         System.Threading.Thread.Sleep(250);
@@ -1029,6 +1034,7 @@ namespace Win7BookManagement.Infrastructure
                     if (failure.Completed || !failure.MessageClosed)
                         throw new InvalidOperationException("任务失败没有显示错误提示。");
 
+                    MarkUiTask("late result starting");
                     var late = ExerciseUiTask(owner, "测试取消后已完成", (progress, token) =>
                     {
                         if (!token.WaitHandle.WaitOne(4000)) throw new InvalidOperationException("没有收到取消请求。");
@@ -1052,6 +1058,11 @@ namespace Win7BookManagement.Infrastructure
                 SQLiteConnection.ClearAllPools();
                 try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch { }
             }
+        }
+
+        private static void MarkUiTask(string message)
+        {
+            File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ui-task-test-result.txt"), message + Environment.NewLine);
         }
 
         private static string FailUiTaskForTest()
@@ -1082,6 +1093,7 @@ namespace Win7BookManagement.Infrastructure
                         if (dialog != null)
                         {
                             observation.AttemptedClose = true;
+                            MarkUiTask(title + ": attempting close");
                             dialog.Close();
                         }
                     }
@@ -1091,6 +1103,7 @@ namespace Win7BookManagement.Infrastructure
                         if (window != IntPtr.Zero)
                         {
                             observation.MessageClosed = true;
+                            MarkUiTask(title + ": dismissing " + messageTitle);
                             // Dismiss only the test's notice: OK for cancellation,
                             // No for the error dialog (do not open Explorer).
                             PostMessage(window, 0x0111, new IntPtr(messageTitle == "已取消" ? 1 : 7), IntPtr.Zero);
@@ -1099,6 +1112,7 @@ namespace Win7BookManagement.Infrastructure
                 };
                 timer.Start();
                 UiTask.Run(owner, title, work, value => { observation.Completed = true; observation.Value = value; }, canCancel);
+                MarkUiTask(title + ": UiTask returned");
                 timer.Stop();
                 Application.DoEvents();
             }

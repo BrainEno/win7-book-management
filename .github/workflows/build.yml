@@ -105,6 +105,7 @@ jobs:
           $p = Start-Process $exe "--self-test-ui-task" -PassThru
           if (-not $p.WaitForExit(60000)) {
             Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+            if (Test-Path $result) { Get-Content $result -Encoding UTF8 | ForEach-Object { Write-Host "::error::UiTask trace: $_" } }
             throw "Background task regression timed out; a modal dialog may be stuck."
           }
           if (Test-Path $result) { Get-Content $result -Encoding UTF8 | ForEach-Object { Write-Host $_ } }
