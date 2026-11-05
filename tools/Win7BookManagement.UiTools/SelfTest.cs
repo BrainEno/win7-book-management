@@ -1109,8 +1109,9 @@ namespace Win7BookManagement.Infrastructure
                         {
                             observation.AttemptedClose = true;
                             MarkUiTask(title + ": attempting close");
-                            dialog.Close();
-                            MarkUiTask(title + ": close returned");
+                            // Simulate an actual window-manager close request;
+                            // do not re-enter Form.Close synchronously inside a Timer tick.
+                            PostMessage(dialog.Handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
                         }
                     }
                     if (messageTitle != null && !observation.MessageClosed)
