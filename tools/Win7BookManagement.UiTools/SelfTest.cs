@@ -1063,9 +1063,10 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        private static readonly object UiTaskTraceLock = new object();
         private static void MarkUiTask(string message)
         {
-            File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ui-task-test-result.txt"), message + Environment.NewLine);
+            lock (UiTaskTraceLock) File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ui-task-test-result.txt"), message + Environment.NewLine);
         }
 
         private static string FailUiTaskForTest()
@@ -1098,6 +1099,7 @@ namespace Win7BookManagement.Infrastructure
                             observation.AttemptedClose = true;
                             MarkUiTask(title + ": attempting close");
                             dialog.Close();
+                            MarkUiTask(title + ": close returned");
                         }
                     }
                     if (messageTitle != null && !observation.MessageClosed)
@@ -1118,7 +1120,21 @@ namespace Win7BookManagement.Infrastructure
                     }
                 };
                 timer.Start();
-                UiTask.Run(owner, title, work, value => { observation.Completed = true; observation.Value = value; }, canCancel);
+                UiTask.Run(owner, title, (progress, token) =>
+                {
+                    MarkUiTask(title + ": worker started");
+                    try
+                    {
+                        var value = work(progress, token);
+                        MarkUiTask(title + ": worker returned");
+                        return value;
+                    }
+                    catch (Exception ex)
+                    {
+                        MarkUiTask(title + ": worker exception " + ex.GetType().Name);
+                        throw;
+                    }
+                }, value => { observation.Completed = true; observation.Value = value; }, canCancel);
                 MarkUiTask(title + ": UiTask returned");
                 timer.Stop();
                 Application.DoEvents();
