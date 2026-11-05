@@ -963,13 +963,13 @@ namespace Win7BookManagement.Infrastructure
             return count;
         }
 
-        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = System.Runtime.InteropServices.CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
         private static extern IntPtr FindWindow(string className, string windowName);
 
         [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr GetDlgItem(IntPtr window, int id);
 
-        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "PostMessageW", ExactSpelling = true, SetLastError = true)]
         private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
         // Runs in a separate STA process with a CI timeout: a broken modal close
@@ -1111,7 +1111,12 @@ namespace Win7BookManagement.Infrastructure
                             MarkUiTask(title + ": attempting close");
                             // Simulate an actual window-manager close request;
                             // do not re-enter Form.Close synchronously inside a Timer tick.
-                            PostMessage(dialog.Handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+                            try
+                            {
+                                var posted = PostMessage(dialog.Handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+                                MarkUiTask(title + ": close posted=" + posted);
+                            }
+                            catch (Exception ex) { MarkUiTask(title + ": close error " + ex); throw; }
                         }
                     }
                     if (messageTitle != null && !observation.MessageClosed)
