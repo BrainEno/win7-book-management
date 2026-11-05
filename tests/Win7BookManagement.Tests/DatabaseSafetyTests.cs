@@ -128,6 +128,101 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void Backups_AreStandaloneCleanAndRestorableAfterRepeatedOverwrites()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var id = db.Services.Books.Insert(new Book { Title = "独立备份测试" });
+                db.Services.Inventory.Adjust(id, 7, "备份前库存");
+                var path = Path.Combine(db.Root, "snapshot.db");
+                for (var i = 0; i < 12; i++)
+                {
+                    db.Services.Backup.CreateBackup(path);
+                    Assert.AreEqual(0, Directory.GetFiles(db.Root, "snapshot.db.writing-*").Length,
+                        "第 " + i + " 次备份留下了临时文件。");
+                    Assert.IsFalse(File.Exists(path + "-wal"));
+                    Assert.IsFalse(File.Exists(path + "-shm"));
+                }
+                var isolatedDir = Path.Combine(db.Root, "isolated");
+                Directory.CreateDirectory(isolatedDir);
+                var isolated = Path.Combine(isolatedDir, "copy.db");
+                File.Copy(path, isolated); // deliberately copy only the database
+                BackupService.ValidateBackup(isolated);
+                using (var c = new SQLiteConnection("Data Source=" + isolated + ";Version=3;Read Only=True;Pooling=False;"))
+                {
+                    c.Open();
+                    using (var cmd = c.CreateCommand())
+                    {
+                        cmd.CommandText = "PRAGMA journal_mode;";
+                        Assert.AreEqual("delete", Convert.ToString(cmd.ExecuteScalar()).ToLowerInvariant());
+                        cmd.CommandText = "SELECT stock_quantity FROM books WHERE title='独立备份测试';";
+                        Assert.AreEqual(7, Convert.ToInt32(cmd.ExecuteScalar()));
+                    }
+                }
+                Assert.IsFalse(File.Exists(isolated + "-wal"));
+                Assert.IsFalse(File.Exists(isolated + "-shm"));
+                db.Services.Inventory.Adjust(id, 4, "备份后库存");
+                var safety = db.Services.Backup.Restore(isolated);
+                Assert.IsTrue(File.Exists(safety));
+                Assert.AreEqual(7, db.Services.Books.GetById(id).StockQuantity);
+                Assert.AreEqual(0, Directory.GetFiles(Path.Combine(db.Root, "data"), "test.db.restore-stage-*").Length);
+            }
+        }
+
+        [TestMethod]
+        public void BackupWithExistingTargetSidecars_RefusesOverwriteAndPreservesEverything()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "target.db");
+                db.Services.Backup.CreateBackup(path);
+                var original = File.ReadAllBytes(path);
+                var wal = path + "-wal";
+                var journal = new byte[] { 1, 2, 3, 4 };
+                File.WriteAllBytes(wal, journal);
+                var error = Assert.ThrowsException<InvalidOperationException>(() => db.Services.Backup.CreateBackup(path));
+                StringAssert.Contains(error.Message, "日志文件");
+                CollectionAssert.AreEqual(original, File.ReadAllBytes(path));
+                CollectionAssert.AreEqual(journal, File.ReadAllBytes(wal));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "target.db.writing-*").Length);
+                Assert.ThrowsException<InvalidOperationException>(() => db.Services.Backup.CreateBackup(db.Services.Database.DatabasePath + "-wal"));
+            }
+        }
+
+        [TestMethod]
+        public void Backup_RefusesOrphanedOrEmptyTargetSidecarsWithoutDeletingThem()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                foreach (var suffix in new[] { "-wal", "-shm", "-journal" })
+                {
+                    var path = Path.Combine(db.Root, "missing" + suffix.Substring(1) + ".db");
+                    File.WriteAllBytes(path + suffix, new byte[0]);
+                    Assert.ThrowsException<InvalidOperationException>(() => db.Services.Backup.CreateBackup(path));
+                    Assert.IsFalse(File.Exists(path));
+                    Assert.IsTrue(File.Exists(path + suffix));
+                    Assert.AreEqual(0, Directory.GetFiles(db.Root, Path.GetFileName(path) + ".writing-*").Length);
+                }
+                foreach (var suffix in new[] { "-shm", "-journal" })
+                    Assert.ThrowsException<InvalidOperationException>(() => db.Services.Backup.CreateBackup(db.Services.Database.DatabasePath + suffix));
+            }
+        }
+
+        [TestMethod]
+        public void Backup_DoesNotTouchOlderOrUnrelatedWritingFiles()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "target.db");
+                var old = path + ".writing-legacy-wal";
+                File.WriteAllText(old, "unverified history");
+                db.Services.Backup.CreateBackup(path);
+                Assert.AreEqual("unverified history", File.ReadAllText(old));
+                CollectionAssert.AreEqual(new[] { old }, Directory.GetFiles(db.Root, "target.db.writing-*"));
+            }
+        }
+
+        [TestMethod]
         public void CancelledBackup_PreservesExistingTargetAndCreatesNoAdditionalTemporaryFiles()
         {
             using (var db = new TemporaryDatabase())
@@ -137,6 +232,7 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
                 db.Services.Backup.CreateBackup(path);
                 var before = File.ReadAllBytes(path);
                 var temporaryBefore = Directory.GetFiles(db.Root, "existing.db.writing-*").OrderBy(x => x).ToArray();
+                Assert.AreEqual(0, temporaryBefore.Length);
                 cancellation.Cancel();
                 Assert.ThrowsException<OperationCanceledException>(
                     () => db.Services.Backup.CreateBackup(path, null, cancellation.Token));
@@ -172,6 +268,7 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
                 db.Services.Backup.CreateBackup(path);
                 var before = File.ReadAllBytes(path);
                 var temporaryBefore = Directory.GetFiles(db.Root, "existing.db.writing-*").OrderBy(x => x).ToArray();
+                Assert.AreEqual(0, temporaryBefore.Length);
                 Assert.ThrowsException<OperationCanceledException>(() =>
                     db.Services.Backup.CreateBackup(path, new CancelBackupOnProgress(source), source.Token));
                 CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
