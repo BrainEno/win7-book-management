@@ -23,6 +23,15 @@ namespace Win7BookManagement.Tests
         }
 
         [TestMethod]
+        public void ChineseFontFallback_PrefersInstalledSimSunToSegoe()
+        {
+            Assert.AreEqual("SimSun", UiTheme.SelectFontFamily(new[] { "Segoe UI", "simsun" }, "fallback"));
+            Assert.AreEqual("Microsoft YaHei", UiTheme.SelectFontFamily(new[] { "SimSun", "Microsoft YaHei" }, "fallback"));
+            Assert.AreEqual("Segoe UI", UiTheme.SelectFontFamily(new[] { "Segoe UI" }, "fallback"));
+            Assert.AreEqual("fallback", UiTheme.SelectFontFamily(new string[0], "fallback"));
+        }
+
+        [TestMethod]
         public void SqliteErrors_AreTranslatedWithoutLosingBusinessInstructions()
         {
             var busy = new SQLiteException(SQLiteErrorCode.Busy, "English driver detail");
