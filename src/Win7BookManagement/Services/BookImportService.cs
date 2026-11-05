@@ -19,6 +19,7 @@ namespace Win7BookManagement.Services
         public Book Book { get; set; }
         public bool IsUpdate { get; set; }
         public string Error { get; set; }
+        public string Warning { get; set; }
         public string[] Raw { get; set; }
         public string Status { get { return Error != null ? "错误" : IsUpdate ? "更新" : "新增"; } }
     }
@@ -48,6 +49,7 @@ namespace Win7BookManagement.Services
             var byIsbn = existing.Where(b => !string.IsNullOrEmpty(b.Isbn)).ToDictionary(b => b.Isbn, b => b);
             var seenCode = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var seenIsbn = new HashSet<string>();
+            var seenBookIds = new HashSet<long>();
             var result = new List<BookImportRow>();
             foreach (var cells in rows)
             {
@@ -56,12 +58,16 @@ namespace Win7BookManagement.Services
                 try
                 {
                     var b = row.Book;
-                    b.SelfCode = Get(cells.Item2, 0); b.Isbn = Isbn.Normalize(Get(cells.Item2, 1));
+                    b.SelfCode = Get(cells.Item2, 0);
+                    var isbnPlan = BookIsbnSavePolicy.CreatePlan(Get(cells.Item2, 1), Get(cells.Item2, 12));
+                    b.Isbn = isbnPlan.Isbn;
                     b.Title = Get(cells.Item2, 2); b.Author = Get(cells.Item2, 3); b.Publisher = Get(cells.Item2, 4);
                     b.Category = Get(cells.Item2, 5); b.PublicationYear = Get(cells.Item2, 6); b.Edition = Get(cells.Item2, 7);
                     b.Binding = Get(cells.Item2, 8); b.ShelfCode = Get(cells.Item2, 9);
                     b.SalePriceCent = ParsePrice(Get(cells.Item2, 10), "售价"); b.ListPriceCent = b.SalePriceCent;
-                    b.DefaultPurchasePriceCent = ParsePrice(Get(cells.Item2, 11), "默认进价"); b.Note = Get(cells.Item2, 12);
+                    b.DefaultPurchasePriceCent = ParsePrice(Get(cells.Item2, 11), "默认进价"); b.Note = isbnPlan.Note;
+                    if (isbnPlan.InvalidIsbnNeedsConfirmation)
+                        row.Warning = "ISBN 无效：将留空，原始输入记入备注。";
                     if (string.IsNullOrWhiteSpace(b.Title)) throw new InvalidOperationException("书名不能为空。");
                     Book match = null;
                     if (b.SelfCode.Length > 0 && byCode.ContainsKey(b.SelfCode)) match = byCode[b.SelfCode];
@@ -70,13 +76,20 @@ namespace Win7BookManagement.Services
                         if (match != null && match.Id != byIsbn[b.Isbn].Id) throw new InvalidOperationException("店内编码与 ISBN 指向两本不同图书。");
                         match = byIsbn[b.Isbn];
                     }
-                    if (b.SelfCode.Length > 0 && !seenCode.Add(b.SelfCode)) throw new InvalidOperationException("文件内店内编码重复。");
-                    if (b.Isbn.Length > 0 && !seenIsbn.Add(b.Isbn)) throw new InvalidOperationException("文件内 ISBN 重复。");
                     if (match != null)
                     {
                         row.IsUpdate = true; b.Id = match.Id; b.StockQuantity = match.StockQuantity; b.IsActive = match.IsActive;
                         if (string.IsNullOrEmpty(b.SelfCode)) b.SelfCode = match.SelfCode;
+                        // Never erase an existing verified ISBN because the incoming value was invalid.
+                        if (isbnPlan.InvalidIsbnNeedsConfirmation && !string.IsNullOrEmpty(match.Isbn))
+                        {
+                            b.Isbn = match.Isbn;
+                            row.Warning = "ISBN 无效：保留已有 ISBN，原始输入记入备注。";
+                        }
                     }
+                    if (b.SelfCode.Length > 0 && !seenCode.Add(b.SelfCode)) throw new InvalidOperationException("文件内店内编码重复。");
+                    if (b.Isbn.Length > 0 && !seenIsbn.Add(b.Isbn)) throw new InvalidOperationException("文件内 ISBN 重复。");
+                    if (match != null && !seenBookIds.Add(match.Id)) throw new InvalidOperationException("文件内多行指向同一本图书。");
                 }
                 catch (Exception ex) { row.Error = ex.Message; }
             }
@@ -86,7 +99,18 @@ namespace Win7BookManagement.Services
 
         public int Commit(string path)
         {
+            return Commit(path, null);
+        }
+
+        // The approved preview must still match the file and database when committing.
+        // Callers without a preview may import only rows without warnings.
+        public int Commit(string path, IList<BookImportRow> approvedPreview)
+        {
             var rows = Preview(path);
+            if (approvedPreview != null && !SamePreview(rows, approvedPreview))
+                throw new InvalidOperationException("导入文件或图书匹配结果已变化，请重新预览并确认。");
+            if (approvedPreview == null && rows.Any(r => r.Warning != null))
+                throw new InvalidOperationException("存在 ISBN 警告，请先预览并确认后导入。");
             var errors = rows.Where(r => r.Error != null).ToList();
             if (errors.Count > 0)
                 throw new InvalidOperationException("有 " + errors.Count + " 行错误，未导入任何数据。第一处：第 " + errors[0].RowNumber + " 行，" + errors[0].Error + " 请导出错误行修正后重试。");
@@ -95,10 +119,15 @@ namespace Win7BookManagement.Services
             {
                 try
                 {
+                    var reservedCodes = new HashSet<string>(rows.Select(r => r.Book.SelfCode).Where(c => !string.IsNullOrEmpty(c)), StringComparer.OrdinalIgnoreCase);
                     foreach (var row in rows)
                     {
                         var b = row.Book;
-                        if (!row.IsUpdate && string.IsNullOrEmpty(b.SelfCode)) b.SelfCode = NextCode(connection, transaction);
+                        if (!row.IsUpdate && string.IsNullOrEmpty(b.SelfCode))
+                        {
+                            b.SelfCode = NextCode(connection, transaction, reservedCodes);
+                            reservedCodes.Add(b.SelfCode);
+                        }
                         using (var command = connection.CreateCommand())
                         {
                             command.Transaction = transaction;
@@ -137,7 +166,22 @@ VALUES('book_category',@value,0,'批量导入',1,@now,@now);";
             }
         }
 
-        private static string NextCode(System.Data.SQLite.SQLiteConnection connection, System.Data.SQLite.SQLiteTransaction transaction)
+        private static bool SamePreview(IList<BookImportRow> current, IList<BookImportRow> approved)
+        {
+            if (current.Count != approved.Count) return false;
+            for (var i = 0; i < current.Count; i++)
+            {
+                var a = current[i]; var b = approved[i];
+                if (a.RowNumber != b.RowNumber || !a.Raw.SequenceEqual(b.Raw) ||
+                    a.IsUpdate != b.IsUpdate || a.Book.Id != b.Book.Id ||
+                    a.Book.SelfCode != b.Book.SelfCode || a.Book.Isbn != b.Book.Isbn ||
+                    a.Book.Note != b.Book.Note || a.Warning != b.Warning || a.Error != b.Error)
+                    return false;
+            }
+            return true;
+        }
+
+        private static string NextCode(System.Data.SQLite.SQLiteConnection connection, System.Data.SQLite.SQLiteTransaction transaction, ISet<string> reservedCodes)
         {
             long next;
             using (var command = connection.CreateCommand())
@@ -148,9 +192,10 @@ VALUES('book_category',@value,0,'批量导入',1,@now,@now);";
             while (true)
             {
                 var candidate = "BK-" + next.ToString("D6");
+                if (reservedCodes.Contains(candidate)) { next++; continue; }
                 using (var command = connection.CreateCommand())
                 {
-                    command.Transaction = transaction; command.CommandText = "SELECT COUNT(*) FROM books WHERE self_code=@code;";
+                    command.Transaction = transaction; command.CommandText = "SELECT COUNT(*) FROM books WHERE self_code=@code COLLATE NOCASE;";
                     command.Parameters.AddWithValue("@code", candidate);
                     if (Convert.ToInt32(command.ExecuteScalar()) == 0) return candidate;
                 }

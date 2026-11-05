@@ -87,6 +87,22 @@ namespace Win7BookManagement.Infrastructure
                     selfPublished.Isbn != "")
                     throw new InvalidOperationException("无 ISBN 图书自动店内编码自检失败。");
 
+                // Exercise the actual sales entry handler, not only repository searches.
+                using (var salesLookup = new SalesForm(services))
+                {
+                    var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var input = (AntdUI.Input)typeof(SalesForm).GetField("_isbn", flags).GetValue(salesLookup);
+                    var cart = (System.Collections.IList)typeof(SalesForm).GetField("_rows", flags).GetValue(salesLookup);
+                    var add = typeof(SalesForm).GetMethod("AddByIsbn", flags);
+                    foreach (var term in new[] { selfPublished.SelfCode, "自出版物", "独立作者" })
+                    {
+                        input.Text = term;
+                        add.Invoke(salesLookup, null);
+                        if (cart.Count != 1 || (long)cart[0].GetType().GetProperty("BookId").GetValue(cart[0], null) != selfPublishedId || input.Text != "")
+                            throw new InvalidOperationException("销售开单店内编码 / 书名 / 作者查找自检失败。");
+                    }
+                }
+
                 var seededCategories = services.Dictionaries.GetActiveValues(DictionaryKeys.BookCategory);
                 if (!seededCategories.Contains("测试分类"))
                     throw new InvalidOperationException("图书分类字典自动同步自检失败。");

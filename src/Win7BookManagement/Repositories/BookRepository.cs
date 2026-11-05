@@ -106,8 +106,10 @@ ORDER BY
 
         public Book FindByExactIdentifier(string identifier)
         {
-            var normalized = Isbn.LooksLikeIsbn(identifier) ? Isbn.Normalize(identifier) : (identifier ?? "").Trim();
-            if (normalized.Length == 0) return null;
+            var raw = (identifier ?? "").Trim();
+            if (raw.Length == 0) return null;
+            string normalized;
+            if (!Isbn.TryNormalize(raw, out normalized)) normalized = "";
 
             using (var connection = _factory.Open())
             using (var command = connection.CreateCommand())
@@ -116,10 +118,11 @@ ORDER BY
 SELECT " + SelectColumns + @"
 FROM books
 WHERE is_active = 1
-  AND (isbn = @identifier OR self_code = @identifier)
-ORDER BY CASE WHEN isbn = @identifier THEN 0 ELSE 1 END, id
+  AND (self_code = @raw OR (@isbn <> '' AND isbn = @isbn))
+ORDER BY CASE WHEN self_code = @raw THEN 0 ELSE 1 END, id
 LIMIT 1;";
-                command.Parameters.AddWithValue("@identifier", normalized);
+                command.Parameters.AddWithValue("@raw", raw);
+                command.Parameters.AddWithValue("@isbn", normalized);
                 using (var reader = command.ExecuteReader())
                     return reader.Read() ? ReadBook(reader) : null;
             }
