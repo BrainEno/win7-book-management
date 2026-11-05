@@ -967,6 +967,9 @@ namespace Win7BookManagement.Infrastructure
         private static extern IntPtr FindWindow(string className, string windowName);
 
         [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr GetDlgItem(IntPtr window, int id);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
         private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
         // Runs in a separate STA process with a CI timeout: a broken modal close
@@ -1102,11 +1105,15 @@ namespace Win7BookManagement.Infrastructure
                         var window = FindWindow("#32770", messageTitle);
                         if (window != IntPtr.Zero)
                         {
-                            observation.MessageClosed = true;
-                            MarkUiTask(title + ": dismissing " + messageTitle);
-                            // Dismiss only the test's notice: OK for cancellation,
-                            // No for the error dialog (do not open Explorer).
-                            PostMessage(window, 0x0111, new IntPtr(messageTitle == "已取消" ? 1 : 7), IntPtr.Zero);
+                            // Click the actual standard message-box button: OK for
+                            // cancellation, No for errors (never open Explorer).
+                            var button = GetDlgItem(window, messageTitle == "已取消" ? 1 : 7);
+                            if (button != IntPtr.Zero)
+                            {
+                                observation.MessageClosed = true;
+                                MarkUiTask(title + ": dismissing " + messageTitle);
+                                PostMessage(button, 0x00F5, IntPtr.Zero, IntPtr.Zero); // BM_CLICK
+                            }
                         }
                     }
                 };
