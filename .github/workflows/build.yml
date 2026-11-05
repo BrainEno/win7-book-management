@@ -87,7 +87,7 @@ jobs:
           $exe = "tools\Win7BookManagement.UiTools\bin\x86\Release\Win7BookManagement.UiTools.exe"
           $p = Start-Process $exe "--self-test" -Wait -PassThru
           if ($p.ExitCode -ne 0) {
-            Get-Content "tools\Win7BookManagement.UiTools\bin\x86\Release\selftest-error.txt" -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::SelfTest: $_" }
+            Get-Content "tools\Win7BookManagement.UiTools\bin\x86\Release\self-test-error.txt" -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 80 | ForEach-Object { Write-Host "::error::SelfTest: $_" }
             throw "Full self-test failed: $($p.ExitCode)"
           }
           New-Item -ItemType Directory -Force ui-snapshots | Out-Null

@@ -475,7 +475,7 @@ Windows 7 收银机常见 1024×768 / 1280×1024 屏幕；1366×768 笔记本在
 
 - `Infrastructure/WindowPlacement` 负责全部窗口放置：`FitBounds` / `ClampMinimum` 为纯函数，`Apply` 在构造时按鼠标所在显示器工作区夹取，`ClampToWorkingArea` 在 Shown 与 DpiChanged 后再次夹取并保证标题栏在屏内；
 - `BookDeskUiSpec.MinimumClientWidth/Height` = 1024×680，`Resolve` 新增 `Tight`（<=1180 宽或 <=640 高）；
-- Tight 使用 96px 图标栏（AntdUI.Menu `Collapsed`），隐藏侧栏页脚，页头 48px、内容边距 8/6、按钮 32px、表格 38px；
+- Tight 使用 96px 图标栏（AntdUI.Menu `Collapsed`）；由于折叠菜单会隐藏分组子项，紧凑模式将所有入口平铺为图标，恢复大窗口后重新分组并保留当前页面。隐藏侧栏页脚，页头 48px、内容边距 8/6、按钮 32px、表格 38px；
 - 页面层无需新增分支：`UiSpecProfile.IsCompact` 对 tight 与 compact 同时为 true；
-- `--self-test` 覆盖窗口放置纯函数与档位解析，CI 无需真实 1024×768 显示器即可防止回归；
+- `--self-test` 覆盖窗口放置纯函数、档位解析及真实主窗口中的 1024×728 / 1024×680 窗口、侧栏入口与销售 / 采购主按钮的逻辑尺寸和裁切检查；仍不是高 DPI 实测；
 - 仍必须在 Win7 真机（1024×768、1280×1024）与 125% / 150% DPI 上完成最终视觉复核。

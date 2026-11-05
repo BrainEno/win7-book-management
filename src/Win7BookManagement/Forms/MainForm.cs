@@ -36,6 +36,7 @@ namespace Win7BookManagement.Forms
         private Form _currentPage;
         private bool _guideOpen;
         private bool _syncingNavigation;
+        private bool _navigationIsTight;
 
         public MainForm(ApplicationServices services)
             {
@@ -226,8 +227,26 @@ namespace Win7BookManagement.Forms
             return menu;
         }
 
-        private void BuildNavigation()
+        private void BuildNavigation(bool tight = false)
         {
+            // A collapsed AntdUI.Menu hides nested group items. Flatten the
+            // entries in tight mode so every destination remains clickable.
+            if (tight)
+            {
+                AddRootNavigation("dashboard", "工作台", "HomeOutlined");
+                AddRootNavigation("sales", "销售开单", "FileAddOutlined");
+                AddRootNavigation("books", "图书资料", "BookOutlined");
+                AddRootNavigation("purchase", "采购入库", "ShoppingCartOutlined");
+                AddRootNavigation("inventory", "库存管理", "CodeSandboxOutlined");
+                AddRootNavigation("documents", "单据中心", "FileTextOutlined");
+                AddRootNavigation("suppliers", "字典管理", "ProfileOutlined");
+                AddRootNavigation("reports", "报表与导出", "BarChartOutlined");
+                AddRootNavigation("backup", "备份与恢复", "DatabaseOutlined");
+                AddRootNavigation("help", "使用帮助", "QuestionCircleOutlined");
+                AddRootNavigation("settings", "系统设置", "SettingOutlined");
+                return;
+            }
+
             // Dashboard and operating overview are one screen. Keep a single
             // clickable entry so the sidebar does not spend two rows on the same
             // destination.
@@ -561,6 +580,27 @@ namespace Win7BookManagement.Forms
             }
         }
 
+        private void ApplyNavigationProfile(bool tight)
+        {
+            // Group children are inaccessible when AntdUI collapses a menu.
+            // Use flat root icons for tight screens and restore grouping when
+            // space returns, without navigating away from the current page.
+            if (_navigationIsTight != tight)
+            {
+                _syncingNavigation = true;
+                try
+                {
+                    _navigationIsTight = tight;
+                    _navigation.Items.Clear();
+                    _menuItems.Clear();
+                    BuildNavigation(tight);
+                }
+                finally { _syncingNavigation = false; }
+                UpdateNavigationState();
+            }
+            _navigation.Collapsed = tight;
+        }
+
         private string BuildStatusText()
                 {
                     var autoBackup = _services?.AutoBackup;
@@ -604,9 +644,7 @@ namespace Win7BookManagement.Forms
             _sidebar.Width = profile.SidebarWidth;
             _header.Height = profile.PageHeaderHeight;
 
-            // Tight (1024x768 class) collapses the sidebar to an icon rail and
-            // hides its footer so navigation never eats the table width.
-            _navigation.Collapsed = profile.IsTight;
+            ApplyNavigationProfile(profile.IsTight);
             _navigation.Padding = profile.IsTight
             ? new Padding(6, 12, 6, 8)
             : new Padding(9, 14, 6, 8);
