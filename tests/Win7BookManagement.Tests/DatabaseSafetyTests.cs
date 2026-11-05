@@ -136,12 +136,14 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
                 var path = Path.Combine(db.Root, "existing.db");
                 db.Services.Backup.CreateBackup(path);
                 var before = File.ReadAllBytes(path);
+                var temporaryBefore = Directory.GetFiles(db.Root, "existing.db.writing-*").OrderBy(x => x).ToArray();
                 cancellation.Cancel();
                 Assert.ThrowsException<OperationCanceledException>(
                     () => db.Services.Backup.CreateBackup(path, null, cancellation.Token));
                 CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
                 BackupService.ValidateBackup(path);
-                Assert.AreEqual(0, Directory.GetFiles(db.Root, "existing.db.writing-*").Length);
+                CollectionAssert.AreEqual(temporaryBefore,
+                    Directory.GetFiles(db.Root, "existing.db.writing-*").OrderBy(x => x).ToArray());
             }
         }
 
