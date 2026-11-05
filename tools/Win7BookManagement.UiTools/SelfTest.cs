@@ -910,13 +910,13 @@ namespace Win7BookManagement.Infrastructure
                         var profile = form as IUiSpecPage;
                         if (profile != null)
                         {
-                            // Hosted pages receive both density and profile from MainForm.
-                            UiTheme.ApplyResponsiveDensity(form, 1024);
+                            // MainForm applies the UI spec profile to hosted pages.
                             profile.ApplyUiSpecProfile(BookDeskUiSpec.Resolve(1024, 680));
                         }
                         form.PerformLayout();
                         Application.DoEvents();
-                        VerifyControlTree(form, form.GetType().Name + "@SimSun", 1024);
+                        if (VerifySimSunText(form, form.GetType().Name) == 0)
+                            throw new InvalidOperationException(form.GetType().Name + " 没有可见的宋体文本控件。");
                     }
                 }
                 finally { foreach (var form in forms) form.Dispose(); }
@@ -935,6 +935,32 @@ namespace Win7BookManagement.Infrastructure
                 SQLiteConnection.ClearAllPools();
                 try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch { }
             }
+        }
+
+        private static int VerifySimSunText(Control control, string formName)
+        {
+            var count = 0;
+            var label = control as Label;
+            var button = control as AntdUI.Button;
+            if (control.Visible && (label != null || button != null) &&
+                !string.IsNullOrWhiteSpace(control.Text) &&
+                string.Equals(control.Font.FontFamily.Name, "SimSun", StringComparison.OrdinalIgnoreCase))
+            {
+                count++;
+                // Single-line controls must be tall enough for their actual font.
+                // Tight-profile controls intentionally use 32px, not the generic 34px density.
+                if (!control.Text.Contains("\n"))
+                {
+                    var size = TextRenderer.MeasureText(control.Text, control.Font, Size.Empty,
+                        TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                    if (control.Height < size.Height + control.Padding.Vertical ||
+                        (button != null && control.Width < size.Width + control.Padding.Horizontal))
+                        throw new InvalidOperationException(formName + " 宋体文本空间不足：" + control.Text +
+                            " 控件=" + control.Size + " 文字=" + size);
+                }
+            }
+            foreach (Control child in control.Controls) count += VerifySimSunText(child, formName);
+            return count;
         }
 
         private static void VerifyPersistentTableWidths(ApplicationServices services)
