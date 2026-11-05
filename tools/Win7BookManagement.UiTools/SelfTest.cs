@@ -914,7 +914,7 @@ namespace Win7BookManagement.Infrastructure
                 shell.Size = new Size(1300, 728);
                 Application.DoEvents();
                 if (menu.Collapsed || menu.Items.Count != 4 || !ReferenceEquals(page, pageField.GetValue(shell)))
-                    throw new InvalidOperationException("放大后未恢复分组导航或当前页面丢失。");
+                    throw new InvalidOperationException("放大后未恢复分组导航或当前页面丢失。shell=" + shell.Size + " client=" + shell.ClientSize + " collapsed=" + menu.Collapsed + " count=" + menu.Items.Count + " same=" + ReferenceEquals(page, pageField.GetValue(shell)));
                 shell.Size = new Size(1024, 680);
                 Application.DoEvents();
                 if (!menu.Collapsed || menu.Items.Count != 11 || !ReferenceEquals(page, pageField.GetValue(shell)))
