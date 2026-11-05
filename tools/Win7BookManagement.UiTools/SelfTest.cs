@@ -802,6 +802,7 @@ namespace Win7BookManagement.Infrastructure
                 VerifyLegacyBookSchemaUpgrade(root);
                 VerifyPersistentTableWidths(services);
                 VerifyWindowPlacementContracts();
+                VerifyHostedShellSmallScreen(services);
                 VerifyUiLayoutContracts(services, storedBook);
 
                 return 0;
@@ -851,6 +852,66 @@ namespace Win7BookManagement.Infrastructure
                 if (!string.Equals(title.Width, expectedWidth.ToString(), StringComparison.Ordinal))
                     throw new InvalidOperationException("AntdUI 表格列宽持久化恢复自检失败。");
             }
+        }
+
+        // Exercise the real shell and hosted pages, not standalone child forms.
+        // These are logical-size checks on the CI monitor, not a DPI simulation.
+        private static void VerifyHostedShellSmallScreen(ApplicationServices services)
+        {
+            using (var shell = new MainForm(services))
+            {
+                shell.ShowInTaskbar = false;
+                shell.Show();
+                Application.DoEvents();
+                var screen = Screen.FromControl(shell).WorkingArea;
+                if (screen.Width < 1024 || screen.Height < 680)
+                    throw new InvalidOperationException("CI 工作区过小，无法执行 1024×680 主窗口测试：" + screen);
+
+                foreach (var windowSize in new[] { new Size(1024, 728), new Size(1024, 680) })
+                {
+                    if (windowSize.Height > screen.Height) continue;
+                    shell.MinimumSize = new Size(1, 1);
+                    shell.Bounds = WindowPlacement.FitBounds(screen, windowSize, windowSize);
+                    WindowPlacement.ClampToWorkingArea(shell);
+                    Application.DoEvents();
+                    if (!screen.Contains(shell.Bounds) || shell.Size != windowSize)
+                        throw new InvalidOperationException("主窗口没有完整位于工作区：" + shell.Bounds + " / " + screen);
+
+                    foreach (var key in new[] { "sales", "purchase" })
+                    {
+                        shell.Navigate(key);
+                        Application.DoEvents();
+                        shell.PerformLayout();
+                        Application.DoEvents();
+                        var target = FindButton(shell, key == "sales" ? "确认结账" : "复核入库");
+                        if (target == null || !target.Visible || !target.Enabled)
+                            throw new InvalidOperationException("主窗口 " + windowSize + " 中找不到可操作的 " + key + " 主按钮。");
+                        var buttonBounds = target.RectangleToScreen(target.ClientRectangle);
+                        if (buttonBounds.Width <= 0 || buttonBounds.Height <= 0 || !screen.Contains(buttonBounds))
+                            throw new InvalidOperationException("主按钮在工作区外：" + key + " " + buttonBounds);
+                        for (Control parent = target.Parent; parent != null; parent = parent.Parent)
+                        {
+                            if (!parent.Visible || !parent.RectangleToScreen(parent.ClientRectangle).Contains(buttonBounds))
+                                throw new InvalidOperationException("主按钮被容器裁切：" + key + " " + windowSize + " / " + parent.GetType().Name + " " + buttonBounds + " / " + parent.RectangleToScreen(parent.ClientRectangle));
+                        }
+                        var nav = shell.GetNavigationScreenBounds(key);
+                        if (nav.IsEmpty || !screen.Contains(nav))
+                            throw new InvalidOperationException("小屏侧边导航不可达：" + key + " " + windowSize + " / " + nav);
+                    }
+                }
+            }
+        }
+
+        private static Control FindButton(Control root, string text)
+        {
+            var button = root as AntdUI.Button;
+            if (button != null && button.Text == text) return button;
+            foreach (Control child in root.Controls)
+            {
+                var found = FindButton(child, text);
+                if (found != null) return found;
+            }
+            return null;
         }
 
         private static void VerifyUiLayoutContracts(ApplicationServices services, Book storedBook)
