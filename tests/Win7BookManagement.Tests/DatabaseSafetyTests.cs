@@ -161,6 +161,42 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void MissingOrMovedBackup_IsNotHiddenByRecentStoredTimestamp()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var primary = Path.Combine(db.Root, "primary");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var path = db.Services.AutoBackup.CreateNow("test");
+                File.Delete(path);
+                Assert.AreEqual(BackupHealthLevel.Critical, db.Services.AutoBackup.GetStatus().Level);
+                Assert.IsNull(db.Services.AutoBackup.GetStatus().LastBackupUtc);
+                var replacement = db.Services.AutoBackup.RunStartupBackupIfNeeded();
+                Assert.IsNotNull(replacement);
+                Assert.IsTrue(File.Exists(replacement));
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, Path.Combine(db.Root, "new-directory"));
+                Assert.AreEqual(BackupHealthLevel.Critical, db.Services.AutoBackup.GetStatus().Level);
+                Assert.IsNotNull(db.Services.AutoBackup.RunStartupBackupIfNeeded());
+            }
+        }
+
+        [TestMethod]
+        public void OldBackupFile_IsNotHiddenByRecentStoredTimestamp()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var primary = Path.Combine(db.Root, "primary");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var path = db.Services.AutoBackup.CreateNow("test");
+                File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-8));
+                Assert.AreEqual(BackupHealthLevel.Critical, db.Services.AutoBackup.GetStatus().Level);
+                Assert.IsNotNull(db.Services.AutoBackup.RunStartupBackupIfNeeded());
+            }
+        }
+
+        [TestMethod]
         public void CorruptBackup_IsNotReportedAsUsable()
         {
             using (var db = new TemporaryDatabase())

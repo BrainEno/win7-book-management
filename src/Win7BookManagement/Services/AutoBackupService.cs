@@ -214,17 +214,13 @@ namespace Win7BookManagement.Services
                 if (newest != null) last = newest.LastWriteTimeUtc;
             }
 
-            var stored = _settings.GetString(LastBackupUtcKey, string.Empty);
-            DateTime parsed;
-            if (DateTime.TryParse(stored, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out parsed))
-            {
-                if (!last.HasValue || parsed > last.Value) last = parsed;
-            }
-
+            // A historical timestamp does not prove that a backup still exists in
+            // the current directory. In particular, deleted files or a changed
+            // directory must not suppress today's startup backup.
             if (!last.HasValue)
             {
                 return new BackupStatus(null, directory, BackupHealthLevel.Critical,
-                    "还没有任何自动备份。请立即在“备份与恢复”创建一次，并选择 U 盘作为第二备份位置。");
+                    "当前自动备份目录没有备份文件。请立即创建备份，并选择 U 盘作为第二备份位置。");
             }
 
             var age = (DateTime.UtcNow - last.Value).TotalDays;
