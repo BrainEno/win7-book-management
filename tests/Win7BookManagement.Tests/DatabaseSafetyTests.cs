@@ -147,6 +147,32 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
             }
         }
 
+        private sealed class CancelBackupOnProgress : IProgress<int>
+        {
+            private readonly CancellationTokenSource _source;
+            public CancelBackupOnProgress(CancellationTokenSource source) { _source = source; }
+            public void Report(int percent) { _source.Cancel(); }
+        }
+
+        [TestMethod]
+        public void BackupCancelledDuringSnapshot_PreservesPreviousTarget()
+        {
+            using (var db = new TemporaryDatabase())
+            using (var source = new CancellationTokenSource())
+            {
+                var path = Path.Combine(db.Root, "existing.db");
+                db.Services.Backup.CreateBackup(path);
+                var before = File.ReadAllBytes(path);
+                var temporaryBefore = Directory.GetFiles(db.Root, "existing.db.writing-*").OrderBy(x => x).ToArray();
+                Assert.ThrowsException<OperationCanceledException>(() =>
+                    db.Services.Backup.CreateBackup(path, new CancelBackupOnProgress(source), source.Token));
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+                BackupService.ValidateBackup(path);
+                CollectionAssert.AreEqual(temporaryBefore,
+                    Directory.GetFiles(db.Root, "existing.db.writing-*").OrderBy(x => x).ToArray());
+            }
+        }
+
         [TestMethod]
         public void AutomaticBackup_PublishesValidatedSecondCopyAndPrunesBoth()
         {
