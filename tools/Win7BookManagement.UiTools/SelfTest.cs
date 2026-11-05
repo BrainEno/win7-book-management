@@ -1088,9 +1088,20 @@ namespace Win7BookManagement.Infrastructure
             var observation = new UiTaskObservation();
             using (var timer = new System.Windows.Forms.Timer { Interval = 30 })
             {
+                var attached = false;
                 timer.Tick += delegate
                 {
                     observation.Ticks++;
+                    if (!attached)
+                    {
+                        var observedDialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Text == title && f.Visible);
+                        if (observedDialog != null)
+                        {
+                            attached = true;
+                            observedDialog.FormClosing += (sender, e) => MarkUiTask(title + ": FormClosing cancel=" + e.Cancel + " reason=" + e.CloseReason);
+                            observedDialog.FormClosed += (sender, e) => MarkUiTask(title + ": FormClosed");
+                        }
+                    }
                     if (attemptClose && !observation.AttemptedClose)
                     {
                         var dialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Text == title && f.Visible);
