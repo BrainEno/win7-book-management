@@ -160,6 +160,14 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
             using (var db = new TemporaryDatabase())
             using (var source = new CancellationTokenSource())
             {
+                // SQLite reports intermediate progress only when the snapshot
+                // spans more than the 64-page backup step.
+                using (var connection = db.Services.Database.Open())
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "CREATE TABLE backup_test_padding(data BLOB); INSERT INTO backup_test_padding VALUES(randomblob(1048576));";
+                    command.ExecuteNonQuery();
+                }
                 var path = Path.Combine(db.Root, "existing.db");
                 db.Services.Backup.CreateBackup(path);
                 var before = File.ReadAllBytes(path);
