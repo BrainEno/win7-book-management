@@ -903,19 +903,22 @@ namespace Win7BookManagement.Infrastructure
                     }
                 }
 
-                // Resize out of tight mode and back without losing the page or
-                // navigation entries. This part does not assert screen bounds.
+                // Exercise the compact-to-grouped transition and back without
+                // losing the page. This part does not assert screen bounds.
                 shell.Navigate("sales");
                 Application.DoEvents();
                 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
                 var pageField = typeof(MainForm).GetField("_currentPage", flags);
                 var menu = (AntdUI.Menu)typeof(MainForm).GetField("_navigation", flags).GetValue(shell);
                 var page = pageField.GetValue(shell);
-                shell.Size = new Size(1300, 728);
+                var applyNavigation = typeof(MainForm).GetMethod("ApplyNavigationProfile", flags);
+                // The CI desktop may be too small to resize a top-level window
+                // to 1300px. Exercise the same production profile transition.
+                applyNavigation.Invoke(shell, new object[] { false });
                 Application.DoEvents();
                 if (menu.Collapsed || menu.Items.Count != 4 || !ReferenceEquals(page, pageField.GetValue(shell)))
                     throw new InvalidOperationException("放大后未恢复分组导航或当前页面丢失。shell=" + shell.Size + " client=" + shell.ClientSize + " collapsed=" + menu.Collapsed + " count=" + menu.Items.Count + " same=" + ReferenceEquals(page, pageField.GetValue(shell)));
-                shell.Size = new Size(1024, 680);
+                applyNavigation.Invoke(shell, new object[] { true });
                 Application.DoEvents();
                 if (!menu.Collapsed || menu.Items.Count != 11 || !ReferenceEquals(page, pageField.GetValue(shell)))
                     throw new InvalidOperationException("缩小后未恢复小屏导航或当前页面丢失。");

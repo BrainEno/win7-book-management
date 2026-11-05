@@ -580,6 +580,27 @@ namespace Win7BookManagement.Forms
             }
         }
 
+        private void ApplyNavigationProfile(bool tight)
+        {
+            // Group children are inaccessible when AntdUI collapses a menu.
+            // Use flat root icons for tight screens and restore grouping when
+            // space returns, without navigating away from the current page.
+            if (_navigationIsTight != tight)
+            {
+                _syncingNavigation = true;
+                try
+                {
+                    _navigationIsTight = tight;
+                    _navigation.Items.Clear();
+                    _menuItems.Clear();
+                    BuildNavigation(tight);
+                }
+                finally { _syncingNavigation = false; }
+                UpdateNavigationState();
+            }
+            _navigation.Collapsed = tight;
+        }
+
         private string BuildStatusText()
                 {
                     var autoBackup = _services?.AutoBackup;
@@ -623,23 +644,7 @@ namespace Win7BookManagement.Forms
             _sidebar.Width = profile.SidebarWidth;
             _header.Height = profile.PageHeaderHeight;
 
-            // Group children are inaccessible when AntdUI collapses a menu.
-            // Rebuild as flat root icons for tight screens and restore the
-            // grouped menu after growing the window, preserving selection.
-            if (_navigationIsTight != profile.IsTight)
-            {
-                _syncingNavigation = true;
-                try
-                {
-                    _navigation.Items.Clear();
-                    _menuItems.Clear();
-                    BuildNavigation(profile.IsTight);
-                    _navigationIsTight = profile.IsTight;
-                }
-                finally { _syncingNavigation = false; }
-                UpdateNavigationState();
-            }
-            _navigation.Collapsed = profile.IsTight;
+            ApplyNavigationProfile(profile.IsTight);
             _navigation.Padding = profile.IsTight
             ? new Padding(6, 12, 6, 8)
             : new Padding(9, 14, 6, 8);
