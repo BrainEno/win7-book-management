@@ -112,6 +112,25 @@ namespace Win7BookManagement.Tests
         }
 
         [TestMethod]
+        public void SalesLookup_HandlesCodesTitlesAuthorsAndMalformedIsbnWithoutThrowing()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var id = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "独立出版画册", Author = "独立作者" });
+                var book = db.Services.Books.GetById(id);
+                Assert.AreEqual(id, db.Services.Books.FindByExactIdentifier(book.SelfCode).Id);
+                Assert.AreEqual(id, db.Services.Books.SearchActiveByIsbnOrTitle("出版画册").Single().Id);
+                Assert.AreEqual(id, db.Services.Books.SearchActiveByIsbnOrTitle("独立作者").Single().Id);
+                Assert.IsNull(db.Services.Books.FindByExactIdentifier("9787111213827"));
+                Assert.AreEqual(0, db.Services.Books.SearchActiveByIsbnOrTitle("9787111213827").Count);
+                var numericId = db.Services.Books.Insert(new Win7BookManagement.Models.Book { SelfCode = "9787111213827", Title = "数字编码" });
+                Assert.AreEqual(numericId, db.Services.Books.FindByExactIdentifier("9787111213827").Id);
+                var isbnId = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "有 ISBN", Isbn = "9780306406157" });
+                Assert.AreEqual(isbnId, db.Services.Books.FindByExactIdentifier("0-306-40615-2").Id);
+            }
+        }
+
+        [TestMethod]
         public void Repository_StillRejectsInvalidNonEmptyIsbn()
         {
             using (var db = new TemporaryDatabase())
@@ -158,13 +177,129 @@ namespace Win7BookManagement.Tests
         {
             using (var db = new TemporaryDatabase())
             {
-                var path = Csv(",,\"有效书\",,,,,,,,10,5,\n,9787111213827,\"无效ISBN\",,,,,,,,10,5,");
+                var path = Csv(",,\"有效书\",,,,,,,,10,5,\n,,,,,,,,,,10,5,");
                 try
                 {
                     var service = new BookImportService(db.Services.Database, db.Services.Books);
                     Assert.AreEqual(1, service.Preview(path).Count(r => r.Error != null));
                     Assert.ThrowsException<InvalidOperationException>(() => service.Commit(path));
                     Assert.AreEqual(0, db.Services.Books.Search("", true).Count);
+                }
+                finally { File.Delete(path); }
+            }
+        }
+
+        [TestMethod]
+        public void BlankAndInvalidIsbn_RequireApprovalOnlyForWarning_AndKeepRawValue()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Csv(",,自出版一,,,,,,,,10,5,备注一\n,9787111213827,自出版二,,,,,,,,10,5,备注二");
+                try
+                {
+                    var service = new BookImportService(db.Services.Database, db.Services.Books);
+                    var rows = service.Preview(path);
+                    Assert.IsTrue(rows.All(r => r.Error == null));
+                    Assert.IsNull(rows[0].Warning);
+                    StringAssert.Contains(rows[1].Warning, "ISBN 无效");
+                    Assert.ThrowsException<InvalidOperationException>(() => service.Commit(path));
+                    Assert.AreEqual(2, service.Commit(path, rows));
+                    var books = db.Services.Books.Search("", true);
+                    Assert.AreEqual(2, books.Count);
+                    Assert.IsTrue(books.All(b => b.Isbn == "" && b.SelfCode.StartsWith("BK-")));
+                    StringAssert.Contains(books.Single(b => b.Title == "自出版二").Note, "备注二");
+                    StringAssert.Contains(books.Single(b => b.Title == "自出版二").Note, "未校验 ISBN 输入：9787111213827");
+                }
+                finally { File.Delete(path); }
+            }
+        }
+
+        [TestMethod]
+        public void InvalidIsbnUpdate_PreservesExistingVerifiedIsbnAndStock()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var id = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "旧书", Isbn = "9787111213826" });
+                db.Services.Inventory.Adjust(id, 3, "opening");
+                var code = db.Services.Books.GetById(id).SelfCode;
+                var path = Csv(code + ",9787111213827,新书,,,,,,,,10,5,备注");
+                try
+                {
+                    var service = new BookImportService(db.Services.Database, db.Services.Books);
+                    var rows = service.Preview(path);
+                    Assert.IsTrue(rows[0].IsUpdate);
+                    Assert.IsNull(rows[0].Error);
+                    StringAssert.Contains(rows[0].Warning, "保留已有 ISBN");
+                    service.Commit(path, rows);
+                    var book = db.Services.Books.GetById(id);
+                    Assert.AreEqual("9787111213826", book.Isbn);
+                    Assert.AreEqual(3, book.StockQuantity);
+                    StringAssert.Contains(book.Note, "9787111213827");
+                }
+                finally { File.Delete(path); }
+            }
+        }
+
+        [TestMethod]
+        public void DuplicateValidIsbnAndConflictingIdentifiers_StillBlockWholeImport()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var a = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "甲", Isbn = "9787111213826" });
+                var b = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "乙", Isbn = "9780306406157" });
+                var code = db.Services.Books.GetById(a).SelfCode;
+                var path = Csv(code + ",9780306406157,冲突,,,,,,,,10,5,");
+                try
+                {
+                    var service = new BookImportService(db.Services.Database, db.Services.Books);
+                    Assert.IsNotNull(service.Preview(path)[0].Error);
+                    Assert.ThrowsException<InvalidOperationException>(() => service.Commit(path));
+                    File.WriteAllText(path, string.Join(",", BookImportService.Headers) + "\n,0-306-40615-2,一,,,,,,,,10,5,\n,9780306406157,二,,,,,,,,10,5,", new UTF8Encoding(true));
+                    Assert.IsTrue(service.Preview(path).Any(r => r.Error != null));
+                    Assert.ThrowsException<InvalidOperationException>(() => service.Commit(path));
+                    Assert.AreEqual("甲", db.Services.Books.GetById(a).Title);
+                    Assert.AreEqual("乙", db.Services.Books.GetById(b).Title);
+                }
+                finally { File.Delete(path); }
+            }
+        }
+
+        [TestMethod]
+        public void ChangedFileOrMatch_AfterPreviewCannotBeCommitted()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Csv("MYCODE,9787111213827,原书,,,,,,,,10,5,");
+                try
+                {
+                    var service = new BookImportService(db.Services.Database, db.Services.Books);
+                    var rows = service.Preview(path);
+                    File.AppendAllText(path, "\n,,新增,,,,,,,,10,5,");
+                    Assert.ThrowsException<InvalidOperationException>(() => service.Commit(path, rows));
+                    Assert.AreEqual(0, db.Services.Books.Search("", true).Count);
+                    rows = service.Preview(path);
+                    db.Services.Books.Insert(new Win7BookManagement.Models.Book { SelfCode = "MYCODE", Title = "已有" });
+                    Assert.ThrowsException<InvalidOperationException>(() => service.Commit(path, rows));
+                    Assert.AreEqual("已有", db.Services.Books.Search("", true).Single().Title);
+                }
+                finally { File.Delete(path); }
+            }
+        }
+
+        [TestMethod]
+        public void AutoGeneratedCode_DoesNotStealExplicitCodeInLaterRow()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Csv(",,自动编码书,,,,,,,,10,5,\nBK-000001,,手工编码书,,,,,,,,10,5,");
+                try
+                {
+                    var service = new BookImportService(db.Services.Database, db.Services.Books);
+                    var rows = service.Preview(path);
+                    Assert.IsTrue(rows.All(r => r.Error == null));
+                    Assert.AreEqual(2, service.Commit(path, rows));
+                    Assert.AreEqual("BK-000001", db.Services.Books.Search("手工编码书", true).Single().SelfCode);
+                    Assert.AreNotEqual("BK-000001", db.Services.Books.Search("自动编码书", true).Single().SelfCode);
                 }
                 finally { File.Delete(path); }
             }

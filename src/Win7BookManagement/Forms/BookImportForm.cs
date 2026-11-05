@@ -50,7 +50,7 @@ namespace Win7BookManagement.Forms
                 new AntdUI.Column("SelfCode", "店内编码") { Width = "110", ReadOnly = true },
                 new AntdUI.Column("Isbn", "ISBN") { Width = "130", ReadOnly = true },
                 new AntdUI.Column("Title", "书名") { Width = "180", ReadOnly = true },
-                new AntdUI.Column("Error", "错误 / 冲突说明") { Width = "260", ReadOnly = true }
+                new AntdUI.Column("Error", "错误 / 警告说明") { Width = "260", ReadOnly = true }
             };
             root.Controls.Add(_grid, 0, 2); root.Controls.Add(_summary, 0, 3);
             Controls.Add(root); UiTheme.Apply(this);
@@ -80,6 +80,7 @@ namespace Win7BookManagement.Forms
                 dialog.Filter = "图书模板 (*.xlsx;*.xls;*.csv)|*.xlsx;*.xls;*.csv";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 _path = dialog.FileName;
+                _rows = new List<BookImportRow>(); BindPreview();
                 UiTask.Run(this, "预览图书导入", (progress, token) => _import.Preview(_path), rows =>
                 {
                     _rows = rows; BindPreview();
@@ -92,17 +93,20 @@ namespace Win7BookManagement.Forms
             var table = new DataTable();
             table.Columns.Add("RowNumber", typeof(int)); table.Columns.Add("Status"); table.Columns.Add("SelfCode"); table.Columns.Add("Isbn"); table.Columns.Add("Title"); table.Columns.Add("Error");
             foreach (var row in _rows)
-                table.Rows.Add(row.RowNumber, row.Status, row.Book.SelfCode, row.Book.Isbn, row.Book.Title, row.Error ?? "");
+                table.Rows.Add(row.RowNumber, row.Status, row.Book.SelfCode, row.Book.Isbn, row.Book.Title, row.Error ?? row.Warning ?? "");
             _grid.DataSource = table;
             var errors = _rows.Count(r => r.Error != null);
-            _summary.Text = "共 " + _rows.Count + " 行：新增 " + _rows.Count(r => r.Error == null && !r.IsUpdate) + "，更新 " + _rows.Count(r => r.Error == null && r.IsUpdate) + "，错误 " + errors + "。" + (errors == 0 ? "可以确认导入。" : "请导出错误行修正；当前不会写入任何数据。");
+            var warnings = _rows.Count(r => r.Warning != null && r.Error == null);
+            _summary.Text = "共 " + _rows.Count + " 行：新增 " + _rows.Count(r => r.Error == null && !r.IsUpdate) + "，更新 " + _rows.Count(r => r.Error == null && r.IsUpdate) + "，错误 " + errors + "，ISBN 警告 " + warnings + "。" + (errors == 0 ? "可以确认导入。" : "请导出错误行修正；当前不会写入任何数据。");
             _commit.Enabled = _rows.Count > 0 && errors == 0; _errors.Enabled = errors > 0;
         }
 
         private void Commit()
         {
-            if (MessageBox.Show(this, "将按预览结果一次性导入，全部成功或全部回滚。确定继续吗？", "确认导入", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-            UiTask.Run(this, "批量导入图书", (progress, token) => _import.Commit(_path), count =>
+            var warnings = _rows.Count(r => r.Warning != null && r.Error == null);
+            var warningText = warnings > 0 ? "\n\n有 " + warnings + " 行 ISBN 无效：新增图书留空，更新图书保留已有有效 ISBN；原始输入记入备注。" : "";
+            if (MessageBox.Show(this, "将按预览结果一次性导入，全部成功或全部回滚。" + warningText + "\n确定继续吗？", "确认导入", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            UiTask.Run(this, "批量导入图书", (progress, token) => _import.Commit(_path, _rows), count =>
             {
                 Imported = true; _commit.Enabled = false;
                 MessageBox.Show(this, "已导入 " + count + " 行图书资料。库存未从模板修改。", "导入完成", MessageBoxButtons.OK, MessageBoxIcon.Information);

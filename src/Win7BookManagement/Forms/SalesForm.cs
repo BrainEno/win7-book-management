@@ -229,13 +229,7 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            Book exactBook;
-            try { exactBook = _services.Books.FindByExactIsbn(text); }
-            catch (InvalidOperationException ex)
-            {
-                MessageBox.Show(this, ex.Message, "ISBN 需要核对", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                _isbn.SelectAll(); _isbn.Focus(); return;
-            }
+            var exactBook = _services.Books.FindByExactIdentifier(text);
             if (exactBook != null)
             {
                 AddBook(exactBook);
@@ -244,7 +238,9 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            var matches = _services.Books.SearchActiveByIsbnOrTitle(Isbn.LooksLikeIsbn(text) ? Isbn.Normalize(text) : text);
+            string normalized;
+            var searchText = Isbn.TryNormalize(text, out normalized) ? normalized : text;
+            var matches = _services.Books.SearchActiveByIsbnOrTitle(searchText);
             if (matches.Count == 0)
             {
                 MessageBox.Show(this, "没有找到匹配的启用图书。可以输入店内编码、ISBN、书名或作者。", "未找到图书", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -261,7 +257,7 @@ namespace Win7BookManagement.Forms
                 return;
             }
 
-            using (var dialog = new BookLookupDialog(_services, text, true))
+            using (var dialog = new BookLookupDialog(_services, searchText, true))
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK && dialog.SelectedBook != null)
                 {
