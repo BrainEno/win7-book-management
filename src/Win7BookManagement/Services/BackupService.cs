@@ -71,9 +71,11 @@ namespace Win7BookManagement.Services
                 throw new ArgumentException("备份目录不能为空。", "directory");
 
             Directory.CreateDirectory(directory);
-            var file = "bookstore_" +
+            // A unique, recognizable name distinguishes managed automatic backups
+            // from hand-made files and prevents same-millisecond collisions.
+            var file = "bookstore_auto_" +
                        DateTime.Now.ToString("yyyyMMdd_HHmmssfff", CultureInfo.InvariantCulture) +
-                       ".db";
+                       "_" + Guid.NewGuid().ToString("N") + ".db";
             return CreateBackup(Path.Combine(directory, file), progress, cancellationToken);
         }
 
