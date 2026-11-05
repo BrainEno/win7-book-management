@@ -907,10 +907,13 @@ namespace Win7BookManagement.Infrastructure
                         form.Show();
                         Application.DoEvents();
                         form.Size = new Size(1024, 680);
-                        UiTheme.Apply(form);
                         var profile = form as IUiSpecPage;
-                        if (profile != null) profile.ApplyUiSpecProfile(BookDeskUiSpec.Resolve(1024, 680));
-                        else UiTheme.ApplyResponsiveDensity(form, 1024);
+                        if (profile != null)
+                        {
+                            // Hosted pages receive both density and profile from MainForm.
+                            UiTheme.ApplyResponsiveDensity(form, 1024);
+                            profile.ApplyUiSpecProfile(BookDeskUiSpec.Resolve(1024, 680));
+                        }
                         form.PerformLayout();
                         Application.DoEvents();
                         VerifyControlTree(form, form.GetType().Name + "@SimSun", 1024);
