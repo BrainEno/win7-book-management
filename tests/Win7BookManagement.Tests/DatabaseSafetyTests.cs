@@ -259,6 +259,42 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void PublishCollision_PreservesBothPreviousAndNewlyAppearedTarget()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "target.db");
+                var staging = Path.Combine(db.Root, "staging.db");
+                db.Services.Backup.CreateBackup(path);
+                var original = File.ReadAllBytes(path);
+                File.WriteAllText(staging, "staged");
+                Action<string, string> move = (from, to) =>
+                {
+                    if (from == staging)
+                    {
+                        File.WriteAllText(path, "other process file");
+                        throw new IOException("模拟发布冲突");
+                    }
+                    File.Move(from, to);
+                };
+                var publish = typeof(BackupService).GetMethod("PublishValidatedBackupCore",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                var wrapper = Assert.ThrowsException<System.Reflection.TargetInvocationException>(() =>
+                    publish.Invoke(null, new object[] { staging, path, move }));
+                var error = wrapper.InnerException as InvalidOperationException;
+                Assert.IsNotNull(error);
+                var previous = Directory.GetFiles(db.Root, "target.db.previous-*");
+                Assert.AreEqual(1, previous.Length);
+                StringAssert.Contains(error.Message, previous[0]);
+                Assert.IsInstanceOfType(error.InnerException, typeof(AggregateException));
+                CollectionAssert.AreEqual(original, File.ReadAllBytes(previous[0]));
+                BackupService.ValidateBackup(previous[0]);
+                Assert.AreEqual("other process file", File.ReadAllText(path));
+                Assert.AreEqual("staged", File.ReadAllText(staging));
+            }
+        }
+
+        [TestMethod]
         public void BackupWithExistingTargetSidecars_RefusesOverwriteAndPreservesEverything()
         {
             using (var db = new TemporaryDatabase())

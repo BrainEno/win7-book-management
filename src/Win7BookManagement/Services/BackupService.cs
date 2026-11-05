@@ -380,17 +380,22 @@ namespace Win7BookManagement.Services
 
         private static string PublishValidatedBackup(string temporaryPath, string targetPath)
         {
+            return PublishValidatedBackupCore(temporaryPath, targetPath, File.Move);
+        }
+
+        private static string PublishValidatedBackupCore(string temporaryPath, string targetPath, Action<string, string> move)
+        {
             if (!File.Exists(targetPath))
             {
-                File.Move(temporaryPath, targetPath);
+                move(temporaryPath, targetPath);
                 return null;
             }
 
             var previousPath = targetPath + ".previous-" + Guid.NewGuid().ToString("N");
-            File.Move(targetPath, previousPath);
+            move(targetPath, previousPath);
             try
             {
-                File.Move(temporaryPath, targetPath);
+                move(temporaryPath, targetPath);
                 return previousPath;
             }
             catch (Exception publishFailure)
@@ -398,7 +403,7 @@ namespace Win7BookManagement.Services
                 try
                 {
                     // A newly appeared destination is not ours to delete.
-                    File.Move(previousPath, targetPath);
+                    move(previousPath, targetPath);
                 }
                 catch (Exception rollbackFailure)
                 {
