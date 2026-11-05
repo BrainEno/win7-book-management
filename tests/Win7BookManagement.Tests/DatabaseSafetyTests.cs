@@ -190,6 +190,25 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void Backup_RefusesOrphanedOrEmptyTargetSidecarsWithoutDeletingThem()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                foreach (var suffix in new[] { "-wal", "-shm", "-journal" })
+                {
+                    var path = Path.Combine(db.Root, "missing" + suffix.Substring(1) + ".db");
+                    File.WriteAllBytes(path + suffix, new byte[0]);
+                    Assert.ThrowsException<InvalidOperationException>(() => db.Services.Backup.CreateBackup(path));
+                    Assert.IsFalse(File.Exists(path));
+                    Assert.IsTrue(File.Exists(path + suffix));
+                    Assert.AreEqual(0, Directory.GetFiles(db.Root, Path.GetFileName(path) + ".writing-*").Length);
+                }
+                foreach (var suffix in new[] { "-shm", "-journal" })
+                    Assert.ThrowsException<InvalidOperationException>(() => db.Services.Backup.CreateBackup(db.Services.Database.DatabasePath + suffix));
+            }
+        }
+
+        [TestMethod]
         public void Backup_DoesNotTouchOlderOrUnrelatedWritingFiles()
         {
             using (var db = new TemporaryDatabase())
