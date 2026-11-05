@@ -73,6 +73,9 @@
     <Compile Include="Forms\BookEditForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Forms\BookLabelForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\BookListForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -177,6 +180,7 @@
     <Compile Include="Reporting\WorkbookFile.cs" />
     <Compile Include="Reporting\CsvReportExporter.cs" />
     <Compile Include="Reporting\ReceiptPrinter.cs" />
+    <Compile Include="Reporting\BookLabelPrinter.cs" />
     <Compile Include="Reporting\ExcelPrintLayout.cs" />
     <Compile Include="Reporting\ExcelReportExporter.cs" />
     <Compile Include="Reporting\PurchaseMonthlyExcelExporter.cs" />

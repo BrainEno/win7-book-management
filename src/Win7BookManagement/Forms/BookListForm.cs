@@ -230,6 +230,10 @@ namespace Win7BookManagement.Forms
                 }
             };
             _stats.Controls.Add(import);
+            var labels = UiTheme.CreateAntdButton("打印标签", false); labels.Width = 104;
+            labels.Margin = new Padding(12, 0, 0, 0);
+            labels.Click += delegate { using (var dialog = new BookLabelForm(_services, _selectedBook)) dialog.ShowDialog(this); };
+            _stats.Controls.Add(labels);
 
             _searchSection.Controls.Add(_searchRow, 0, 0);
             _searchSection.Controls.Add(_stats, 0, 1);
