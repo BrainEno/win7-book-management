@@ -104,8 +104,12 @@ jobs:
           $result = "tools\Win7BookManagement.UiTools\bin\x86\Release\simsun-test-result.txt"
           $p = Start-Process $exe "--self-test-simsun" -Wait -PassThru
           if (Test-Path $result) { Get-Content $result -Encoding UTF8 | ForEach-Object { Write-Host $_ } }
-          if ($p.ExitCode -eq 2) { Write-Warning "SimSun is absent: fallback font test skipped, not passed." }
-          elseif ($p.ExitCode -ne 0) { throw "SimSun layout test failed: $($p.ExitCode)" }
+          if ($p.ExitCode -eq 2) { Write-Host "::warning::SimSun is absent: fallback font test skipped, not passed." }
+          elseif ($p.ExitCode -ne 0) {
+            $details = if (Test-Path $result) { (Get-Content $result -Encoding UTF8 -Raw) -replace "`r?`n", " | " } else { "result file missing" }
+            Write-Host "::error::SimSun layout test failed: $details"
+            throw "SimSun layout test failed: $($p.ExitCode)"
+          }
 
       - uses: actions/upload-artifact@v4
         with:
