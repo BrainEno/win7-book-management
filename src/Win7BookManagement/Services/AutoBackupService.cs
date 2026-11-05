@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Text.RegularExpressions;
 using Win7BookManagement.Database;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Repositories;
@@ -71,6 +72,12 @@ namespace Win7BookManagement.Services
 
         private readonly BackupService _backup;
         private readonly SettingsRepository _settings;
+        private readonly string _databasePath;
+        private readonly Func<IEnumerable<string>> _removableLocations;
+        private string _automaticBackupFailure;
+        private static readonly Regex ManagedBackupName = new Regex(
+            @"^bookstore_auto_\d{8}_\d{9}_[0-9a-f]{32}\.db$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         public AutoBackupService(DatabaseConnectionFactory factory)
             : this(factory, new SettingsRepository(factory))
@@ -78,10 +85,24 @@ namespace Win7BookManagement.Services
         }
 
         public AutoBackupService(DatabaseConnectionFactory factory, SettingsRepository settings)
+            : this(factory, settings, EnumerateRemovableLocations)
+        {
+        }
+
+        public AutoBackupService(DatabaseConnectionFactory factory, SettingsRepository settings, Func<IEnumerable<string>> removableLocations)
         {
             if (factory == null) throw new ArgumentNullException("factory");
+            if (removableLocations == null) throw new ArgumentNullException("removableLocations");
             _backup = new BackupService(factory);
             _settings = settings ?? new SettingsRepository(factory);
+            _databasePath = Path.GetFullPath(factory.DatabasePath);
+            _removableLocations = removableLocations;
+        }
+
+        private static IEnumerable<string> EnumerateRemovableLocations()
+        {
+            return DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Removable && d.IsReady)
+                .Select(d => Path.Combine(d.RootDirectory.FullName, "BookDeskBackup")).ToArray();
         }
 
         public string BackupDirectory
@@ -122,10 +143,13 @@ namespace Win7BookManagement.Services
             try
             {
                 var status = GetStatus();
-                if (status.LastBackupUtc.HasValue &&
+                if (string.IsNullOrEmpty(_automaticBackupFailure) && status.LastBackupUtc.HasValue &&
                     status.LastBackupUtc.Value.ToLocalTime().Date == DateTime.Today)
                 {
-                    return null;
+                    // A recent filename alone is not proof that it is usable.
+                    // Verify only on startup rather than blocking periodic UI status updates.
+                    if (VerifyLatestBackup().Passed) return null;
+                    AppLog.Warn("backup", "当天最近的备份无法验证，将重新生成。");
                 }
 
                 var path = CreateNow("每日首次启动自动备份");
@@ -135,6 +159,7 @@ namespace Win7BookManagement.Services
             catch (Exception ex)
             {
                 // 备份失败不能阻断营业，但必须留下可诊断记录。
+                _automaticBackupFailure = "启动自动备份失败，请检查备份目录并立即手动创建备份。";
                 AppLog.Error("backup", "启动自动备份失败", ex);
                 return null;
             }
@@ -151,6 +176,7 @@ namespace Win7BookManagement.Services
             }
             catch (Exception ex)
             {
+                _automaticBackupFailure = "退出自动备份失败，请检查备份目录并立即手动创建备份。";
                 AppLog.Error("backup", "退出自动备份失败", ex);
                 return null;
             }
@@ -163,12 +189,13 @@ namespace Win7BookManagement.Services
             Directory.CreateDirectory(directory);
 
             var path = _backup.CreateTimestampedBackup(directory, progress, cancellationToken);
+            _automaticBackupFailure = null;
             _settings.SetString(LastBackupUtcKey, DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
 
             cancellationToken.ThrowIfCancellationRequested();
             CopyToSecondaryLocations(path);
             cancellationToken.ThrowIfCancellationRequested();
-            Prune();
+            PruneManagedBackups(directory, path);
             if (progress != null) progress.Report(100);
 
             AppLog.Info("backup", "备份完成（" + reason + "）：" + path);
@@ -180,23 +207,24 @@ namespace Win7BookManagement.Services
             var directory = BackupDirectory;
             if (!Directory.Exists(directory)) return;
 
-            var keep = Retention;
-            var files = new DirectoryInfo(directory)
-                .GetFiles("bookstore_*.db")
-                .OrderByDescending(f => f.LastWriteTimeUtc)
-                .ToList();
+            PruneManagedBackups(directory, null);
+        }
 
-            foreach (var stale in files.Skip(keep))
+        private void PruneManagedBackups(string directory, string protectedPath)
+        {
+            // Only our unique automatic names may be pruned: never delete manual,
+            // legacy, unrelated or live database files matching bookstore_*.db.
+            var files = new DirectoryInfo(directory).GetFiles("bookstore_auto_*.db")
+                .Where(f => ManagedBackupName.IsMatch(f.Name) &&
+                    !string.Equals(Path.GetFullPath(f.FullName), _databasePath, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(f => protectedPath != null && string.Equals(Path.GetFullPath(f.FullName), Path.GetFullPath(protectedPath), StringComparison.OrdinalIgnoreCase))
+                .ThenByDescending(f => f.LastWriteTimeUtc)
+                .ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            foreach (var stale in files.Skip(Retention))
             {
-                try
-                {
-                    stale.Delete();
-                    AppLog.Info("backup", "清理过期备份：" + stale.Name);
-                }
-                catch (Exception ex)
-                {
-                    AppLog.Warn("backup", "清理过期备份失败：" + stale.Name + " / " + ex.GetType().Name);
-                }
+                try { stale.Delete(); AppLog.Info("backup", "清理自动备份：" + stale.Name); }
+                catch (Exception ex) { AppLog.Warn("backup", "清理过期备份失败：" + stale.Name + " / " + ex.GetType().Name); }
             }
         }
 
@@ -209,10 +237,14 @@ namespace Win7BookManagement.Services
             {
                 var newest = new DirectoryInfo(directory)
                     .GetFiles("bookstore_*.db")
+                    .Where(f => !string.Equals(Path.GetFullPath(f.FullName), _databasePath, StringComparison.OrdinalIgnoreCase))
                     .OrderByDescending(f => f.LastWriteTimeUtc)
                     .FirstOrDefault();
                 if (newest != null) last = newest.LastWriteTimeUtc;
             }
+
+            if (!string.IsNullOrEmpty(_automaticBackupFailure))
+                return new BackupStatus(last, directory, BackupHealthLevel.Critical, _automaticBackupFailure);
 
             // A historical timestamp does not prove that a backup still exists in
             // the current directory. In particular, deleted files or a changed
@@ -258,6 +290,7 @@ namespace Win7BookManagement.Services
 
             var newest = new DirectoryInfo(directory)
                 .GetFiles("bookstore_*.db")
+                .Where(f => !string.Equals(Path.GetFullPath(f.FullName), _databasePath, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(f => f.LastWriteTimeUtc)
                 .FirstOrDefault();
 
@@ -312,12 +345,14 @@ namespace Win7BookManagement.Services
             }
             try
             {
-                foreach (var drive in DriveInfo.GetDrives())
+                var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (!string.IsNullOrWhiteSpace(configured)) visited.Add(Path.GetFullPath(configured).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                foreach (var target in _removableLocations())
                 {
-                    if (drive.DriveType != DriveType.Removable || !drive.IsReady) continue;
-                    var target = Path.Combine(drive.RootDirectory.FullName, "BookDeskBackup");
+                    var key = Path.GetFullPath(target).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    if (!visited.Add(key)) continue;
                     if (TryCopy(backupPath, target, fileName)) copies++;
-                    else errors.Add(drive.Name + " 写入失败");
+                    else errors.Add(target + " 写入失败");
                 }
             }
             catch (Exception ex)
@@ -342,14 +377,9 @@ namespace Win7BookManagement.Services
                 temporary = target + ".writing-" + Guid.NewGuid().ToString("N");
                 File.Copy(sourcePath, temporary);
                 BackupService.ValidateBackup(temporary);
-                if (File.Exists(target)) File.Delete(target);
+                // Never replace an existing file in a user-selected directory.
                 File.Move(temporary, target);
-                foreach (var stale in new DirectoryInfo(targetDirectory).GetFiles("bookstore_*.db")
-                    .OrderByDescending(f => f.LastWriteTimeUtc).Skip(Retention))
-                {
-                    try { stale.Delete(); }
-                    catch (Exception ex) { AppLog.Warn("backup", "第二位置旧备份清理失败：" + ex.GetType().Name); }
-                }
+                PruneManagedBackups(targetDirectory, target);
                 AppLog.Info("backup", "第二份备份写入并验证完成：" + target);
                 return true;
             }

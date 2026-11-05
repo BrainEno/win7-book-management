@@ -197,6 +197,146 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void Startup_ReplacesCorruptTodaysBackupWithValidatedSnapshot()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var dir = Path.Combine(db.Root, "primary");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, dir);
+                db.Services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                var previous = service.CreateNow("test");
+                File.WriteAllBytes(previous, new byte[] { 1, 2, 3 });
+                Assert.IsFalse(service.VerifyLatestBackup().Passed);
+                Thread.Sleep(25);
+                var replacement = service.RunStartupBackupIfNeeded();
+                Assert.IsNotNull(replacement);
+                Assert.AreNotEqual(previous, replacement);
+                Assert.IsTrue(File.Exists(previous)); // do not delete the damaged original as a side effect
+                BackupService.ValidateBackup(replacement);
+                Assert.IsTrue(service.VerifyLatestBackup().Passed);
+                Assert.IsNull(service.RunStartupBackupIfNeeded());
+            }
+        }
+
+        [TestMethod]
+        public void StartupFailure_IsVisibleAndCanBeRetried()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var blocker = Path.Combine(db.Root, "bad-directory");
+                File.WriteAllText(blocker, "not a directory");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, blocker);
+                db.Services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                Assert.IsNull(service.RunStartupBackupIfNeeded());
+                Assert.AreEqual(BackupHealthLevel.Critical, service.GetStatus().Level);
+                StringAssert.Contains(service.GetStatus().Message, "启动自动备份失败");
+                File.Delete(blocker);
+                var replacement = service.RunStartupBackupIfNeeded();
+                Assert.IsNotNull(replacement);
+                Assert.IsTrue(File.Exists(replacement));
+                Assert.AreNotEqual(BackupHealthLevel.Critical, service.GetStatus().Level);
+            }
+        }
+
+        [TestMethod]
+        public void Retention_LeavesManualAndLegacyFilesAloneInBothDirectories()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var primary = Path.Combine(db.Root, "primary"); var removable = Path.Combine(db.Root, "usb");
+                Directory.CreateDirectory(primary); Directory.CreateDirectory(removable);
+                var manual = "bookstore_20200101_120000.db";
+                var legacy = "bookstore_20200101_120000123.db";
+                foreach (var dir in new[] { primary, removable })
+                {
+                    File.WriteAllText(Path.Combine(dir, manual), "manual");
+                    File.WriteAllText(Path.Combine(dir, legacy), "legacy");
+                    File.SetLastWriteTimeUtc(Path.Combine(dir, manual), DateTime.UtcNow.AddYears(-1));
+                    File.SetLastWriteTimeUtc(Path.Combine(dir, legacy), DateTime.UtcNow.AddYears(-1));
+                }
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetInt(AutoBackupService.BackupRetentionKey, 3);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new[] { removable });
+                for (var i = 0; i < 5; i++) service.CreateNow("test");
+                foreach (var dir in new[] { primary, removable })
+                {
+                    Assert.AreEqual("manual", File.ReadAllText(Path.Combine(dir, manual)));
+                    Assert.AreEqual("legacy", File.ReadAllText(Path.Combine(dir, legacy)));
+                    Assert.AreEqual(3, Directory.GetFiles(dir, "bookstore_auto_*.db").Length);
+                }
+                Assert.AreEqual(BackupHealthLevel.Ok, service.GetStatus().Level);
+            }
+        }
+
+        [TestMethod]
+        public void StartupAndExit_BackUpAcrossSimulatedDaysAndRemovableDestination()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var primary = Path.Combine(db.Root, "primary"); var usb = Path.Combine(db.Root, "usb");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetString(AutoBackupService.SecondaryBackupPathKey, usb);
+                // Same configured location and removable drive must not be copied twice.
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new[] { usb });
+                var dayOne = service.RunStartupBackupIfNeeded();
+                Assert.IsNotNull(dayOne);
+                Assert.IsTrue(File.Exists(Path.Combine(usb, Path.GetFileName(dayOne))));
+                Assert.IsNull(service.RunStartupBackupIfNeeded());
+                File.SetLastWriteTimeUtc(dayOne, DateTime.UtcNow.AddDays(-2));
+                var dayTwo = service.RunStartupBackupIfNeeded();
+                Assert.IsNotNull(dayTwo);
+                var exit = service.RunExitBackup();
+                Assert.IsNotNull(exit);
+                Assert.AreNotEqual(dayTwo, exit);
+                foreach (var item in new[] { dayOne, dayTwo, exit })
+                    BackupService.ValidateBackup(Path.Combine(usb, Path.GetFileName(item)));
+                Assert.AreEqual(BackupHealthLevel.Ok, service.GetStatus().Level);
+            }
+        }
+
+        [TestMethod]
+        public void BackupAge_TransitionsFromWarningToCritical()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, Path.Combine(db.Root, "primary"));
+                db.Services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                var path = service.CreateNow("test");
+                File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-4));
+                Assert.AreEqual(BackupHealthLevel.Warning, service.GetStatus().Level);
+                File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-8));
+                Assert.AreEqual(BackupHealthLevel.Critical, service.GetStatus().Level);
+            }
+        }
+
+        [TestMethod]
+        public void RetentionNeverDeletesOrCountsLiveDatabaseAsBackup()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "BookDesk-LiveName-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            try
+            {
+                var live = Path.Combine(root, "bookstore_auto_20200101_120000123_" + Guid.NewGuid().ToString("N") + ".db");
+                var services = new ApplicationServices(live);
+                services.Settings.SetString(AutoBackupService.BackupDirectoryKey, root);
+                services.Settings.SetInt(AutoBackupService.BackupRetentionKey, 3);
+                services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var service = new AutoBackupService(services.Database, services.Settings, () => new string[0]);
+                Assert.IsNull(service.GetStatus().LastBackupUtc);
+                for (var i = 0; i < 4; i++) service.CreateNow("test");
+                File.SetLastWriteTimeUtc(live, DateTime.UtcNow.AddYears(-1));
+                service.Prune();
+                Assert.IsTrue(File.Exists(live));
+                Assert.AreEqual(4, Directory.GetFiles(root, "bookstore_auto_*.db").Length);
+                Assert.IsFalse(service.VerifyLatestBackup().Path == live);
+            }
+            finally { SQLiteConnection.ClearAllPools(); try { Directory.Delete(root, true); } catch (IOException) { } }
+        }
+
+        [TestMethod]
         public void CorruptBackup_IsNotReportedAsUsable()
         {
             using (var db = new TemporaryDatabase())
