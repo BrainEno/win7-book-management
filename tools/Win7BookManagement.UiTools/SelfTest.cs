@@ -999,7 +999,7 @@ namespace Win7BookManagement.Infrastructure
                         services.Excel.Export(table, exportPath, "测试", progress, token);
                         return exportPath;
                     }, false, true, null);
-                    if (!export.AttemptedClose || !export.Completed || !File.Exists(exportPath))
+                    if (!export.AttemptedClose || !export.CloseBlocked || !export.Completed || !File.Exists(exportPath))
                         throw new InvalidOperationException("不可取消任务被提前关闭或未完成。");
                     using (var stream = File.OpenRead(exportPath))
                     {
@@ -1016,7 +1016,7 @@ namespace Win7BookManagement.Infrastructure
                         token.ThrowIfCancellationRequested();
                         return "unexpected";
                     }, true, true, "已取消");
-                    if (!cancelled.AttemptedClose || cancelled.Completed || !cancelled.MessageClosed)
+                    if (!cancelled.AttemptedClose || !cancelled.CloseBlocked || cancelled.Completed || !cancelled.MessageClosed)
                         throw new InvalidOperationException("取消任务没有正确结束或提示。");
 
                     MarkUiTask("failure starting");
@@ -1035,11 +1035,11 @@ namespace Win7BookManagement.Infrastructure
                         // Once a result is published, success must not be reported as cancellation.
                         return "published";
                     }, true, true, null);
-                    if (!late.AttemptedClose || !late.Completed || late.Value != "published")
+                    if (!late.AttemptedClose || !late.CloseBlocked || !late.Completed || late.Value != "published")
                         throw new InvalidOperationException("已发布的结果没有报告成功。");
                     owner.Close();
                 }
-                File.WriteAllText(output, "PASSED: responsive modal backup/export, close prevention, cancellation, failure and completed result.");
+                File.WriteAllText(output, "PASSED: responsive modal backup/export, simulated close events, cancellation, failure and completed result.");
                 return 0;
             }
             catch (Exception ex)
@@ -1067,7 +1067,7 @@ namespace Win7BookManagement.Infrastructure
 
         private sealed class UiTaskObservation
         {
-            public bool Completed, AttemptedClose, MessageClosed;
+            public bool Completed, AttemptedClose, CloseBlocked, MessageClosed;
             public string Value;
             public int Ticks;
         }
@@ -1086,17 +1086,16 @@ namespace Win7BookManagement.Infrastructure
                     var dialog = Application.OpenForms.Cast<Form>().FirstOrDefault(f => f.Text == title && f.Visible);
                     if (dialog == null) return;
                     observation.AttemptedClose = true;
-                    if (canCancel)
+                    // Raise the user-close event without actually destroying the
+                    // modal window: the handler must block it while work runs.
+                    var closing = new FormClosingEventArgs(CloseReason.UserClosing, false);
+                    var onClosing = typeof(Form).GetMethod("OnFormClosing", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    onClosing.Invoke(dialog, new object[] { closing });
+                    observation.CloseBlocked = closing.Cancel;
+                    if (!canCancel)
                     {
-                        // Invoke the same cancellation action as the button.
-                        var cancel = dialog.GetType().GetMethod("RequestCancel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        cancel.Invoke(dialog, null);
-                    }
-                    else
-                    {
-                        // Non-cancellable safety operations expose a disabled button.
                         var button = dialog.Controls.OfType<AntdUI.Button>().Single();
-                        if (button.Enabled) throw new InvalidOperationException("安全操作不应允许取消。");
+                        if (button.Enabled) observation.CloseBlocked = false;
                     }
                 };
                 timer.Start();
