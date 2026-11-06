@@ -589,6 +589,43 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void Retention_DoesNotDeleteBackupWithLiveUncheckpointedWal()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var directory = Path.Combine(db.Root, "primary");
+                Directory.CreateDirectory(directory);
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, directory);
+                db.Services.Settings.SetInt(AutoBackupService.BackupRetentionKey, 3);
+                db.Services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var path = Path.Combine(directory, "bookstore_auto_20200101_120000123_" + Guid.NewGuid().ToString("N") + ".db");
+                db.Services.Backup.CreateBackup(path);
+                using (var connection = new SQLiteConnection("Data Source=" + path + ";Version=3;Pooling=False;"))
+                {
+                    connection.Open();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "PRAGMA journal_mode=WAL;";
+                        Assert.AreEqual("wal", Convert.ToString(command.ExecuteScalar()).ToLowerInvariant());
+                        command.CommandText = "PRAGMA wal_autocheckpoint=0; CREATE TABLE wal_test(value TEXT); INSERT INTO wal_test VALUES('未合并数据');";
+                        command.ExecuteNonQuery();
+                        Assert.IsTrue(File.Exists(path + "-wal"));
+                        Assert.IsTrue(new FileInfo(path + "-wal").Length > 0);
+                        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddYears(-1));
+                        var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                        for (var i = 0; i < 4; i++) service.CreateNow("wal retention test");
+                        service.Prune();
+                        Assert.IsTrue(File.Exists(path));
+                        Assert.IsTrue(File.Exists(path + "-wal"));
+                        Assert.IsTrue(new FileInfo(path + "-wal").Length > 0);
+                        command.CommandText = "SELECT value FROM wal_test;";
+                        Assert.AreEqual("未合并数据", Convert.ToString(command.ExecuteScalar()));
+                    }
+                }
+            }
+        }
+
+        [TestMethod]
         public void SecondaryCopy_RefusesOrphanedTargetSidecarsWithoutTouchingThem()
         {
             using (var db = new TemporaryDatabase())
