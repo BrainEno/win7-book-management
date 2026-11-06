@@ -616,6 +616,39 @@ namespace Win7BookManagement.Tests
         }
 
         [TestMethod]
+        public void WorkbookPublish_NewTargetAndUnrelatedFailuresAreHandledCorrectly()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "new.xlsx");
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    Assert.ThrowsException<OperationCanceledException>(() => PublishWorkbookForTest(path, source.Token, stream =>
+                    {
+                        stream.WriteByte(1);
+                        source.Cancel();
+                    }));
+                }
+                Assert.IsFalse(File.Exists(path));
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    Assert.ThrowsException<IOException>(() => PublishWorkbookForTest(path, source.Token, stream =>
+                    {
+                        source.Cancel();
+                        throw new IOException("不是取消造成的写入错误");
+                    }));
+                }
+                Assert.IsFalse(File.Exists(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "new.xlsx.writing-*").Length);
+                PublishWorkbookForTest(path, System.Threading.CancellationToken.None, stream => stream.WriteByte(1));
+                CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(path));
+                PublishWorkbookForTest(path, System.Threading.CancellationToken.None, stream => stream.WriteByte(2));
+                CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "new.xlsx.writing-*").Length);
+            }
+        }
+
+        [TestMethod]
         public void WorkbookPublish_CancelsRealXlsxAndXlsSerializationWithoutReplacingExistingFile()
         {
             using (var db = new TemporaryDatabase())

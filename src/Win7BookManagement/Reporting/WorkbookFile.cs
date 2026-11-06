@@ -35,7 +35,17 @@ namespace Win7BookManagement.Reporting
                 cancellationToken.ThrowIfCancellationRequested();
                 using (var file = File.Create(temporary))
                 using (var stream = new CancellableWriteStream(file, cancellationToken))
-                    write(stream);
+                {
+                    try { write(stream); }
+                    catch (Exception)
+                    {
+                        // NPOI can wrap or discard exceptions raised by the output
+                        // stream. Only translate when this stream actually observed
+                        // cancellation, not merely because the token was signaled.
+                        if (stream.CancellationObserved) cancellationToken.ThrowIfCancellationRequested();
+                        throw;
+                    }
+                }
 
                 // Publication is the point of no return: once the target is
                 // replaced, report success rather than a misleading cancellation.
@@ -53,27 +63,36 @@ namespace Win7BookManagement.Reporting
         {
             private readonly Stream _inner;
             private readonly CancellationToken _token;
+            public bool CancellationObserved { get; private set; }
+            private void CheckCancellation()
+            {
+                if (_token.IsCancellationRequested)
+                {
+                    CancellationObserved = true;
+                    _token.ThrowIfCancellationRequested();
+                }
+            }
             public CancellableWriteStream(Stream inner, CancellationToken token) { _inner = inner; _token = token; }
             public override bool CanRead { get { return _inner.CanRead; } }
             public override bool CanSeek { get { return _inner.CanSeek; } }
             public override bool CanWrite { get { return _inner.CanWrite; } }
             public override long Length { get { return _inner.Length; } }
             public override long Position { get { return _inner.Position; } set { _inner.Position = value; } }
-            public override void Flush() { _token.ThrowIfCancellationRequested(); _inner.Flush(); }
+            public override void Flush() { CheckCancellation(); _inner.Flush(); }
             public override int Read(byte[] buffer, int offset, int count) { return _inner.Read(buffer, offset, count); }
             public override long Seek(long offset, SeekOrigin origin) { return _inner.Seek(offset, origin); }
-            public override void SetLength(long value) { _token.ThrowIfCancellationRequested(); _inner.SetLength(value); }
+            public override void SetLength(long value) { CheckCancellation(); _inner.SetLength(value); }
             public override void Write(byte[] buffer, int offset, int count)
             {
-                _token.ThrowIfCancellationRequested();
+                CheckCancellation();
                 _inner.Write(buffer, offset, count);
-                _token.ThrowIfCancellationRequested();
+                CheckCancellation();
             }
             public override void WriteByte(byte value)
             {
-                _token.ThrowIfCancellationRequested();
+                CheckCancellation();
                 _inner.WriteByte(value);
-                _token.ThrowIfCancellationRequested();
+                CheckCancellation();
             }
             protected override void Dispose(bool disposing)
             {
