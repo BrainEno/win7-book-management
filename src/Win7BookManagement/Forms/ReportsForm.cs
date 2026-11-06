@@ -720,16 +720,12 @@ namespace Win7BookManagement.Forms
 
                 var title = option.Text;
                 var fileName = option.Key == "operating_monthly"
-                    ? title + "_" + ToDate.ToString("yyyyMM") + ".xlsx"
-                    : title + "_" + ToDate.ToString("yyyyMMdd") + ".xlsx";
+                    ? title + "_" + ToDate.ToString("yyyyMM")
+                    : title + "_" + ToDate.ToString("yyyyMMdd");
 
-                using (var dialog = new SaveFileDialog())
+                using (var dialog = ExportFileDialog.Create(fileName, ".xlsx", ".xls", ".csv"))
                 {
-                    dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls|CSV 文本 (*.csv)|*.csv";
-                    dialog.DefaultExt = "xlsx";
-                    dialog.AddExtension = true;
                     dialog.InitialDirectory = AppPaths.ExportDirectory;
-                    dialog.FileName = fileName;
 
                     if (dialog.ShowDialog(this) != DialogResult.OK) return;
                     var data = _current; var path = dialog.FileName;
@@ -755,15 +751,11 @@ namespace Win7BookManagement.Forms
         private void ExportSalesMonthly()
         {
             var month = new DateTime(ToDate.Year, ToDate.Month, 1);
-            var fileName = "销售月报_" + month.ToString("yyyyMM") + ".xlsx";
+            var fileName = "销售月报_" + month.ToString("yyyyMM");
 
-            using (var dialog = new SaveFileDialog())
+            using (var dialog = ExportFileDialog.Create(fileName, ".xlsx", ".xls"))
             {
-                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls";
-                dialog.DefaultExt = "xlsx";
-                dialog.AddExtension = true;
                 dialog.InitialDirectory = AppPaths.ExportDirectory;
-                dialog.FileName = fileName;
 
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
@@ -785,15 +777,11 @@ namespace Win7BookManagement.Forms
         private void ExportPurchaseMonthly()
         {
             var month = new DateTime(ToDate.Year, ToDate.Month, 1);
-            var fileName = "采购月报_" + month.ToString("yyyyMM") + ".xlsx";
+            var fileName = "采购月报_" + month.ToString("yyyyMM");
 
-            using (var dialog = new SaveFileDialog())
+            using (var dialog = ExportFileDialog.Create(fileName, ".xlsx", ".xls"))
             {
-                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls";
-                dialog.DefaultExt = "xlsx";
-                dialog.AddExtension = true;
                 dialog.InitialDirectory = AppPaths.ExportDirectory;
-                dialog.FileName = fileName;
 
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
 

@@ -373,6 +373,59 @@ namespace Win7BookManagement.Tests
         }
 
         [TestMethod]
+        public void Exporters_RejectUnknownOrMisleadingExtensionsWithoutTouchingFiles()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var table = new System.Data.DataTable();
+                table.Columns.Add("书名"); table.Rows.Add("测试");
+                var path = Path.Combine(db.Root, "report.pdf");
+                File.WriteAllText(path, "existing file");
+                var before = File.ReadAllBytes(path);
+                Assert.ThrowsException<InvalidOperationException>(() => db.Services.Excel.Export(table, path, "测试"));
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "report.pdf.writing-*").Length);
+
+                var missing = Path.Combine(db.Root, "not-created", "report");
+                Assert.ThrowsException<InvalidOperationException>(() => db.Services.Excel.Export(table, missing, "测试"));
+                Assert.IsFalse(Directory.Exists(Path.GetDirectoryName(missing)));
+                var monthlyCsv = Path.Combine(db.Root, "monthly.csv");
+                File.WriteAllText(monthlyCsv, "existing csv");
+                before = File.ReadAllBytes(monthlyCsv);
+                Assert.ThrowsException<InvalidOperationException>(() => db.Services.SalesMonthlyExcel.Export(table, table, monthlyCsv, DateTime.Today, "书店", 14, ""));
+                Assert.ThrowsException<InvalidOperationException>(() => db.Services.PurchaseMonthlyExcel.Export(table, table, monthlyCsv, DateTime.Today, "书店"));
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(monthlyCsv));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "monthly.csv.writing-*").Length);
+                Assert.ThrowsException<InvalidOperationException>(() => Win7BookManagement.Reporting.CsvReportExporter.Export(table, Path.Combine(db.Root, "wrong.xls")));
+                Assert.IsFalse(File.Exists(Path.Combine(db.Root, "wrong.xls")));
+            }
+        }
+
+        [TestMethod]
+        public void Exporters_WriteWorkbookMatchingUppercaseExtension()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var table = new System.Data.DataTable(); table.Columns.Add("书名"); table.Rows.Add("测试");
+                foreach (var extension in new[] { ".XLS", ".XLSX" })
+                {
+                    var path = Path.Combine(db.Root, "report" + extension);
+                    db.Services.Excel.Export(table, path, "测试");
+                    using (var stream = File.OpenRead(path))
+                    {
+                        var workbook = NPOI.SS.UserModel.WorkbookFactory.Create(stream);
+                        try
+                        {
+                            Assert.AreEqual(extension == ".XLS", workbook is NPOI.HSSF.UserModel.HSSFWorkbook);
+                            Assert.AreEqual("测试", workbook.GetSheetAt(0).GetRow(2).GetCell(0).StringCellValue);
+                        }
+                        finally { workbook.Close(); }
+                    }
+                }
+            }
+        }
+
+        [TestMethod]
         public void Csv_PreservesTypedNegativeNumbersAndProtectsFormulaLikeText()
         {
             using (var db = new TemporaryDatabase())

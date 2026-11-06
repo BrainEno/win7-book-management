@@ -14,7 +14,8 @@ namespace Win7BookManagement.Reporting
             CancellationToken cancellationToken = default(CancellationToken))
         {
             if (table == null) throw new ArgumentNullException("table");
-            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("导出路径不能为空。", "path");
+            if (!string.Equals(WorkbookFile.ValidateExtension(path, true), ".csv", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("CSV 导出文件必须以 .csv 结尾。");
             var full = Path.GetFullPath(path);
             var temporary = full + ".writing-" + Guid.NewGuid().ToString("N");
             try

@@ -32,6 +32,35 @@ namespace Win7BookManagement.Tests
         }
 
         [TestMethod]
+        public void ExportDialog_UsesSelectedFormatAndRequiresMatchingSuffix()
+        {
+            var formats = new[] { ".xlsx", ".xls", ".csv" };
+            using (var dialog = ExportFileDialog.Create("销售报表_202611", formats))
+            {
+                Assert.AreEqual("销售报表_202611", dialog.FileName);
+                Assert.AreEqual("", dialog.DefaultExt);
+                Assert.IsTrue(dialog.AddExtension);
+                Assert.IsTrue(dialog.OverwritePrompt);
+                Assert.AreEqual(1, dialog.FilterIndex);
+                Assert.AreEqual("Excel 工作簿 (*.xlsx)|*.xlsx|旧版 Excel (*.xls)|*.xls|CSV 文本 (*.csv)|*.csv", dialog.Filter);
+            }
+            Assert.IsTrue(ExportFileDialog.MatchesSelection(@"C:\报表.目录\销售.XLSX", 1, formats));
+            Assert.IsTrue(ExportFileDialog.MatchesSelection("报表.XLS", 2, formats));
+            Assert.IsTrue(ExportFileDialog.MatchesSelection("报表.csv", 3, formats));
+            Assert.IsFalse(ExportFileDialog.MatchesSelection("报表.xlsx", 2, formats));
+            Assert.IsFalse(ExportFileDialog.MatchesSelection("报表", 1, formats));
+            Assert.IsFalse(ExportFileDialog.MatchesSelection("报表.pdf", 1, formats));
+            Assert.IsFalse(ExportFileDialog.MatchesSelection("报表.xlsx", 0, formats));
+            Assert.IsFalse(ExportFileDialog.MatchesSelection("报表.xlsx", 4, formats));
+            using (var dialog = ExportFileDialog.Create("导入模板", ".xlsx", ".csv"))
+            {
+                Assert.IsTrue(ExportFileDialog.MatchesSelection("模板.csv", 2, ".xlsx", ".csv"));
+                Assert.IsFalse(ExportFileDialog.MatchesSelection("模板.xls", 2, ".xlsx", ".csv"));
+                StringAssert.Contains(dialog.Filter, "*.csv");
+            }
+        }
+
+        [TestMethod]
         public void SqliteErrors_AreTranslatedWithoutLosingBusinessInstructions()
         {
             var busy = new SQLiteException(SQLiteErrorCode.Busy, "English driver detail");

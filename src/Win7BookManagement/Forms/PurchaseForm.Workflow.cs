@@ -290,11 +290,9 @@ private void ExportCurrent()
                 : null;
             if (document == null) return;
 
-            using (var dialog = new SaveFileDialog())
+            using (var dialog = ExportFileDialog.Create("采购单-" + SanitizeFileName(document.OrderNo), ".xlsx"))
             {
                 dialog.Title = "导出采购单";
-                dialog.Filter = "Excel 工作簿 (*.xlsx)|*.xlsx";
-                dialog.FileName = "采购单-" + SanitizeFileName(document.OrderNo) + ".xlsx";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
                 try
