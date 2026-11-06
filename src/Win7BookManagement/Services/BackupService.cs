@@ -10,10 +10,18 @@ namespace Win7BookManagement.Services
     public sealed class BackupService
     {
         private readonly DatabaseConnectionFactory _factory;
+        private readonly Action<string> _validatePublishedBackup;
 
         public BackupService(DatabaseConnectionFactory factory)
+            : this(factory, path => ValidateBackup(path))
+        {
+        }
+
+        // Per-instance validation seam also permits deterministic rollback tests.
+        private BackupService(DatabaseConnectionFactory factory, Action<string> validatePublishedBackup)
         {
             _factory = factory;
+            _validatePublishedBackup = validatePublishedBackup;
         }
 
         public string LastSafetyBackupPath { get; private set; }
@@ -37,38 +45,65 @@ namespace Win7BookManagement.Services
 
             var temporaryPath = fullTargetPath + ".writing-" + Guid.NewGuid().ToString("N");
             string previousBackupPath = null;
+            var published = false;
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 CreateLiveSnapshot(temporaryPath, progress, cancellationToken);
                 ValidateBackup(temporaryPath);
                 // Cancellation is safe until publishing starts. Once the old
-                // backup is replaced, finish validation/rollback atomically.
+                // backup is replaced, finish validation or restore the old file.
                 cancellationToken.ThrowIfCancellationRequested();
 
                 EnsureTargetHasNoSidecars(fullTargetPath);
                 previousBackupPath = PublishValidatedBackup(temporaryPath, fullTargetPath);
-                ValidateBackup(fullTargetPath);
+                published = true;
+                _validatePublishedBackup(fullTargetPath);
 
                 TryDelete(previousBackupPath);
                 previousBackupPath = null;
                 return fullTargetPath;
             }
-            catch
+            catch (Exception failure)
             {
-                TryDeleteOwnedSnapshot(temporaryPath);
-                if (!string.IsNullOrWhiteSpace(previousBackupPath) && File.Exists(previousBackupPath))
+                if (!string.IsNullOrWhiteSpace(previousBackupPath))
                 {
-                    TryDelete(fullTargetPath);
-                    File.Move(previousBackupPath, fullTargetPath);
-                    previousBackupPath = null;
+                    try
+                    {
+                        // Never discard the old file until it has been restored.
+                        if (!File.Exists(previousBackupPath))
+                            throw new FileNotFoundException("找不到原备份临时副本。", previousBackupPath);
+                        if (File.Exists(fullTargetPath)) File.Delete(fullTargetPath);
+                        File.Move(previousBackupPath, fullTargetPath);
+                        previousBackupPath = null;
+                    }
+                    catch (Exception rollbackFailure)
+                    {
+                        throw new InvalidOperationException(
+                            "备份未完成，自动恢复旧备份失败。请勿删除文件，请检查旧备份副本：" +
+                            previousBackupPath + "；目标文件可能不可靠。",
+                            new AggregateException(failure, rollbackFailure));
+                    }
+                }
+                else if (published)
+                {
+                    // A new destination failed final validation and must not be
+                    // left behind as an apparently valid backup.
+                    try { if (File.Exists(fullTargetPath)) File.Delete(fullTargetPath); }
+                    catch (Exception cleanupFailure)
+                    {
+                        throw new InvalidOperationException(
+                            "备份校验失败，无法移除未验证文件：" + fullTargetPath + "。请勿使用该文件。",
+                            new AggregateException(failure, cleanupFailure));
+                    }
                 }
                 throw;
             }
             finally
             {
                 TryDeleteOwnedSnapshot(temporaryPath);
-                TryDelete(previousBackupPath);
+                // On rollback failure, previousBackupPath may be the only copy.
+                // It must never be deleted by unconditional cleanup.
             }
         }
 
@@ -345,23 +380,37 @@ namespace Win7BookManagement.Services
 
         private static string PublishValidatedBackup(string temporaryPath, string targetPath)
         {
+            return PublishValidatedBackupCore(temporaryPath, targetPath, File.Move);
+        }
+
+        private static string PublishValidatedBackupCore(string temporaryPath, string targetPath, Action<string, string> move)
+        {
             if (!File.Exists(targetPath))
             {
-                File.Move(temporaryPath, targetPath);
+                move(temporaryPath, targetPath);
                 return null;
             }
 
             var previousPath = targetPath + ".previous-" + Guid.NewGuid().ToString("N");
-            File.Move(targetPath, previousPath);
+            move(targetPath, previousPath);
             try
             {
-                File.Move(temporaryPath, targetPath);
+                move(temporaryPath, targetPath);
                 return previousPath;
             }
-            catch
+            catch (Exception publishFailure)
             {
-                TryDelete(targetPath);
-                File.Move(previousPath, targetPath);
+                try
+                {
+                    // A newly appeared destination is not ours to delete.
+                    move(previousPath, targetPath);
+                }
+                catch (Exception rollbackFailure)
+                {
+                    throw new InvalidOperationException(
+                        "备份发布失败，无法自动恢复旧备份。请勿删除文件，请检查旧备份副本：" + previousPath,
+                        new AggregateException(publishFailure, rollbackFailure));
+                }
                 throw;
             }
         }

@@ -169,6 +169,131 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
             }
         }
 
+        private static BackupService WithPublishedValidation(DatabaseConnectionFactory factory, Action<string> validation)
+        {
+            return (BackupService)Activator.CreateInstance(typeof(BackupService),
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                null, new object[] { factory, validation }, null);
+        }
+
+        [TestMethod]
+        public void FailedFinalValidation_RestoresPreviousBackup()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "target.db");
+                db.Services.Backup.CreateBackup(path);
+                var original = File.ReadAllBytes(path);
+                db.Services.Books.Insert(new Book { Title = "修改后数据" });
+                var service = WithPublishedValidation(db.Services.Database, p => { throw new InvalidOperationException("模拟校验失败"); });
+                var error = Assert.ThrowsException<InvalidOperationException>(() => service.CreateBackup(path));
+                StringAssert.Contains(error.Message, "模拟校验失败");
+                CollectionAssert.AreEqual(original, File.ReadAllBytes(path));
+                BackupService.ValidateBackup(path);
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "target.db.previous-*").Length);
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "target.db.writing-*").Length);
+            }
+        }
+
+        [TestMethod]
+        public void FailedRollback_PreservesOldBackupAndReportsItsPath()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "target.db");
+                db.Services.Backup.CreateBackup(path);
+                var original = File.ReadAllBytes(path);
+                db.Services.Books.Insert(new Book { Title = "新数据" });
+                FileStream locked = null;
+                try
+                {
+                    var service = WithPublishedValidation(db.Services.Database, p =>
+                    {
+                        // On Windows, this prevents the failed target from being deleted.
+                        locked = new FileStream(p, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        throw new InvalidOperationException("模拟校验失败");
+                    });
+                    var error = Assert.ThrowsException<InvalidOperationException>(() => service.CreateBackup(path));
+                    var previous = Directory.GetFiles(db.Root, "target.db.previous-*");
+                    Assert.AreEqual(1, previous.Length);
+                    StringAssert.Contains(error.Message, previous[0]);
+                    StringAssert.Contains(error.Message, "请勿删除");
+                    Assert.IsInstanceOfType(error.InnerException, typeof(AggregateException));
+                    CollectionAssert.AreEqual(original, File.ReadAllBytes(previous[0]));
+                    BackupService.ValidateBackup(previous[0]);
+                    Assert.AreEqual(0, Directory.GetFiles(db.Root, "target.db.writing-*").Length);
+                }
+                finally { if (locked != null) locked.Dispose(); }
+            }
+        }
+
+        [TestMethod]
+        public void FailedFinalValidationOfNewBackup_RemovesUnverifiedTarget()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "new.db");
+                var service = WithPublishedValidation(db.Services.Database, p => { throw new InvalidOperationException("模拟校验失败"); });
+                Assert.ThrowsException<InvalidOperationException>(() => service.CreateBackup(path));
+                Assert.IsFalse(File.Exists(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "new.db.writing-*").Length);
+            }
+        }
+
+        [TestMethod]
+        public void PublishFailure_RestoresPreviousTarget()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "target.db");
+                db.Services.Backup.CreateBackup(path);
+                var original = File.ReadAllBytes(path);
+                var publish = typeof(BackupService).GetMethod("PublishValidatedBackup",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                var error = Assert.ThrowsException<System.Reflection.TargetInvocationException>(() =>
+                    publish.Invoke(null, new object[] { Path.Combine(db.Root, "missing-staging"), path }));
+                Assert.IsInstanceOfType(error.InnerException, typeof(IOException));
+                CollectionAssert.AreEqual(original, File.ReadAllBytes(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "target.db.previous-*").Length);
+            }
+        }
+
+        [TestMethod]
+        public void PublishCollision_PreservesBothPreviousAndNewlyAppearedTarget()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "target.db");
+                var staging = Path.Combine(db.Root, "staging.db");
+                db.Services.Backup.CreateBackup(path);
+                var original = File.ReadAllBytes(path);
+                File.WriteAllText(staging, "staged");
+                Action<string, string> move = (from, to) =>
+                {
+                    if (from == staging)
+                    {
+                        File.WriteAllText(path, "other process file");
+                        throw new IOException("模拟发布冲突");
+                    }
+                    File.Move(from, to);
+                };
+                var publish = typeof(BackupService).GetMethod("PublishValidatedBackupCore",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                var wrapper = Assert.ThrowsException<System.Reflection.TargetInvocationException>(() =>
+                    publish.Invoke(null, new object[] { staging, path, move }));
+                var error = wrapper.InnerException as InvalidOperationException;
+                Assert.IsNotNull(error);
+                var previous = Directory.GetFiles(db.Root, "target.db.previous-*");
+                Assert.AreEqual(1, previous.Length);
+                StringAssert.Contains(error.Message, previous[0]);
+                Assert.IsInstanceOfType(error.InnerException, typeof(AggregateException));
+                CollectionAssert.AreEqual(original, File.ReadAllBytes(previous[0]));
+                BackupService.ValidateBackup(previous[0]);
+                Assert.AreEqual("other process file", File.ReadAllText(path));
+                Assert.AreEqual("staged", File.ReadAllText(staging));
+            }
+        }
+
         [TestMethod]
         public void BackupWithExistingTargetSidecars_RefusesOverwriteAndPreservesEverything()
         {
