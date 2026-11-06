@@ -58,9 +58,8 @@ namespace Win7BookManagement.Forms
 
         private void DownloadTemplate()
         {
-            using (var dialog = new SaveFileDialog())
+            using (var dialog = ExportFileDialog.Create("图书导入模板", ".xlsx", ".csv"))
             {
-                dialog.Filter = "Excel 模板 (*.xlsx)|*.xlsx|CSV 模板 (*.csv)|*.csv"; dialog.FileName = "图书导入模板.xlsx";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 try
                 {
@@ -120,9 +119,8 @@ namespace Win7BookManagement.Forms
 
         private void ExportErrors()
         {
-            using (var dialog = new SaveFileDialog())
+            using (var dialog = ExportFileDialog.Create("图书导入错误行", ".csv"))
             {
-                dialog.Filter = "错误行 (*.csv)|*.csv"; dialog.FileName = "图书导入错误行.csv";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
                 var rows = new List<string[]> { new[] { "行号", "错误" }.Concat(BookImportService.Headers).ToArray() };
                 rows.AddRange(_rows.Where(r => r.Error != null).Select(r =>

@@ -50,8 +50,7 @@ namespace Win7BookManagement.Reporting
         {
             if (purchaseDetail == null) throw new ArgumentNullException("purchaseDetail");
             if (returnDetail == null) throw new ArgumentNullException("returnDetail");
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("导出路径不能为空。", "path");
+            var extension = WorkbookFile.ValidateExtension(path, false);
 
             var normalizedMonth = new DateTime(month.Year, month.Month, 1);
             var normalizedStoreName = string.IsNullOrWhiteSpace(storeName)
@@ -65,7 +64,7 @@ namespace Win7BookManagement.Reporting
             var purchases = ReadPurchases(purchaseDetail);
             var returns = ReadReturns(returnDetail);
 
-            IWorkbook workbook = string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase)
+            IWorkbook workbook = string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase)
                 ? (IWorkbook)new HSSFWorkbook() : new XSSFWorkbook();
             try
             {

@@ -88,8 +88,7 @@ namespace Win7BookManagement.Reporting
         {
             if (detail == null) throw new ArgumentNullException("detail");
             if (returnDetail == null) throw new ArgumentNullException("returnDetail");
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("导出路径不能为空。", "path");
+            var extension = WorkbookFile.ValidateExtension(path, false);
             if (nightShiftStartHour < 0 || nightShiftStartHour > 23)
                 throw new ArgumentOutOfRangeException("nightShiftStartHour");
 
@@ -105,7 +104,7 @@ namespace Win7BookManagement.Reporting
             var rows = ReadRows(detail);
             var returns = ReadReturns(returnDetail);
             var categoryMap = BuildCategoryMap(categoryMapping);
-            IWorkbook workbook = string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase)
+            IWorkbook workbook = string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase)
                 ? (IWorkbook)new HSSFWorkbook() : new XSSFWorkbook();
             try
             {

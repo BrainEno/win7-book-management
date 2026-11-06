@@ -15,20 +15,19 @@ namespace Win7BookManagement.Reporting
         public void Export(DataTable table, string path, string sheetName, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (table == null) throw new ArgumentNullException("table");
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("导出路径不能为空。", "path");
+            var extension = WorkbookFile.ValidateExtension(path, true);
 
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
-            if (string.Equals(Path.GetExtension(path), ".csv", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
             {
                 CsvReportExporter.Export(table, path, progress, cancellationToken);
                 return;
             }
-            if (string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase) && table.Rows.Count + 2 > 65536)
+            if (string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase) && table.Rows.Count + 2 > 65536)
                 throw new InvalidOperationException("旧版 .xls 最多 65536 行，请缩小日期范围或改用 .xlsx。");
-            IWorkbook workbook = string.Equals(Path.GetExtension(path), ".xls", StringComparison.OrdinalIgnoreCase)
+            IWorkbook workbook = string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase)
                 ? (IWorkbook)new HSSFWorkbook() : new XSSFWorkbook();
             try
             {

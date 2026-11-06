@@ -148,6 +148,7 @@
     </Compile>
     <Compile Include="Infrastructure\SmokeTest.cs" />
     <Compile Include="Infrastructure\UiTask.cs" />
+    <Compile Include="Infrastructure\ExportFileDialog.cs" />
     <Compile Include="Infrastructure\AppPaths.cs" />
     <Compile Include="Infrastructure\ApplicationServices.cs" />
     <Compile Include="Infrastructure\UserErrorText.cs" />
