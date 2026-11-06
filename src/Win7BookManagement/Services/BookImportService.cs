@@ -10,6 +10,7 @@ using Win7BookManagement.Database;
 using Win7BookManagement.Infrastructure;
 using Win7BookManagement.Models;
 using Win7BookManagement.Repositories;
+using Win7BookManagement.Reporting;
 
 namespace Win7BookManagement.Services
 {
@@ -294,14 +295,9 @@ VALUES('book_category',@value,0,'批量导入',1,@now,@now);";
         {
             var builder = new StringBuilder();
             foreach (var row in rows)
-                builder.AppendLine(string.Join(",", row.Select(EscapeCsv).ToArray()));
+                builder.AppendLine(string.Join(",", row.Select(CsvReportExporter.EscapeText).ToArray()));
             return builder.ToString();
         }
-        private static string EscapeCsv(string value)
-        {
-            var text = value ?? "";
-            if (text.StartsWith("=") || text.StartsWith("+") || text.StartsWith("-") || text.StartsWith("@")) text = "\t" + text;
-            return "\"" + text.Replace("\"", "\"\"") + "\"";
-        }
+
     }
 }

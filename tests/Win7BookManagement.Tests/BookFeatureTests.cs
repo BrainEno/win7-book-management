@@ -372,6 +372,97 @@ namespace Win7BookManagement.Tests
             }
         }
 
+        [TestMethod]
+        public void Csv_PreservesTypedNegativeNumbersAndProtectsFormulaLikeText()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var table = new System.Data.DataTable();
+                table.Columns.Add("金额", typeof(decimal));
+                table.Columns.Add("数量", typeof(long));
+                table.Columns.Add("比率", typeof(double));
+                table.Columns.Add("=测试表头", typeof(string));
+                table.Columns.Add("空格", typeof(string));
+                table.Columns.Add("制表符", typeof(string));
+                table.Columns.Add("普通文本", typeof(string));
+                table.Columns.Add("空值", typeof(string));
+                table.Rows.Add(-12.34m, -3L, -0.5d, "-12.34", "  =1+1", "\t@name", "中文,\"书\"\n续行", DBNull.Value);
+                var path = Path.Combine(db.Root, "negative.csv");
+                var thread = System.Threading.Thread.CurrentThread;
+                var previousCulture = thread.CurrentCulture;
+                try
+                {
+                    thread.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+                    db.Services.Excel.Export(table, path, "测试");
+                }
+                finally { thread.CurrentCulture = previousCulture; }
+
+                var bytes = File.ReadAllBytes(path);
+                CollectionAssert.AreEqual(new byte[] { 0xEF, 0xBB, 0xBF }, bytes.Take(3).ToArray());
+                var rows = BookImportService.ParseCsv(File.ReadAllText(path, Encoding.UTF8)).ToArray();
+                Assert.AreEqual(2, rows.Length);
+                Assert.AreEqual("\t=测试表头", rows[0][3]);
+                CollectionAssert.AreEqual(new[] { "-12.34", "-3", "-0.5", "\t-12.34", "\t  =1+1", "\t\t@name", "中文,\"书\"\n续行", "" }, rows[1]);
+            }
+        }
+
+        [TestMethod]
+        public void CsvImportErrorOutput_ProtectsWhitespaceAndControlPrefixedFormulaText()
+        {
+            var input = new[] { "=1+1", "+1", "-1+1", "@cmd", "  =1+1", "\t=1+1", "\r\n@cmd", "\nordinary", "正常文本" };
+            var csv = BookImportService.ToCsv(new[] { input });
+            var row = BookImportService.ParseCsv(csv).Single();
+            for (var i = 0; i < input.Length - 1; i++)
+                Assert.AreEqual("\t" + input[i], row[i], "第 " + i + " 列未添加文本保护前缀。");
+            Assert.AreEqual(input[input.Length - 1], row[input.Length - 1]);
+        }
+
+        [TestMethod]
+        public void Csv_ExportsRealNegativeReturnDayAmountsAndInventoryMovement()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var id = db.Services.Books.Insert(new Win7BookManagement.Models.Book { Title = "退款测试", SalePriceCent = 1234 });
+                db.Services.Inventory.Adjust(id, 2, "期初库存");
+                db.Services.Sales.Checkout(new System.Collections.Generic.List<Win7BookManagement.Models.TransactionLineInput>
+                {
+                    new Win7BookManagement.Models.TransactionLineInput { BookId = id, Quantity = 1, UnitPriceCent = 1234 }
+                }, "", 10000, "现金", 1234);
+                var sale = db.Services.Documents.Search("sale", DateTime.Today, DateTime.Today, "");
+                var saleId = Convert.ToInt64(sale.Rows[0]["Id"]);
+                var line = db.Services.Documents.GetReturnableLines("sale", saleId)[0];
+                db.Services.Returns.CreateSalesReturn(saleId, new System.Collections.Generic.List<Win7BookManagement.Models.ReturnLineInput>
+                {
+                    new Win7BookManagement.Models.ReturnLineInput { SourceItemId = line.SourceItemId, Quantity = 1 }
+                }, "", "现金");
+                // Test fixture: place the return on the next business day, leaving the sale on today.
+                var returnDay = DateTime.Today.AddDays(1);
+                using (var connection = db.Services.Database.Open())
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "UPDATE sales_returns SET returned_at=@at;";
+                    command.Parameters.AddWithValue("@at", returnDay.ToString("yyyy-MM-dd 12:00:00", System.Globalization.CultureInfo.InvariantCulture));
+                    command.ExecuteNonQuery();
+                }
+                var report = db.Services.Reports.OperatingDailySummary(returnDay);
+                Assert.AreEqual(-12.34m, Convert.ToDecimal(report.Rows[0]["净销售"]));
+                Assert.AreEqual(-1L, Convert.ToInt64(report.Rows[0]["净销售册数"]));
+                var path = Path.Combine(db.Root, "operating.csv");
+                db.Services.Excel.Export(report, path, "经营日报");
+                var rows = BookImportService.ParseCsv(File.ReadAllText(path, Encoding.UTF8)).ToArray();
+                var amountIndex = Array.IndexOf(rows[0], "净销售");
+                var quantityIndex = Array.IndexOf(rows[0], "净销售册数");
+                Assert.AreEqual("-12.34", rows[1][amountIndex]);
+                Assert.AreEqual("-1", rows[1][quantityIndex]);
+
+                var movement = db.Services.Reports.InventoryMovements(DateTime.Today, DateTime.Today);
+                db.Services.Excel.Export(movement, path, "库存流水");
+                rows = BookImportService.ParseCsv(File.ReadAllText(path, Encoding.UTF8)).ToArray();
+                var movementIndex = Array.IndexOf(rows[0], "数量变化");
+                Assert.IsTrue(rows.Skip(1).Any(row => row[movementIndex] == "-1"), "销售出库负数量应保持为数值文本。");
+            }
+        }
+
         private sealed class CancelOnProgress : IProgress<int>
         {
             private readonly System.Threading.CancellationTokenSource _source;
