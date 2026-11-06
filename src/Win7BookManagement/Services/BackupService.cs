@@ -294,7 +294,7 @@ namespace Win7BookManagement.Services
             DeleteSidecars(path);
         }
 
-        private static void EnsureTargetHasNoSidecars(string path)
+        internal static void EnsureTargetHasNoSidecars(string path)
         {
             // Never move/replace a potentially live SQLite database while its
             // journal files remain at the original name. Do not delete them.

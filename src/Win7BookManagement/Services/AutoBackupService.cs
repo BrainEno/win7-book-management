@@ -223,8 +223,15 @@ namespace Win7BookManagement.Services
                 .ToList();
             foreach (var stale in files.Skip(Retention))
             {
-                try { stale.Delete(); AppLog.Info("backup", "清理自动备份：" + stale.Name); }
-                catch (Exception ex) { AppLog.Warn("backup", "清理过期备份失败：" + stale.Name + " / " + ex.GetType().Name); }
+                try
+                {
+                    // Old or externally opened backups may have uncheckpointed
+                    // data in sidecars. Never delete their main file on its own.
+                    BackupService.EnsureTargetHasNoSidecars(stale.FullName);
+                    stale.Delete();
+                    AppLog.Info("backup", "清理自动备份：" + stale.Name);
+                }
+                catch (Exception ex) { AppLog.Warn("backup", "跳过过期备份清理：" + stale.FullName + " / " + ex.Message); }
             }
         }
 
@@ -377,6 +384,9 @@ namespace Win7BookManagement.Services
                 temporary = target + ".writing-" + Guid.NewGuid().ToString("N");
                 File.Copy(sourcePath, temporary);
                 BackupService.ValidateBackup(temporary);
+                // Even an absent target may have an orphaned WAL/journal. Do not
+                // publish a new database into that name or alter the sidecars.
+                BackupService.EnsureTargetHasNoSidecars(target);
                 // Never replace an existing file in a user-selected directory.
                 File.Move(temporary, target);
                 PruneManagedBackups(targetDirectory, target);
