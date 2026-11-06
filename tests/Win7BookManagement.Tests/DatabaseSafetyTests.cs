@@ -547,6 +547,114 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void Retention_PreservesManagedBackupsWithSidecarsInBothLocations()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var primary = Path.Combine(db.Root, "primary");
+                var secondary = Path.Combine(db.Root, "secondary");
+                Directory.CreateDirectory(primary); Directory.CreateDirectory(secondary);
+                var sidecars = new[] { "-wal", "-shm", "-journal" };
+                foreach (var directory in new[] { primary, secondary })
+                {
+                    foreach (var sidecar in sidecars)
+                    {
+                        var path = Path.Combine(directory, "bookstore_auto_20200101_120000123_" + Guid.NewGuid().ToString("N") + ".db");
+                        File.WriteAllText(path, "可能需要日志的旧备份");
+                        File.WriteAllText(path + sidecar, "不要删除");
+                        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddYears(-1));
+                    }
+                }
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetString(AutoBackupService.SecondaryBackupPathKey, secondary);
+                db.Services.Settings.SetInt(AutoBackupService.BackupRetentionKey, 3);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                string latest = null;
+                for (var i = 0; i < 5; i++) latest = service.CreateNow("retention test");
+                service.Prune();
+                foreach (var directory in new[] { primary, secondary })
+                {
+                    Assert.AreEqual(6, Directory.GetFiles(directory, "bookstore_auto_*.db").Length);
+                    foreach (var sidecar in sidecars)
+                    {
+                        var matches = Directory.GetFiles(directory, "*.db" + sidecar);
+                        Assert.AreEqual(1, matches.Length);
+                        Assert.AreEqual("不要删除", File.ReadAllText(matches[0]));
+                        Assert.AreEqual("可能需要日志的旧备份", File.ReadAllText(matches[0].Substring(0, matches[0].Length - sidecar.Length)));
+                    }
+                    BackupService.ValidateBackup(Path.Combine(directory, Path.GetFileName(latest)));
+                    Assert.AreEqual(0, Directory.GetFiles(directory, "*.writing-*").Length);
+                }
+            }
+        }
+
+        [TestMethod]
+        public void Retention_DoesNotDeleteBackupWithLiveUncheckpointedWal()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var directory = Path.Combine(db.Root, "primary");
+                Directory.CreateDirectory(directory);
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, directory);
+                db.Services.Settings.SetInt(AutoBackupService.BackupRetentionKey, 3);
+                db.Services.Settings.SetBool(AutoBackupService.SecondaryBackupEnabledKey, false);
+                var path = Path.Combine(directory, "bookstore_auto_20200101_120000123_" + Guid.NewGuid().ToString("N") + ".db");
+                db.Services.Backup.CreateBackup(path);
+                using (var connection = new SQLiteConnection("Data Source=" + path + ";Version=3;Pooling=False;"))
+                {
+                    connection.Open();
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = "PRAGMA journal_mode=WAL;";
+                        Assert.AreEqual("wal", Convert.ToString(command.ExecuteScalar()).ToLowerInvariant());
+                        command.CommandText = "PRAGMA wal_autocheckpoint=0; CREATE TABLE wal_test(value TEXT); INSERT INTO wal_test VALUES('未合并数据');";
+                        command.ExecuteNonQuery();
+                        Assert.IsTrue(File.Exists(path + "-wal"));
+                        Assert.IsTrue(new FileInfo(path + "-wal").Length > 0);
+                        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddYears(-1));
+                        var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                        for (var i = 0; i < 4; i++) service.CreateNow("wal retention test");
+                        service.Prune();
+                        Assert.IsTrue(File.Exists(path));
+                        Assert.IsTrue(File.Exists(path + "-wal"));
+                        Assert.IsTrue(new FileInfo(path + "-wal").Length > 0);
+                        command.CommandText = "SELECT value FROM wal_test;";
+                        Assert.AreEqual("未合并数据", Convert.ToString(command.ExecuteScalar()));
+                    }
+                }
+            }
+        }
+
+        [TestMethod]
+        public void SecondaryCopy_RefusesOrphanedTargetSidecarsWithoutTouchingThem()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var primary = Path.Combine(db.Root, "primary");
+                var secondary = Path.Combine(db.Root, "secondary");
+                Directory.CreateDirectory(primary); Directory.CreateDirectory(secondary);
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                var source = db.Services.Backup.CreateTimestampedBackup(primary);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                var copy = typeof(AutoBackupService).GetMethod("TryCopy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                foreach (var suffix in new[] { "-wal", "-shm", "-journal" })
+                {
+                    var name = "candidate" + suffix.Substring(1) + ".db";
+                    var target = Path.Combine(secondary, name);
+                    var bytes = new byte[] { 0, 1, 2, 3 };
+                    File.WriteAllBytes(target + suffix, bytes);
+                    Assert.IsFalse((bool)copy.Invoke(service, new object[] { source, secondary, name }));
+                    Assert.IsFalse(File.Exists(target));
+                    CollectionAssert.AreEqual(bytes, File.ReadAllBytes(target + suffix));
+                    Assert.AreEqual(0, Directory.GetFiles(secondary, name + ".writing-*").Length);
+                }
+                Assert.IsTrue((bool)copy.Invoke(service, new object[] { source, secondary, "safe.db" }));
+                BackupService.ValidateBackup(Path.Combine(secondary, "safe.db"));
+                BackupService.ValidateBackup(source);
+            }
+        }
+
+        [TestMethod]
         public void StartupAndExit_BackUpAcrossSimulatedDaysAndRemovableDestination()
         {
             using (var db = new TemporaryDatabase())
