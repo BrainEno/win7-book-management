@@ -56,6 +56,7 @@ namespace Win7BookManagement.Reporting
                 case TypeCode.Int16: case TypeCode.UInt16:
                 case TypeCode.Int32: case TypeCode.UInt32:
                 case TypeCode.Int64: case TypeCode.UInt64:
+                    return true;
                 case TypeCode.Single:
                     var single = (float)value;
                     return !float.IsNaN(single) && !float.IsInfinity(single);

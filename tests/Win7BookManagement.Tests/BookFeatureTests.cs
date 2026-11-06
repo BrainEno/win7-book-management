@@ -407,6 +407,22 @@ namespace Win7BookManagement.Tests
         }
 
         [TestMethod]
+        public void Csv_PreservesAllFiniteNumericTypesAndProtectsNonFiniteValues()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var table = new System.Data.DataTable();
+                table.Columns.Add("值", typeof(object));
+                foreach (var value in new object[] { (byte)1, (sbyte)-1, (short)-2, (ushort)2, -3, 3U, -4L, 4UL, -1.5f, -2.5d, -3.5m, double.NegativeInfinity })
+                    table.Rows.Add(value);
+                var path = Path.Combine(db.Root, "types.csv");
+                db.Services.Excel.Export(table, path, "测试");
+                var rows = BookImportService.ParseCsv(File.ReadAllText(path, Encoding.UTF8)).Skip(1).Select(row => row[0]).ToArray();
+                CollectionAssert.AreEqual(new[] { "1", "-1", "-2", "2", "-3", "3", "-4", "4", "-1.5", "-2.5", "-3.5", "\t-Infinity" }, rows);
+            }
+        }
+
+        [TestMethod]
         public void CsvImportErrorOutput_ProtectsWhitespaceAndControlPrefixedFormulaText()
         {
             var input = new[] { "=1+1", "+1", "-1+1", "@cmd", "  =1+1", "\t=1+1", "\r\n@cmd", "\nordinary", "正常文本" };
