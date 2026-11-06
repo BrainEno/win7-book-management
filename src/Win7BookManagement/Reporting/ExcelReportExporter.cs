@@ -155,7 +155,7 @@ namespace Win7BookManagement.Reporting
                     Math.Max(1, table.Rows.Count + 1));
 
                 cancellationToken.ThrowIfCancellationRequested();
-                WorkbookFile.Publish(workbook, path);
+                WorkbookFile.Publish(workbook, path, cancellationToken);
                 if (progress != null) progress.Report(100);
             }
             finally

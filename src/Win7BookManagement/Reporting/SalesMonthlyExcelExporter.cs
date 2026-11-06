@@ -132,7 +132,7 @@ namespace Win7BookManagement.Reporting
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
-                WorkbookFile.Publish(workbook, path);
+                WorkbookFile.Publish(workbook, path, cancellationToken);
                 if (progress != null) progress.Report(100);
             }
             finally
