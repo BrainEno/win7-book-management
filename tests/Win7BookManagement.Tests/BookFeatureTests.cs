@@ -532,6 +532,155 @@ namespace Win7BookManagement.Tests
             }
         }
 
+        private static void PublishWorkbookForTest(string path, System.Threading.CancellationToken token, Action<Stream> writer)
+        {
+            var type = typeof(Win7BookManagement.Reporting.ExcelReportExporter).Assembly.GetType("Win7BookManagement.Reporting.WorkbookFile", true);
+            var method = type.GetMethod("PublishCore", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            try { method.Invoke(null, new object[] { path, token, writer }); }
+            catch (System.Reflection.TargetInvocationException ex)
+            {
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+                throw;
+            }
+        }
+
+        private sealed class CancelAfterFirstWriteStream : Stream
+        {
+            private readonly Stream _inner;
+            private readonly System.Threading.CancellationTokenSource _source;
+            public bool Wrote { get; private set; }
+            public CancelAfterFirstWriteStream(Stream inner, System.Threading.CancellationTokenSource source) { _inner = inner; _source = source; }
+            public override bool CanRead { get { return _inner.CanRead; } }
+            public override bool CanSeek { get { return _inner.CanSeek; } }
+            public override bool CanWrite { get { return _inner.CanWrite; } }
+            public override long Length { get { return _inner.Length; } }
+            public override long Position { get { return _inner.Position; } set { _inner.Position = value; } }
+            public override void Flush() { _inner.Flush(); }
+            public override int Read(byte[] buffer, int offset, int count) { return _inner.Read(buffer, offset, count); }
+            public override long Seek(long offset, SeekOrigin origin) { return _inner.Seek(offset, origin); }
+            public override void SetLength(long value) { _inner.SetLength(value); }
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                _inner.Write(buffer, offset, count);
+                if (count > 0 && !Wrote) { Wrote = true; _source.Cancel(); }
+            }
+            public override void WriteByte(byte value)
+            {
+                _inner.WriteByte(value);
+                if (!Wrote) { Wrote = true; _source.Cancel(); }
+            }
+            // This test wrapper does not own the stream passed to the writer.
+        }
+
+        [TestMethod]
+        public void WorkbookPublish_CancelAndWriteFailurePreserveExistingFile()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "report.xlsx");
+                File.WriteAllText(path, "old report");
+                var before = File.ReadAllBytes(path);
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    source.Cancel();
+                    var called = false;
+                    Assert.ThrowsException<OperationCanceledException>(() => PublishWorkbookForTest(path, source.Token, stream => { called = true; }));
+                    Assert.IsFalse(called);
+                }
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    Assert.ThrowsException<OperationCanceledException>(() => PublishWorkbookForTest(path, source.Token, stream =>
+                    {
+                        stream.WriteByte(7);
+                        source.Cancel();
+                        stream.WriteByte(8);
+                    }));
+                }
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    // Cancellation after the writer returns must still stop publication.
+                    Assert.ThrowsException<OperationCanceledException>(() => PublishWorkbookForTest(path, source.Token, stream =>
+                    {
+                        stream.WriteByte(7);
+                        source.Cancel();
+                    }));
+                }
+                Assert.ThrowsException<IOException>(() => PublishWorkbookForTest(path, System.Threading.CancellationToken.None, stream =>
+                {
+                    stream.WriteByte(7);
+                    throw new IOException("模拟磁盘错误");
+                }));
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "report.xlsx.writing-*").Length);
+            }
+        }
+
+        [TestMethod]
+        public void WorkbookPublish_NewTargetAndUnrelatedFailuresAreHandledCorrectly()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                var path = Path.Combine(db.Root, "new.xlsx");
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    Assert.ThrowsException<OperationCanceledException>(() => PublishWorkbookForTest(path, source.Token, stream =>
+                    {
+                        stream.WriteByte(1);
+                        source.Cancel();
+                    }));
+                }
+                Assert.IsFalse(File.Exists(path));
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    Assert.ThrowsException<IOException>(() => PublishWorkbookForTest(path, source.Token, stream =>
+                    {
+                        source.Cancel();
+                        throw new IOException("不是取消造成的写入错误");
+                    }));
+                }
+                Assert.IsFalse(File.Exists(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "new.xlsx.writing-*").Length);
+                PublishWorkbookForTest(path, System.Threading.CancellationToken.None, stream => stream.WriteByte(1));
+                CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(path));
+                PublishWorkbookForTest(path, System.Threading.CancellationToken.None, stream => stream.WriteByte(2));
+                CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(path));
+                Assert.AreEqual(0, Directory.GetFiles(db.Root, "new.xlsx.writing-*").Length);
+            }
+        }
+
+        [TestMethod]
+        public void WorkbookPublish_CancelsRealXlsxAndXlsSerializationWithoutReplacingExistingFile()
+        {
+            using (var db = new TemporaryDatabase())
+            {
+                foreach (var extension in new[] { ".xlsx", ".xls" })
+                using (var source = new System.Threading.CancellationTokenSource())
+                {
+                    var path = Path.Combine(db.Root, "report" + extension);
+                    File.WriteAllText(path, "old report");
+                    var before = File.ReadAllBytes(path);
+                    NPOI.SS.UserModel.IWorkbook workbook = extension == ".xls"
+                        ? (NPOI.SS.UserModel.IWorkbook)new NPOI.HSSF.UserModel.HSSFWorkbook()
+                        : new NPOI.XSSF.UserModel.XSSFWorkbook();
+                    try
+                    {
+                        workbook.CreateSheet("测试").CreateRow(0).CreateCell(0).SetCellValue("测试内容");
+                        CancelAfterFirstWriteStream trigger = null;
+                        Assert.ThrowsException<OperationCanceledException>(() => PublishWorkbookForTest(path, source.Token, stream =>
+                        {
+                            trigger = new CancelAfterFirstWriteStream(stream, source);
+                            workbook.Write(trigger);
+                        }));
+                        Assert.IsNotNull(trigger);
+                        Assert.IsTrue(trigger.Wrote, "必须在实际写入后才触发取消。");
+                        CollectionAssert.AreEqual(before, File.ReadAllBytes(path));
+                        Assert.AreEqual(0, Directory.GetFiles(db.Root, "report" + extension + ".writing-*").Length);
+                    }
+                    finally { workbook.Close(); }
+                }
+            }
+        }
+
         private sealed class CancelOnProgress : IProgress<int>
         {
             private readonly System.Threading.CancellationTokenSource _source;
