@@ -1599,7 +1599,9 @@ namespace Win7BookManagement.Infrastructure
                         throw new InvalidOperationException("小屏单据列表或明细区高度不足：" + documentSplit.Panel1.Height + " / " + documentSplit.Panel2.Height);
                     shell.Navigate("suppliers");
                     Application.DoEvents();
-                    var supplierPage = (SupplierForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                    var dictionaryPage = (DictionaryManagementForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                    var dictionaryFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var supplierPage = (SupplierForm)typeof(DictionaryManagementForm).GetField("_current", dictionaryFlags).GetValue(dictionaryPage);
                     var supplierFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
                     foreach (var fieldName in new[] { "_search", "_includeInactive" })
                         AssertVisibleInsideParents((Control)typeof(SupplierForm).GetField(fieldName, supplierFlags).GetValue(supplierPage), screen, "小屏供应商 " + fieldName);
