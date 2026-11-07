@@ -23,6 +23,9 @@ namespace Win7BookManagement.Forms
         private AntdUI.Button _searchButton;
         private AntdUI.Button _addButton;
         private AntdUI.Button _editButton;
+        private AntdUI.Button _importButton;
+        private AntdUI.Button _labelsButton;
+        private Label _searchLabel;
         private UiSpecProfile _profile = BookDeskUiSpec.Standard;
         private readonly Dictionary<string, Label> _detailValues = new Dictionary<string, Label>();
 
@@ -125,7 +128,7 @@ namespace Win7BookManagement.Forms
             _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             _searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            _searchRow.Controls.Add(new Label
+            _searchLabel = new Label
             {
                 Text = "搜索",
                 AutoSize = false,
@@ -136,7 +139,8 @@ namespace Win7BookManagement.Forms
                 ForeColor = UiTheme.TextPrimary,
                 Font = UiTheme.Font(BookDeskUiSpec.Standard.BodyFontPoints, FontStyle.Bold),
                 Margin = Padding.Empty
-            }, 0, 0);
+            };
+            _searchRow.Controls.Add(_searchLabel, 0, 0);
 
             _search.Dock = DockStyle.None;
             _search.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -219,9 +223,9 @@ namespace Win7BookManagement.Forms
 
             _stats.Controls.Add(_resultChip);
             _stats.Controls.Add(_lowStockChip);
-            var import = UiTheme.CreateAntdButton("批量导入", false); import.Width = 104;
-            import.Margin = new Padding(12, 0, 0, 0);
-            import.Click += delegate
+            _importButton = UiTheme.CreateAntdButton("批量导入", false); _importButton.Width = 104;
+            _importButton.Margin = new Padding(12, 0, 0, 0);
+            _importButton.Click += delegate
             {
                 using (var dialog = new BookImportForm(_services))
                 {
@@ -229,11 +233,11 @@ namespace Win7BookManagement.Forms
                     if (dialog.Imported) Reload();
                 }
             };
-            _stats.Controls.Add(import);
-            var labels = UiTheme.CreateAntdButton("打印标签", false); labels.Width = 104;
-            labels.Margin = new Padding(12, 0, 0, 0);
-            labels.Click += delegate { using (var dialog = new BookLabelForm(_services, _selectedBook)) dialog.ShowDialog(this); };
-            _stats.Controls.Add(labels);
+            _stats.Controls.Add(_importButton);
+            _labelsButton = UiTheme.CreateAntdButton("打印标签", false); _labelsButton.Width = 104;
+            _labelsButton.Margin = new Padding(12, 0, 0, 0);
+            _labelsButton.Click += delegate { using (var dialog = new BookLabelForm(_services, _selectedBook)) dialog.ShowDialog(this); };
+            _stats.Controls.Add(_labelsButton);
 
             _searchSection.Controls.Add(_searchRow, 0, 0);
             _searchSection.Controls.Add(_stats, 0, 1);
@@ -482,74 +486,93 @@ namespace Win7BookManagement.Forms
 
         private void ApplyResponsiveLayout()
         {
+            ApplyResponsiveLayoutForDpi(DeviceDpi);
+        }
+
+        // The profile is defined in logical pixels; WinForms bounds assigned
+        // here are device pixels. Table properties remain logical because
+        // AntdUI scales column widths and row heights itself.
+        private void ApplyResponsiveLayoutForDpi(int dpi)
+        {
             if (_split.Width <= 0)
                 return;
 
             var profile = _profile ?? BookDeskUiSpec.Standard;
-            var controlHeight = profile.ControlHeight;
+            var controlHeight = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
 
             if (_searchSection != null)
             {
-                _searchSection.Padding = new Padding(profile.ToolbarPadding);
+                _searchSection.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(profile.ToolbarPadding, dpi));
                 _searchSection.MinimumSize = new Size(
                     0,
-                    profile.IsCompact
+                    BookDeskUiSpec.ToDevicePixels(profile.IsCompact
                         ? BookDeskUiSpec.BookToolbarCompactHeight
-                        : BookDeskUiSpec.BookToolbarStandardHeight);
+                        : BookDeskUiSpec.BookToolbarStandardHeight, dpi));
             }
 
             if (_searchRow != null)
                 _searchRow.MinimumSize = new Size(0, controlHeight);
 
+            var searchLabelWidth = BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.BookSearchLabelWidth, dpi);
+            _searchLabel.MinimumSize = new Size(searchLabelWidth, controlHeight);
+            _searchLabel.Size = new Size(searchLabelWidth, controlHeight);
+            _search.MinimumSize = new Size(BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.BookSearchMinimumWidth, dpi), controlHeight);
             _search.Height = controlHeight;
-            _search.MinimumSize = new Size(BookDeskUiSpec.BookSearchMinimumWidth, controlHeight);
             _search.Font = UiTheme.Font(profile.BodyFontPoints);
-            _search.Margin = new Padding(0, 0, profile.ControlGap, 0);
+            _search.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(profile.ControlGap, dpi), 0);
 
             SetToolbarButton(
                 _searchButton,
                 profile.IsCompact ? 72 : 78,
-                profile);
+                profile, dpi);
             SetToolbarButton(
                 _addButton,
                 profile.IsCompact ? 108 : 118,
-                profile);
+                profile, dpi);
             SetToolbarButton(
                 _editButton,
                 profile.IsCompact ? 104 : 110,
-                profile);
+                profile, dpi);
 
             if (_stats != null)
-                _stats.Margin = new Padding(0, 10, 0, 0);
+                _stats.Margin = new Padding(0, BookDeskUiSpec.ToDevicePixels(10, dpi), 0, 0);
 
-            ResizeMetric(_resultChip, 96, profile.MetricHeight, profile);
-            ResizeMetric(_lowStockChip, 112, profile.MetricHeight, profile);
+            ResizeMetric(_resultChip, 96, profile.MetricHeight, profile, dpi);
+            ResizeMetric(_lowStockChip, 112, profile.MetricHeight, profile, dpi);
+            _resultChip.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(12, dpi), 0);
+            SetToolbarButton(_importButton, 104, profile, dpi);
+            SetToolbarButton(_labelsButton, 104, profile, dpi);
+            _importButton.Margin = new Padding(BookDeskUiSpec.ToDevicePixels(12, dpi), 0, 0, 0);
+            _labelsButton.Margin = new Padding(BookDeskUiSpec.ToDevicePixels(12, dpi), 0, 0, 0);
 
-            _split.Margin = new Padding(0, profile.SectionGap, 0, 0);
+            _split.Margin = new Padding(0, BookDeskUiSpec.ToDevicePixels(profile.SectionGap, dpi), 0, 0);
+            _split.SplitterWidth = BookDeskUiSpec.ToDevicePixels(8, dpi);
             _grid.RowHeightHeader = profile.TableHeaderHeight;
             _grid.RowHeight = profile.TableRowHeight;
             _grid.Font = UiTheme.Font(profile.TableFontPoints);
             ApplyColumnWidths(profile);
+            _grid.ApplyCachedColumnWidths();
 
             // The approved four-page spec is table-first through 2560x1440.
             // Retain the legacy detail pane for exceptional ultra-wide setups,
             // but keep it outside the required acceptance matrix.
-            var showDetails = BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, DeviceDpi) >= 3000;
+            var showDetails = BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, dpi) >= 3000;
             _split.Panel2Collapsed = !showDetails;
 
             if (showDetails)
             {
-                var desiredRightWidth = Math.Min(360, Math.Max(300, _split.Width / 4));
+                var desiredRightWidth = Math.Min(BookDeskUiSpec.ToDevicePixels(360, dpi),
+                    Math.Max(BookDeskUiSpec.ToDevicePixels(300, dpi), _split.Width / 4));
                 var distance = _split.Width - desiredRightWidth - _split.SplitterWidth;
-                const int minimumLeftWidth = 720;
-                const int minimumRightWidth = 286;
+                var minimumLeftWidth = BookDeskUiSpec.ToDevicePixels(720, dpi);
+                var minimumRightWidth = BookDeskUiSpec.ToDevicePixels(286, dpi);
                 var maximumDistance = _split.Width - minimumRightWidth - _split.SplitterWidth;
                 if (distance >= minimumLeftWidth && maximumDistance >= minimumLeftWidth)
                     _split.SplitterDistance = Math.Min(distance, maximumDistance);
             }
 
             var gridWidth = BookDeskUiSpec.ToLogicalPixels(
-                showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width, DeviceDpi);
+                showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width, dpi);
 
             // The ui-spec requires all columns to remain visible at 1366x768.
             // Below the supported 1280px shell minimum, progressively remove
@@ -601,29 +624,32 @@ namespace Win7BookManagement.Forms
         private static void SetToolbarButton(
             AntdUI.Button button,
             int width,
-            UiSpecProfile profile)
+            UiSpecProfile profile, int dpi)
         {
             if (button == null)
                 return;
 
-            button.Width = width;
-            button.Height = profile.ControlHeight;
-            button.MinimumSize = new Size(width, profile.ControlHeight);
+            var size = new Size(BookDeskUiSpec.ToDevicePixels(width, dpi),
+                BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi));
+            button.MinimumSize = size;
+            button.Size = size;
             button.Font = UiTheme.Font(profile.BodyFontPoints);
-            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
+            button.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(profile.ControlGap, dpi), 0);
         }
 
         private static void ResizeMetric(
             Label label,
             int width,
             int height,
-            UiSpecProfile profile)
+            UiSpecProfile profile, int dpi)
         {
             if (label == null)
                 return;
 
-            label.Size = new Size(width, height);
-            label.MinimumSize = new Size(width, height);
+            var size = new Size(BookDeskUiSpec.ToDevicePixels(width, dpi), BookDeskUiSpec.ToDevicePixels(height, dpi));
+            label.MinimumSize = size;
+            label.Size = size;
+            label.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(8, dpi), 0, BookDeskUiSpec.ToDevicePixels(8, dpi), 0);
             label.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
         }
 

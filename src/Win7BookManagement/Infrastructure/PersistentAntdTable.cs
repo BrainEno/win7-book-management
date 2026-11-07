@@ -29,6 +29,7 @@ namespace Win7BookManagement.Infrastructure
         private SettingsRepository _settings;
         private string _layoutKey;
         private bool _promotingWidths;
+        private readonly Dictionary<string, int> _persistedWidths = new Dictionary<string, int>(StringComparer.Ordinal);
 
         public void ConfigureColumnPersistence(SettingsRepository settings, string layoutKey)
         {
@@ -42,6 +43,7 @@ namespace Win7BookManagement.Infrastructure
             if (_settings == null || string.IsNullOrWhiteSpace(_layoutKey) || Columns == null)
                 return;
 
+            _persistedWidths.Clear();
             foreach (AntdUI.Column column in Columns)
             {
                 if (column == null || string.IsNullOrWhiteSpace(column.Key))
@@ -49,12 +51,27 @@ namespace Win7BookManagement.Infrastructure
 
                 var saved = _settings.GetInt(BuildSettingKey(column.Key), -1);
                 if (saved >= MinimumPersistedWidth && saved <= MaximumPersistedWidth)
-                    column.Width = saved.ToString();
+                    _persistedWidths[column.Key] = saved;
             }
-
+            ApplyCachedColumnWidths();
             ClearTransientWidths();
             LoadLayout();
             Invalidate();
+        }
+
+        // Reapply user widths after a responsive page sets its default widths.
+        // The cache avoids database reads on every window resize and does not
+        // clear AntdUI's transient drag state.
+        public void ApplyCachedColumnWidths()
+        {
+            if (Columns == null) return;
+            foreach (AntdUI.Column column in Columns)
+            {
+                int width;
+                if (column != null && !string.IsNullOrWhiteSpace(column.Key) &&
+                    _persistedWidths.TryGetValue(column.Key, out width))
+                    column.Width = width.ToString();
+            }
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
@@ -107,6 +124,7 @@ namespace Win7BookManagement.Infrastructure
 
                     column.Width = logicalWidth.ToString();
                     _settings.SetInt(BuildSettingKey(column.Key), logicalWidth);
+                    _persistedWidths[column.Key] = logicalWidth;
                     promotedAny = true;
                 }
 

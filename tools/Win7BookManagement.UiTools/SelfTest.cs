@@ -842,6 +842,7 @@ namespace Win7BookManagement.Infrastructure
 
                 VerifyLegacyBookSchemaUpgrade(root);
                 VerifyPersistentTableWidths(services);
+                VerifyBookListDpiMetrics(services);
                 VerifyWindowPlacementContracts();
                 VerifyHostedShellSmallScreen(services);
                 VerifyUiLayoutContracts(services, storedBook);
@@ -898,7 +899,7 @@ namespace Win7BookManagement.Infrastructure
                 var id = services.Books.Insert(new Book { Title = "宋体自检图书" });
                 var book = services.Books.GetById(id);
                 VerifyHostedShellSmallScreen(services);
-                var forms = new Form[] { new SalesForm(services), new PurchaseForm(services), new BookEditForm(services, book), new BookLabelForm(services, book) };
+                var forms = new Form[] { new SalesForm(services), new PurchaseForm(services), new BookListForm(services), new BookEditForm(services, book), new BookLabelForm(services, book) };
                 try
                 {
                     foreach (var form in forms)
@@ -1144,6 +1145,59 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        // Inject DPI values to check assigned geometry and repeated profile
+        // changes deterministically. This does not simulate Windows rendering.
+        private static void VerifyBookListDpiMetrics(ApplicationServices services)
+        {
+            const string titleKey = "ui.table.column_width.book-master-ui-spec-v6.Title";
+            const string authorKey = "ui.table.column_width.book-master-ui-spec-v6.Author";
+            var oldTitle = services.Settings.GetString(titleKey, "");
+            var oldAuthor = services.Settings.GetString(authorKey, "");
+            try
+            {
+                services.Settings.SetInt(titleKey, 237);
+                services.Settings.SetInt(authorKey, 155);
+                using (var form = new BookListForm(services))
+                {
+                    form.ShowInTaskbar = false;
+                    form.Show();
+                    Application.DoEvents();
+                    var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var method = typeof(BookListForm).GetMethod("ApplyResponsiveLayoutForDpi", flags);
+                    var search = (Control)typeof(BookListForm).GetField("_search", flags).GetValue(form);
+                    var label = (Control)typeof(BookListForm).GetField("_searchLabel", flags).GetValue(form);
+                    var add = (Control)typeof(BookListForm).GetField("_addButton", flags).GetValue(form);
+                    var import = (Control)typeof(BookListForm).GetField("_importButton", flags).GetValue(form);
+                    var grid = (PersistentAntdTable)typeof(BookListForm).GetField("_grid", flags).GetValue(form);
+                    var title = (AntdUI.Column)typeof(BookListForm).GetField("_titleColumn", flags).GetValue(form);
+                    var author = (AntdUI.Column)typeof(BookListForm).GetField("_authorColumn", flags).GetValue(form);
+                    foreach (var profile in new[] { BookDeskUiSpec.Tight, BookDeskUiSpec.Standard, BookDeskUiSpec.Tight })
+                    {
+                        form.ApplyUiSpecProfile(profile);
+                        foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                        {
+                            method.Invoke(form, new object[] { dpi });
+                            var height = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
+                            if (search.Height != height || label.Height != height || add.Height != height || import.Height != height ||
+                                label.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.BookSearchLabelWidth, dpi) ||
+                                search.MinimumSize.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.BookSearchMinimumWidth, dpi) ||
+                                add.Width != BookDeskUiSpec.ToDevicePixels(profile.IsCompact ? 108 : 118, dpi))
+                                throw new InvalidOperationException("图书工具栏 DPI 尺寸不一致：" + profile.Name + " / " + dpi);
+                            // AntdUI scales these logical table metrics internally.
+                            if (grid.RowHeight != profile.TableRowHeight || grid.RowHeightHeader != profile.TableHeaderHeight ||
+                                title.Width != "237" || author.Width != "155")
+                                throw new InvalidOperationException("图书表格 DPI / 用户列宽重排不正确：" + profile.Name + " / " + dpi);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                services.Settings.SetString(titleKey, oldTitle);
+                services.Settings.SetString(authorKey, oldAuthor);
+            }
+        }
+
         // Exercise the real shell and hosted pages, not standalone child forms.
         // These are logical-size checks on the CI monitor, not a DPI simulation.
         private static void VerifyHostedShellSmallScreen(ApplicationServices services)
@@ -1183,6 +1237,22 @@ namespace Win7BookManagement.Infrastructure
                         var nav = shell.GetNavigationScreenBounds(key);
                         if (nav.IsEmpty || !screen.Contains(nav))
                             throw new InvalidOperationException("小屏侧边导航不可达：" + key + " " + windowSize + " / " + nav);
+                    }
+                    shell.Navigate("books");
+                    Application.DoEvents();
+                    var bookPage = (BookListForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                    var bookFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    foreach (var fieldName in new[] { "_search", "_searchButton", "_addButton", "_editButton", "_importButton", "_labelsButton" })
+                    {
+                        var control = (Control)typeof(BookListForm).GetField(fieldName, bookFlags).GetValue(bookPage);
+                        if (!control.Visible || !control.Enabled)
+                            throw new InvalidOperationException("小屏图书页面控件不可用：" + fieldName);
+                        var bounds = control.RectangleToScreen(control.ClientRectangle);
+                        if (bounds.Width <= 0 || bounds.Height <= 0 || !screen.Contains(bounds))
+                            throw new InvalidOperationException("小屏图书页面控件超出屏幕：" + fieldName + " / " + bounds);
+                        for (Control parent = control.Parent; parent != null; parent = parent.Parent)
+                            if (!parent.Visible || !parent.RectangleToScreen(parent.ClientRectangle).Contains(bounds))
+                                throw new InvalidOperationException("小屏图书页面控件被裁切：" + fieldName + " / " + parent.GetType().Name + " / " + bounds + " / " + parent.RectangleToScreen(parent.ClientRectangle));
                     }
                     foreach (var key in new[] { "sales", "purchase" })
                     {
