@@ -26,6 +26,7 @@ namespace Win7BookManagement.Forms
         private readonly AntdUI.Column _noteColumn;
         private readonly AntdUI.Column _activeColumn;
         private Supplier _selectedSupplier;
+        private bool _applyingResponsiveLayout;
 
         public SupplierForm(ApplicationServices services)
         {
@@ -378,24 +379,39 @@ namespace Win7BookManagement.Forms
 
         private void ApplyResponsiveLayout()
         {
-            if (_split.Width <= 0) return;
-            var showDetails = ClientSize.Width >= UiTheme.WideBreakpoint;
-            _split.Panel2Collapsed = !showDetails;
-            if (showDetails)
-            {
-                var desiredRightWidth = Math.Min(360, Math.Max(305, _split.Width / 3));
-                var distance = _split.Width - desiredRightWidth - _split.SplitterWidth;
-                var maximumDistance = _split.Width - 300 - _split.SplitterWidth;
-                if (distance >= 420 && maximumDistance >= 420)
-                    _split.SplitterDistance = Math.Min(distance, maximumDistance);
-            }
+            ApplyResponsiveLayoutForDpi(DeviceDpi);
+        }
 
-            var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
-            _noteColumn.Visible = gridWidth >= 900;
-            _phoneColumn.Visible = gridWidth >= 690;
-            _contactColumn.Visible = gridWidth >= 600;
-            _activeColumn.Visible = gridWidth >= 520;
-            _grid.LoadLayout();
+        // Breakpoints are specified in 96-DPI logical pixels. SplitContainer
+        // geometry, unlike AntdUI column widths, uses device pixels.
+        private void ApplyResponsiveLayoutForDpi(int dpi)
+        {
+            if (_split.Width <= 0 || _applyingResponsiveLayout) return;
+            _applyingResponsiveLayout = true;
+            try
+            {
+                var showDetails = BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, dpi) >= UiTheme.WideBreakpoint;
+                _split.Panel2Collapsed = !showDetails;
+                if (showDetails)
+                {
+                    var logicalSplitWidth = BookDeskUiSpec.ToLogicalPixels(_split.Width, dpi);
+                    var desiredRightWidth = Math.Min(360, Math.Max(305, logicalSplitWidth / 3));
+                    var distance = _split.Width - BookDeskUiSpec.ToDevicePixels(desiredRightWidth, dpi) - _split.SplitterWidth;
+                    var maximumDistance = Math.Min(_split.Width - BookDeskUiSpec.ToDevicePixels(300, dpi) - _split.SplitterWidth,
+                        _split.Width - _split.Panel2MinSize - _split.SplitterWidth);
+                    var minimumDistance = Math.Max(_split.Panel1MinSize, BookDeskUiSpec.ToDevicePixels(420, dpi));
+                    if (distance >= minimumDistance && maximumDistance >= minimumDistance)
+                        _split.SplitterDistance = Math.Min(distance, maximumDistance);
+                }
+
+                var gridWidth = BookDeskUiSpec.ToLogicalPixels(showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width, dpi);
+                _noteColumn.Visible = gridWidth >= 900;
+                _phoneColumn.Visible = gridWidth >= 690;
+                _contactColumn.Visible = gridWidth >= 600;
+                _activeColumn.Visible = gridWidth >= 520;
+                _grid.LoadLayout();
+            }
+            finally { _applyingResponsiveLayout = false; }
         }
 
         private void ShowSelectedDetails()

@@ -847,6 +847,7 @@ namespace Win7BookManagement.Infrastructure
                 VerifySalesDpiColumnsAndSettlement(services);
                 VerifyInventoryDpiMetrics(services);
                 VerifyDocumentCenterDpiMetrics(services);
+                VerifySupplierAndReportDpiColumns(services);
                 VerifyWindowPlacementContracts();
                 VerifyHostedShellSmallScreen(services);
                 VerifyUiLayoutContracts(services, storedBook);
@@ -1468,6 +1469,51 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        // Numerical DPI injection checks breakpoint calculations, not rendering.
+        private static void VerifySupplierAndReportDpiColumns(ApplicationServices services)
+        {
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            using (var supplier = new SupplierForm(services))
+            {
+                supplier.ShowInTaskbar = false;
+                supplier.Show();
+                supplier.ClientSize = new Size(1000, 600);
+                Application.DoEvents();
+                var method = typeof(SupplierForm).GetMethod("ApplyResponsiveLayoutForDpi", flags);
+                var split = (SplitContainer)typeof(SupplierForm).GetField("_split", flags).GetValue(supplier);
+                var contact = (AntdUI.Column)typeof(SupplierForm).GetField("_contactColumn", flags).GetValue(supplier);
+                var phone = (AntdUI.Column)typeof(SupplierForm).GetField("_phoneColumn", flags).GetValue(supplier);
+                var active = (AntdUI.Column)typeof(SupplierForm).GetField("_activeColumn", flags).GetValue(supplier);
+                var note = (AntdUI.Column)typeof(SupplierForm).GetField("_noteColumn", flags).GetValue(supplier);
+                foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                {
+                    method.Invoke(supplier, new object[] { dpi });
+                    var showDetails = BookDeskUiSpec.ToLogicalPixels(supplier.ClientSize.Width, dpi) >= UiTheme.WideBreakpoint;
+                    var width = BookDeskUiSpec.ToLogicalPixels(showDetails ? split.Panel1.ClientSize.Width : supplier.ClientSize.Width, dpi);
+                    if (split.Panel2Collapsed == showDetails || note.Visible != (width >= 900) || phone.Visible != (width >= 690) ||
+                        contact.Visible != (width >= 600) || active.Visible != (width >= 520))
+                        throw new InvalidOperationException("供应商逻辑宽度断点不正确：" + width + " / DPI=" + dpi);
+                }
+            }
+            using (var reports = new ReportsForm(services))
+            {
+                reports.ShowInTaskbar = false;
+                reports.Show();
+                reports.ClientSize = new Size(1000, 600);
+                Application.DoEvents();
+                var method = typeof(ReportsForm).GetMethod("ApplyResponsiveColumnsForDpi", flags);
+                var columns = (System.Collections.Generic.Dictionary<string, AntdUI.Column>)typeof(ReportsForm).GetField("_columns", flags).GetValue(reports);
+                foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                {
+                    method.Invoke(reports, new object[] { dpi });
+                    var width = BookDeskUiSpec.ToLogicalPixels(reports.ClientSize.Width, dpi);
+                    if (columns["ISBN"].Visible != (width >= 760) || columns["作者"].Visible != (width >= 840) ||
+                        columns["出版社"].Visible != (width >= 980) || columns["分类"].Visible != (width >= 900))
+                        throw new InvalidOperationException("报表逻辑宽度断点不正确：" + width + " / DPI=" + dpi);
+                }
+            }
+        }
+
         private static void AssertVisibleInsideParents(Control control, Rectangle screen, string name)
         {
             if (control == null || !control.Visible)
@@ -1551,6 +1597,21 @@ namespace Win7BookManagement.Infrastructure
                     var documentSplit = (SplitContainer)typeof(DocumentCenterForm).GetField("_split", documentFlags).GetValue(documentPage);
                     if (documentSplit.Panel1.Height < 60 || documentSplit.Panel2.Height < 60)
                         throw new InvalidOperationException("小屏单据列表或明细区高度不足：" + documentSplit.Panel1.Height + " / " + documentSplit.Panel2.Height);
+                    shell.Navigate("suppliers");
+                    Application.DoEvents();
+                    var supplierPage = (SupplierForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                    var supplierFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    foreach (var fieldName in new[] { "_search", "_includeInactive" })
+                        AssertVisibleInsideParents((Control)typeof(SupplierForm).GetField(fieldName, supplierFlags).GetValue(supplierPage), screen, "小屏供应商 " + fieldName);
+                    foreach (var text in new[] { "查询", "＋ 新增供应商", "编辑资料" })
+                        AssertVisibleInsideParents(FindButton(supplierPage, text), screen, "小屏供应商 " + text);
+                    shell.Navigate("reports");
+                    Application.DoEvents();
+                    var reportsPage = (ReportsForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                    var reportFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    foreach (var fieldName in new[] { "_type", "_from", "_to", "_exportButton" })
+                        AssertVisibleInsideParents((Control)typeof(ReportsForm).GetField(fieldName, reportFlags).GetValue(reportsPage), screen, "小屏报表 " + fieldName);
+                    AssertVisibleInsideParents(FindButton(reportsPage, "查询"), screen, "小屏报表 查询");
                     foreach (var key in new[] { "sales", "purchase" })
                     {
                         shell.Navigate(key);

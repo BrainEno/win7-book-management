@@ -223,7 +223,7 @@ namespace Win7BookManagement.Forms
         {
             if (filters == null || filters.ClientSize.Width <= 0) return;
             var preferred = filters.GetPreferredSize(new Size(filters.ClientSize.Width, 0));
-            var nextHeight = Math.Max(62, preferred.Height);
+            var nextHeight = Math.Max(BookDeskUiSpec.ToDevicePixels(62, filters.DeviceDpi), preferred.Height);
             if (filters.Height != nextHeight) filters.Height = nextHeight;
         }
 
@@ -673,7 +673,12 @@ namespace Win7BookManagement.Forms
 
         private void ApplyResponsiveColumns()
         {
-            var width = ClientSize.Width;
+            ApplyResponsiveColumnsForDpi(DeviceDpi);
+        }
+
+        private void ApplyResponsiveColumnsForDpi(int dpi)
+        {
+            var width = BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, dpi);
             SetVisible("ISBN", width >= 760);
             SetVisible("供应商", width >= 830);
             SetVisible("原销售单号", width >= 930);
