@@ -13,7 +13,7 @@ namespace Win7BookManagement.Forms
         private readonly ApplicationServices _services;
         private readonly AntdUI.Input _search = UiTheme.CreateAntdInput("按编码、ISBN、书名、作者、分类或货架位搜索");
         private readonly AntdUI.Checkbox _lowOnly = new AntdUI.Checkbox();
-        private readonly AntdUI.Table _grid = new AntdUI.Table();
+        private readonly PersistentAntdTable _grid = new PersistentAntdTable();
         private readonly Label _summary = new Label();
         private readonly Label _resultChip = new Label();
         private readonly Label _lowChip = new Label();
@@ -287,6 +287,7 @@ namespace Win7BookManagement.Forms
                 _shelfColumn,
                 _stockColumn
             };
+            _grid.ConfigureColumnPersistence(_services.Settings, "inventory-ui-spec-v6");
             _grid.CellClick += delegate(object sender, AntdUI.TableClickEventArgs e)
             {
                 _selectedBook = e.Record as Book;
@@ -520,6 +521,7 @@ namespace Win7BookManagement.Forms
                 _grid.RowHeight = profile.TableRowHeight;
                 _grid.Font = UiTheme.Font(profile.TableFontPoints);
                 ApplyColumnWidths(profile);
+                _grid.ApplyCachedColumnWidths();
 
                 _summary.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? 30 : 34, dpi));
                 _summary.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(12, dpi), 0, BookDeskUiSpec.ToDevicePixels(8, dpi), 0);

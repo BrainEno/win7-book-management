@@ -1323,40 +1323,51 @@ namespace Win7BookManagement.Infrastructure
         // rendering at these system scaling settings.
         private static void VerifyInventoryDpiMetrics(ApplicationServices services)
         {
-            using (var form = new InventoryForm(services))
+            const string key = "ui.table.column_width.inventory-ui-spec-v6.Author";
+            var previous = services.Settings.GetString(key, "");
+            try
             {
-                form.ShowInTaskbar = false;
-                form.Show();
-                Application.DoEvents();
-                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-                var method = typeof(InventoryForm).GetMethod("ApplyResponsiveLayoutForDpi", flags);
-                var search = (Control)typeof(InventoryForm).GetField("_search", flags).GetValue(form);
-                var label = (Control)typeof(InventoryForm).GetField("_searchLabel", flags).GetValue(form);
-                var stocktake = (Control)typeof(InventoryForm).GetField("_stocktakeButton", flags).GetValue(form);
-                var adjust = (Control)typeof(InventoryForm).GetField("_topAdjustButton", flags).GetValue(form);
-                var details = (TableLayoutPanel)typeof(InventoryForm).GetField("_detailsTable", flags).GetValue(form);
-                var grid = (AntdUI.Table)typeof(InventoryForm).GetField("_grid", flags).GetValue(form);
-                var split = (SplitContainer)typeof(InventoryForm).GetField("_split", flags).GetValue(form);
-                foreach (var profile in new[] { BookDeskUiSpec.Tight, BookDeskUiSpec.Standard, BookDeskUiSpec.Tight })
+                services.Settings.SetInt(key, 155);
+                using (var form = new InventoryForm(services))
                 {
-                    form.ApplyUiSpecProfile(profile);
-                    foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                    form.ShowInTaskbar = false;
+                    form.Show();
+                    Application.DoEvents();
+                    var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var method = typeof(InventoryForm).GetMethod("ApplyResponsiveLayoutForDpi", flags);
+                    var search = (Control)typeof(InventoryForm).GetField("_search", flags).GetValue(form);
+                    var label = (Control)typeof(InventoryForm).GetField("_searchLabel", flags).GetValue(form);
+                    var stocktake = (Control)typeof(InventoryForm).GetField("_stocktakeButton", flags).GetValue(form);
+                    var adjust = (Control)typeof(InventoryForm).GetField("_topAdjustButton", flags).GetValue(form);
+                    var details = (TableLayoutPanel)typeof(InventoryForm).GetField("_detailsTable", flags).GetValue(form);
+                    var grid = (AntdUI.Table)typeof(InventoryForm).GetField("_grid", flags).GetValue(form);
+                    var author = (AntdUI.Column)typeof(InventoryForm).GetField("_authorColumn", flags).GetValue(form);
+                    var split = (SplitContainer)typeof(InventoryForm).GetField("_split", flags).GetValue(form);
+                    foreach (var profile in new[] { BookDeskUiSpec.Tight, BookDeskUiSpec.Standard, BookDeskUiSpec.Tight })
                     {
-                        method.Invoke(form, new object[] { dpi });
-                        var height = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
-                        if (search.Height != height || label.Height != height || stocktake.Height != height || adjust.Height != height ||
-                            search.MinimumSize.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventorySearchMinimumWidth, dpi) ||
-                            adjust.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryTopAdjustWidth, dpi) ||
-                            details.ColumnStyles[0].Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailLabelWidth, dpi))
-                            throw new InvalidOperationException("库存页 DPI 尺寸不一致：" + profile.Name + " / " + dpi);
-                        if (grid.RowHeight != profile.TableRowHeight || grid.RowHeightHeader != profile.TableHeaderHeight)
-                            throw new InvalidOperationException("库存表格逻辑行高不正确：" + profile.Name + " / " + dpi);
-                        var expected = BookDeskUiSpec.ToLogicalPixels(form.ClientSize.Width, dpi) < BookDeskUiSpec.InventorySplitStackThreshold
-                            ? Orientation.Horizontal : Orientation.Vertical;
-                        if (split.Orientation != expected)
-                            throw new InvalidOperationException("库存详情布局断点不正确：" + form.ClientSize + " / DPI " + dpi);
+                        form.ApplyUiSpecProfile(profile);
+                        foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                        {
+                            method.Invoke(form, new object[] { dpi });
+                            var height = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
+                            if (search.Height != height || label.Height != height || stocktake.Height != height || adjust.Height != height ||
+                                search.MinimumSize.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventorySearchMinimumWidth, dpi) ||
+                                adjust.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryTopAdjustWidth, dpi) ||
+                                details.ColumnStyles[0].Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailLabelWidth, dpi))
+                                throw new InvalidOperationException("库存页 DPI 尺寸不一致：" + profile.Name + " / " + dpi);
+                            if (grid.RowHeight != profile.TableRowHeight || grid.RowHeightHeader != profile.TableHeaderHeight || author.Width != "155")
+                                throw new InvalidOperationException("库存表格逻辑行高或用户列宽不正确：" + profile.Name + " / " + dpi);
+                            var expected = BookDeskUiSpec.ToLogicalPixels(form.ClientSize.Width, dpi) < BookDeskUiSpec.InventorySplitStackThreshold
+                                ? Orientation.Horizontal : Orientation.Vertical;
+                            if (split.Orientation != expected)
+                                throw new InvalidOperationException("库存详情布局断点不正确：" + form.ClientSize + " / DPI " + dpi);
+                        }
                     }
                 }
+            }
+            finally
+            {
+                services.Settings.SetString(key, previous);
             }
         }
 
