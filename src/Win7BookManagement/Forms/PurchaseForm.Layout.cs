@@ -77,21 +77,16 @@ private Control CreateReceivingSection()
             _documentSection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             _documentSection.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-            _headerFields = new TableLayoutPanel
+            _headerFields = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 5,
-                RowCount = 1,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty
             };
-            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _headerFields.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             _purchaseDate.Tag = "toolbar-input";
             _orderNo.Tag = "toolbar-input";
@@ -114,9 +109,9 @@ private Control CreateReceivingSection()
                 BookDeskUiSpec.PurchaseSupplierLabelWidth,
                 BookDeskUiSpec.PurchaseSupplierStandardWidth);
 
-            _headerFields.Controls.Add(dateField, 0, 0);
-            _headerFields.Controls.Add(orderField, 1, 0);
-            _headerFields.Controls.Add(supplierField, 2, 0);
+            _headerFields.Controls.Add(dateField);
+            _headerFields.Controls.Add(orderField);
+            _headerFields.Controls.Add(supplierField);
 
             _statusLabel.AutoSize = false;
             _statusLabel.Size = new Size(118, BookDeskUiSpec.PurchaseFieldStandardHeight);
@@ -124,7 +119,7 @@ private Control CreateReceivingSection()
             _statusLabel.TextAlign = ContentAlignment.MiddleCenter;
             _statusLabel.Font = UiTheme.Font(8.5F, FontStyle.Bold);
             _statusLabel.Margin = Padding.Empty;
-            _headerFields.Controls.Add(_statusLabel, 4, 0);
+            _headerFields.Controls.Add(_statusLabel);
             _documentSection.Controls.Add(_headerFields, 0, 0);
 
             _receivingSection.Controls.Add(_actionRow, 0, 0);
@@ -436,263 +431,201 @@ private static void ConfigureSummaryLabel(Label label, bool primary)
 
 private void ApplyResponsiveColumns()
         {
-            var profile = _profile ?? BookDeskUiSpec.Standard;
-            var compact = profile.IsCompact;
-            var expanded = string.Equals(profile.Name, "expanded", StringComparison.Ordinal);
-            var profileControlHeight = profile.ControlHeight;
-            var fieldHeight = compact
-                ? BookDeskUiSpec.PurchaseFieldCompactHeight
-                : BookDeskUiSpec.PurchaseFieldStandardHeight;
-            var topButtonHeight = compact
-                ? BookDeskUiSpec.PurchaseTopButtonCompactHeight
-                : BookDeskUiSpec.PurchaseTopButtonStandardHeight;
-
-            if (_receivingSection != null)
-                _receivingSection.Padding = Padding.Empty;
-
-            if (_actionRow != null)
-            {
-                _actionRow.Margin = Padding.Empty;
-                _actionRow.MinimumSize = new Size(
-                    0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight
-                        : BookDeskUiSpec.PurchaseTopToolbarStandardHeight);
-                _actionRow.WrapContents = false;
-            }
-
-            SetTopToolbarButton(_newOrderButton, 118, topButtonHeight, profile);
-            SetTopToolbarButton(_historyButton, 112, topButtonHeight, profile);
-            SetTopToolbarButton(_previousButton, 96, topButtonHeight, profile);
-            SetTopToolbarButton(_nextButton, 96, topButtonHeight, profile);
-            SetTopToolbarButton(_exportButton, 118, topButtonHeight, profile);
-            SetTopToolbarButton(_lookupButton, 112, topButtonHeight, profile);
-            SetTopToolbarButton(_clearButton, 118, topButtonHeight, profile);
-            if (_clearButton != null) _clearButton.Margin = Padding.Empty;
-
-            SetToolbarButton(_removeButton, 106, profile);
-            SetToolbarButton(_saveDraftButton, compact ? 96 : 104, profile);
-            SetToolbarButton(_unreviewButton, compact ? 80 : 88, profile);
-            SetToolbarButton(_reviewButton, compact ? 104 : 112, profile);
-
-            _purchaseDate.Height = fieldHeight;
-            _purchaseDate.MinimumSize = new Size(0, fieldHeight);
-            _orderNo.Height = fieldHeight;
-            _orderNo.MinimumSize = new Size(0, fieldHeight);
-            _supplier.Height = fieldHeight;
-            _supplier.MinimumSize = new Size(0, fieldHeight);
-            _orderDiscount.Width = compact ? 96 : 112;
-            _orderDiscount.Height = profileControlHeight;
-            _orderDiscount.MinimumSize = new Size(compact ? 96 : 112, profileControlHeight);
-            _orderDiscount.Font = UiTheme.Font(profile.BodyFontPoints);
-            _note.Height = profileControlHeight;
-            _note.MinimumSize = new Size(0, profileControlHeight);
-
-            _purchaseDate.Font = UiTheme.Font(profile.BodyFontPoints);
-            _orderNo.Font = UiTheme.Font(profile.BodyFontPoints);
-            _supplier.Font = UiTheme.Font(profile.BodyFontPoints);
-            _note.Font = UiTheme.Font(profile.BodyFontPoints);
-
-            ResizeFieldHost(
-                _purchaseDate,
-                BookDeskUiSpec.PurchaseDateLabelWidth,
-                compact ? 176 : 206,
-                fieldHeight);
-            ResizeFieldHost(
-                _orderNo,
-                BookDeskUiSpec.PurchaseOrderNoLabelWidth,
-                compact ? 210 : 258,
-                fieldHeight);
-            ResizeFieldHost(
-                _supplier,
-                BookDeskUiSpec.PurchaseSupplierLabelWidth,
-                compact
-                    ? BookDeskUiSpec.PurchaseSupplierCompactWidth
-                    : expanded
-                        ? BookDeskUiSpec.PurchaseSupplierExpandedWidth
-                        : BookDeskUiSpec.PurchaseSupplierStandardWidth,
-                fieldHeight);
-
-            if (_statusLabel != null)
-            {
-                _statusLabel.Size = new Size(118, fieldHeight);
-                _statusLabel.MinimumSize = new Size(118, fieldHeight);
-                _statusLabel.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
-            }
-
-            if (_documentSection != null)
-            {
-                _documentSection.MinimumSize = new Size(
-                    0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseDocumentCompactHeight
-                        : BookDeskUiSpec.PurchaseDocumentStandardHeight);
-                var horizontalPadding = compact ? 10 : 14;
-                var targetHeight = compact
-                    ? BookDeskUiSpec.PurchaseDocumentCompactHeight
-                    : BookDeskUiSpec.PurchaseDocumentStandardHeight;
-                var verticalPadding = Math.Max(0, (targetHeight - fieldHeight) / 2);
-                _documentSection.Padding = new Padding(
-                    horizontalPadding,
-                    verticalPadding,
-                    horizontalPadding,
-                    verticalPadding);
-                _documentSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            }
-
-            if (_cartHost != null)
-                _cartHost.Margin = new Padding(0, profile.SectionGap, 0, 0);
-
-            if (_cartHeader != null)
-            {
-                _cartHeader.MinimumSize = new Size(
-                    0,
-                    compact ? 44 : BookDeskUiSpec.PurchaseCartHeaderHeight);
-                _cartHeader.Padding = compact
-                    ? new Padding(10, 4, 10, 4)
-                    : new Padding(12, 5, 12, 5);
-            }
-
-            _grid.RowHeightHeader = profile.TableHeaderHeight;
-            _grid.RowHeight = profile.TableRowHeight;
-            _grid.Font = UiTheme.Font(profile.TableFontPoints);
-            ApplyColumnWidths(profile);
-            _emptyState.Font = UiTheme.Font(profile.SecondaryFontPoints);
-            LayoutEmptyCartSurface();
-
-            if (_noteSection != null)
-            {
-                _noteSection.MinimumSize = new Size(
-                    0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseNoteCompactHeight
-                        : BookDeskUiSpec.PurchaseNoteStandardHeight);
-                _noteSection.Padding = compact
-                    ? new Padding(10, 4, 10, 4)
-                    : new Padding(14, 6, 14, 6);
-                _noteSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            }
-
-            if (_totalsSection != null)
-            {
-                _totalsSection.MinimumSize = new Size(
-                    0,
-                    compact
-                        ? BookDeskUiSpec.PurchaseSummaryCompactHeight
-                        : BookDeskUiSpec.PurchaseSummaryStandardHeight);
-                _totalsSection.Padding = compact
-                    ? new Padding(8, 7, 8, 7)
-                    : new Padding(12, 9, 12, 9);
-                _totalsSection.Margin = new Padding(0, profile.SectionGap, 0, 0);
-            }
-
-            if (_metrics != null)
-                _metrics.WrapContents = true;
-            if (_bottomActions != null)
-                _bottomActions.WrapContents = false;
-
-            ResizeSummaryLabel(_lineCount, compact ? 84 : 110, compact ? 34 : 40, profile, false);
-            ResizeSummaryLabel(_quantityTotal, compact ? 94 : 126, compact ? 34 : 40, profile, false);
-            ResizeSummaryLabel(_originalTotal, compact ? 118 : 150, compact ? 34 : 40, profile, false);
-            ResizeSummaryLabel(_discountTotal, compact ? 112 : 142, compact ? 34 : 40, profile, false);
-            ResizeSummaryLabel(_total, compact ? 146 : 190, compact ? 34 : 40, profile, true);
-
-            _indexColumn.Visible = true;
-            _selfCodeColumn.Visible = true;
-            _isbnColumn.Visible = true;
-            _titleColumn.Visible = true;
-            _authorColumn.Visible = true;
-            _publisherColumn.Visible = true;
-            _quantityColumn.Visible = true;
-            _unitCostColumn.Visible = true;
-            _discountColumn.Visible = true;
-            _discountedUnitCostColumn.Visible = !compact;
-            _lineTotalColumn.Visible = true;
-            _shelfColumn.Visible = false;
-            _stockColumn.Visible = false;
-
-            _grid.LoadLayout();
-            _grid.Refresh();
-            if (_rows.Count == 0)
-            {
-                LayoutEmptyCartSurface();
-                _emptyState.BringToFront();
-            }
+            ApplyResponsiveColumnsForDpi(DeviceDpi);
         }
 
-private static void ResizeFieldHost(
-            Control control,
-            int labelWidth,
-            int controlWidth,
-            int height)
+        // Profile metrics and AntdUI table values are logical 96-DPI units.
+        // WinForms control sizes set during layout must be device pixels.
+        private void ApplyResponsiveColumnsForDpi(int dpi)
         {
-            if (control == null || control.Parent == null)
-                return;
+            if (_applyingResponsiveLayout) return;
+            _applyingResponsiveLayout = true;
+            try
+            {
+                var profile = _profile ?? BookDeskUiSpec.Standard;
+                var compact = profile.IsCompact;
+                var expanded = string.Equals(profile.Name, "expanded", StringComparison.Ordinal);
+                var controlHeight = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
+                var fieldHeightLogical = compact ? BookDeskUiSpec.PurchaseFieldCompactHeight : BookDeskUiSpec.PurchaseFieldStandardHeight;
+                var fieldHeight = BookDeskUiSpec.ToDevicePixels(fieldHeightLogical, dpi);
+                var topButtonHeight = compact ? BookDeskUiSpec.PurchaseTopButtonCompactHeight : BookDeskUiSpec.PurchaseTopButtonStandardHeight;
+                var gap = BookDeskUiSpec.ToDevicePixels(profile.SectionGap, dpi);
 
+                if (_receivingSection != null) _receivingSection.Padding = Padding.Empty;
+                if (_actionRow != null)
+                {
+                    _actionRow.Margin = Padding.Empty;
+                    _actionRow.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact
+                        ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight : BookDeskUiSpec.PurchaseTopToolbarStandardHeight, dpi));
+                    _actionRow.WrapContents = true;
+                }
+                SetTopToolbarButton(_newOrderButton, 118, topButtonHeight, profile, dpi);
+                SetTopToolbarButton(_historyButton, 112, topButtonHeight, profile, dpi);
+                SetTopToolbarButton(_previousButton, 96, topButtonHeight, profile, dpi);
+                SetTopToolbarButton(_nextButton, 96, topButtonHeight, profile, dpi);
+                SetTopToolbarButton(_exportButton, 118, topButtonHeight, profile, dpi);
+                SetTopToolbarButton(_lookupButton, 112, topButtonHeight, profile, dpi);
+                SetTopToolbarButton(_clearButton, 118, topButtonHeight, profile, dpi);
+                if (_clearButton != null) _clearButton.Margin = Padding.Empty;
+                SetToolbarButton(_removeButton, 106, profile, dpi);
+                SetToolbarButton(_saveDraftButton, compact ? 96 : 104, profile, dpi);
+                SetToolbarButton(_unreviewButton, compact ? 80 : 88, profile, dpi);
+                SetToolbarButton(_reviewButton, compact ? 104 : 112, profile, dpi);
+
+                _purchaseDate.MinimumSize = new Size(0, fieldHeight);
+                _purchaseDate.Height = fieldHeight;
+                _orderNo.MinimumSize = new Size(0, fieldHeight);
+                _orderNo.Height = fieldHeight;
+                _supplier.MinimumSize = new Size(0, fieldHeight);
+                _supplier.Height = fieldHeight;
+                var discountWidth = BookDeskUiSpec.ToDevicePixels(compact ? 96 : 112, dpi);
+                _orderDiscount.MinimumSize = new Size(discountWidth, controlHeight);
+                _orderDiscount.Size = new Size(discountWidth, controlHeight);
+                _orderDiscount.Font = UiTheme.Font(profile.BodyFontPoints);
+                _note.MinimumSize = new Size(0, controlHeight);
+                _note.Height = controlHeight;
+                _purchaseDate.Font = UiTheme.Font(profile.BodyFontPoints);
+                _orderNo.Font = UiTheme.Font(profile.BodyFontPoints);
+                _supplier.Font = UiTheme.Font(profile.BodyFontPoints);
+                _note.Font = UiTheme.Font(profile.BodyFontPoints);
+
+                ResizeFieldHost(_purchaseDate, BookDeskUiSpec.PurchaseDateLabelWidth, compact ? 176 : 206, fieldHeight, dpi);
+                ResizeFieldHost(_orderNo, BookDeskUiSpec.PurchaseOrderNoLabelWidth, compact ? 210 : 258, fieldHeight, dpi);
+                ResizeFieldHost(_supplier, BookDeskUiSpec.PurchaseSupplierLabelWidth,
+                    compact ? BookDeskUiSpec.PurchaseSupplierCompactWidth : expanded
+                        ? BookDeskUiSpec.PurchaseSupplierExpandedWidth : BookDeskUiSpec.PurchaseSupplierStandardWidth, fieldHeight, dpi);
+                var statusSize = new Size(BookDeskUiSpec.ToDevicePixels(118, dpi), fieldHeight);
+                _statusLabel.MinimumSize = statusSize;
+                _statusLabel.Size = statusSize;
+                _statusLabel.Font = UiTheme.Font(profile.BodyFontPoints, FontStyle.Bold);
+
+                if (_documentSection != null)
+                {
+                    var targetHeight = compact ? BookDeskUiSpec.PurchaseDocumentCompactHeight : BookDeskUiSpec.PurchaseDocumentStandardHeight;
+                    var horizontalPadding = compact ? 10 : 14;
+                    var verticalPadding = Math.Max(0, (targetHeight - fieldHeightLogical) / 2);
+                    _documentSection.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(targetHeight, dpi));
+                    _documentSection.Padding = ScalePurchasePadding(new Padding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding), dpi);
+                    _documentSection.Margin = new Padding(0, gap, 0, 0);
+                }
+                if (_cartHost != null) _cartHost.Margin = new Padding(0, gap, 0, 0);
+                if (_cartHeader != null)
+                {
+                    _cartHeader.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? 44 : BookDeskUiSpec.PurchaseCartHeaderHeight, dpi));
+                    _cartHeader.Padding = ScalePurchasePadding(compact ? new Padding(10, 4, 10, 4) : new Padding(12, 5, 12, 5), dpi);
+                }
+                _grid.RowHeightHeader = profile.TableHeaderHeight;
+                _grid.RowHeight = profile.TableRowHeight;
+                _grid.Font = UiTheme.Font(profile.TableFontPoints);
+                ApplyColumnWidths(profile);
+                _grid.ApplyCachedColumnWidths();
+                _emptyState.Font = UiTheme.Font(profile.SecondaryFontPoints);
+                LayoutEmptyCartSurfaceForDpi(dpi);
+
+                if (_noteSection != null)
+                {
+                    _noteSection.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? BookDeskUiSpec.PurchaseNoteCompactHeight : BookDeskUiSpec.PurchaseNoteStandardHeight, dpi));
+                    _noteSection.Padding = ScalePurchasePadding(compact ? new Padding(10, 4, 10, 4) : new Padding(14, 6, 14, 6), dpi);
+                    _noteSection.Margin = new Padding(0, gap, 0, 0);
+                }
+                if (_totalsSection != null)
+                {
+                    _totalsSection.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? BookDeskUiSpec.PurchaseSummaryCompactHeight : BookDeskUiSpec.PurchaseSummaryStandardHeight, dpi));
+                    _totalsSection.Padding = ScalePurchasePadding(compact ? new Padding(8, 7, 8, 7) : new Padding(12, 9, 12, 9), dpi);
+                    _totalsSection.Margin = new Padding(0, gap, 0, 0);
+                }
+                if (_metrics != null) _metrics.WrapContents = true;
+                if (_bottomActions != null) _bottomActions.WrapContents = false;
+                _orderDiscountLabel.Margin = ScalePurchasePadding(new Padding(0, 9, 6, 0), dpi);
+                ResizeSummaryLabel(_lineCount, compact ? 84 : 110, compact ? 34 : 40, profile, false, dpi);
+                ResizeSummaryLabel(_quantityTotal, compact ? 94 : 126, compact ? 34 : 40, profile, false, dpi);
+                ResizeSummaryLabel(_originalTotal, compact ? 118 : 150, compact ? 34 : 40, profile, false, dpi);
+                ResizeSummaryLabel(_discountTotal, compact ? 112 : 142, compact ? 34 : 40, profile, false, dpi);
+                ResizeSummaryLabel(_total, compact ? 146 : 190, compact ? 34 : 40, profile, true, dpi);
+
+                _indexColumn.Visible = true;
+                _selfCodeColumn.Visible = true;
+                _isbnColumn.Visible = true;
+                _titleColumn.Visible = true;
+                _authorColumn.Visible = true;
+                _publisherColumn.Visible = true;
+                _quantityColumn.Visible = true;
+                _unitCostColumn.Visible = true;
+                _discountColumn.Visible = true;
+                _discountedUnitCostColumn.Visible = !compact;
+                _lineTotalColumn.Visible = true;
+                _shelfColumn.Visible = false;
+                _stockColumn.Visible = false;
+                _grid.LoadLayout();
+                _grid.Refresh();
+                if (_rows.Count == 0)
+                {
+                    LayoutEmptyCartSurfaceForDpi(dpi);
+                    _emptyState.BringToFront();
+                }
+            }
+            finally { _applyingResponsiveLayout = false; }
+        }
+
+        private static Padding ScalePurchasePadding(Padding padding, int dpi)
+        {
+            return new Padding(BookDeskUiSpec.ToDevicePixels(padding.Left, dpi),
+                BookDeskUiSpec.ToDevicePixels(padding.Top, dpi),
+                BookDeskUiSpec.ToDevicePixels(padding.Right, dpi),
+                BookDeskUiSpec.ToDevicePixels(padding.Bottom, dpi));
+        }
+
+        private static void ResizeFieldHost(Control control, int labelWidth, int controlWidth, int height, int dpi)
+        {
+            if (control == null || control.Parent == null) return;
             var host = control.Parent as TableLayoutPanel;
-            if (host == null)
-                return;
-
-            host.Width = labelWidth + controlWidth;
-            host.Height = height;
-            host.MinimumSize = new Size(labelWidth + controlWidth, height);
+            if (host == null) return;
+            var width = BookDeskUiSpec.ToDevicePixels(labelWidth + controlWidth, dpi);
+            host.MinimumSize = new Size(width, height);
+            host.Size = new Size(width, height);
+            host.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(10, dpi), 0);
             if (host.ColumnStyles.Count >= 2)
             {
                 host.ColumnStyles[0].SizeType = SizeType.Absolute;
-                host.ColumnStyles[0].Width = labelWidth;
+                host.ColumnStyles[0].Width = BookDeskUiSpec.ToDevicePixels(labelWidth, dpi);
             }
         }
 
-private static void SetTopToolbarButton(
-            AntdUI.Button button,
-            int width,
-            int height,
-            UiSpecProfile profile)
+        private static void SetTopToolbarButton(AntdUI.Button button, int width, int height, UiSpecProfile profile, int dpi)
         {
             if (button == null) return;
-
-            var toolbarHeight = profile.IsCompact
-                ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight
-                : BookDeskUiSpec.PurchaseTopToolbarStandardHeight;
+            var toolbarHeight = profile.IsCompact ? BookDeskUiSpec.PurchaseTopToolbarCompactHeight : BookDeskUiSpec.PurchaseTopToolbarStandardHeight;
             var verticalMargin = Math.Max(0, (toolbarHeight - height) / 2);
-            var horizontalPadding = profile.IsCompact
-                ? BookDeskUiSpec.PurchaseTopButtonCompactPaddingX
-                : BookDeskUiSpec.PurchaseTopButtonStandardPaddingX;
-
-            button.Width = width;
-            button.Height = height;
-            button.MinimumSize = new Size(width, height);
-            button.Padding = new Padding(horizontalPadding, 0, horizontalPadding, 0);
+            var horizontalPadding = profile.IsCompact ? BookDeskUiSpec.PurchaseTopButtonCompactPaddingX : BookDeskUiSpec.PurchaseTopButtonStandardPaddingX;
+            var size = new Size(BookDeskUiSpec.ToDevicePixels(width, dpi), BookDeskUiSpec.ToDevicePixels(height, dpi));
+            button.MinimumSize = size;
+            button.Size = size;
+            button.Padding = ScalePurchasePadding(new Padding(horizontalPadding, 0, horizontalPadding, 0), dpi);
             button.Font = UiTheme.Font(profile.BodyFontPoints);
-            button.Margin = new Padding(0, verticalMargin, profile.ControlGap, verticalMargin);
+            button.Margin = ScalePurchasePadding(new Padding(0, verticalMargin, profile.ControlGap, verticalMargin), dpi);
         }
 
-private static void SetToolbarButton(AntdUI.Button button, int width, UiSpecProfile profile)
+        private static void SetToolbarButton(AntdUI.Button button, int width, UiSpecProfile profile, int dpi)
         {
             if (button == null) return;
-            button.Width = width;
-            button.Height = profile.ControlHeight;
-            button.MinimumSize = new Size(width, profile.ControlHeight);
+            var size = new Size(BookDeskUiSpec.ToDevicePixels(width, dpi), BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi));
+            button.MinimumSize = size;
+            button.Size = size;
             button.Font = UiTheme.Font(profile.BodyFontPoints);
-            button.Margin = new Padding(0, 0, profile.ControlGap, 0);
+            button.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(profile.ControlGap, dpi), 0);
         }
 
-private static void ResizeSummaryLabel(
-            Label label,
-            int width,
-            int height,
-            UiSpecProfile profile,
-            bool primary)
+        private static void ResizeSummaryLabel(Label label, int width, int height, UiSpecProfile profile, bool primary, int dpi)
         {
             if (label == null) return;
             label.AutoSize = false;
-            label.Size = new Size(width, height);
-            label.MinimumSize = new Size(width, height);
+            var size = new Size(BookDeskUiSpec.ToDevicePixels(width, dpi), BookDeskUiSpec.ToDevicePixels(height, dpi));
+            label.MinimumSize = size;
+            label.Size = size;
             label.TextAlign = ContentAlignment.MiddleCenter;
-            label.Padding = new Padding(8, 0, 8, 0);
-            label.Font = UiTheme.Font(
-                primary ? BookDeskUiSpec.PixelFontToPoints(15) : profile.BodyFontPoints,
-                FontStyle.Bold);
+            label.Padding = ScalePurchasePadding(new Padding(8, 0, 8, 0), dpi);
+            label.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(8, dpi), 0);
+            label.Font = UiTheme.Font(primary ? BookDeskUiSpec.PixelFontToPoints(15) : profile.BodyFontPoints, FontStyle.Bold);
         }
 
 private void ApplyColumnWidths(UiSpecProfile profile)
@@ -717,9 +650,14 @@ private void ApplyColumnWidths(UiSpecProfile profile)
 
 private void LayoutEmptyCartSurface()
         {
+            LayoutEmptyCartSurfaceForDpi(DeviceDpi);
+        }
+
+        private void LayoutEmptyCartSurfaceForDpi(int dpi)
+        {
             if (_grid == null) return;
             var profile = _profile ?? BookDeskUiSpec.Standard;
-            var headerHeight = Math.Min(profile.TableHeaderHeight, Math.Max(0, _grid.ClientSize.Height));
+            var headerHeight = Math.Min(BookDeskUiSpec.ToDevicePixels(profile.TableHeaderHeight, dpi), Math.Max(0, _grid.ClientSize.Height));
             _emptyState.SetBounds(
                 0,
                 headerHeight,

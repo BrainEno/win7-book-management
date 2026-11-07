@@ -39,7 +39,7 @@ namespace Win7BookManagement.Forms
         private TableLayoutPanel _receivingSection;
         private UiSpecSectionPanel _documentSection;
         private FlowLayoutPanel _actionRow;
-        private TableLayoutPanel _headerFields;
+        private FlowLayoutPanel _headerFields;
         private TableLayoutPanel _cartHost;
         private TableLayoutPanel _cartHeader;
         private TableLayoutPanel _noteSection;
@@ -87,6 +87,7 @@ namespace Win7BookManagement.Forms
         private UiSpecProfile _profile = BookDeskUiSpec.Standard;
         private DateTime _lastScanCharAt = DateTime.MinValue;
         private bool _scannerCaptureEnabled = true;
+        private bool _applyingResponsiveLayout;
 
         public PurchaseForm(ApplicationServices services)
         {
