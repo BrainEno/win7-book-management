@@ -534,7 +534,7 @@ namespace Win7BookManagement.Forms
             // The approved four-page spec is table-first through 2560x1440.
             // Retain the legacy detail pane for exceptional ultra-wide setups,
             // but keep it outside the required acceptance matrix.
-            var showDetails = ClientSize.Width >= 3000;
+            var showDetails = BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, DeviceDpi) >= 3000;
             _split.Panel2Collapsed = !showDetails;
 
             if (showDetails)
@@ -548,7 +548,8 @@ namespace Win7BookManagement.Forms
                     _split.SplitterDistance = Math.Min(distance, maximumDistance);
             }
 
-            var gridWidth = showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width;
+            var gridWidth = BookDeskUiSpec.ToLogicalPixels(
+                showDetails ? _split.Panel1.ClientSize.Width : ClientSize.Width, DeviceDpi);
 
             // The ui-spec requires all columns to remain visible at 1366x768.
             // Below the supported 1280px shell minimum, progressively remove

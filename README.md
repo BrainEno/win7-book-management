@@ -19,7 +19,7 @@
 
 ## 系统要求
 
-- Windows 7 SP1 或更高，x86 / x64；建议 2 GB 内存，支持 1024×768 与高 DPI。
+- Windows 7 SP1 或更高（包括 Windows 11），x86 / x64；建议 2 GB 内存，目标适配 1024×768 与高 DPI。Win11 4K / 高缩放仍需按 [烟测清单](docs/WIN7_SMOKE_TEST.md) 实机验收。
 - Win7 安装 .NET 4.8 前需 **KB4474419、KB4490628**；安装器会检测并提示。安装包内置 .NET 4.8 离线运行时，目标电脑无需联网。
 - 不需要 Microsoft Excel 即可生成报表。旧版 Office 打开 .xlsx 需兼容包，详见 FAQ。
 - 发布包附 `SHA256SUMS`。未配置签名证书的构建会明确标为未签名；商用分发前应完成代码签名与 [Win7 实机验收](docs/WIN7_SMOKE_TEST.md)。

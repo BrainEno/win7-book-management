@@ -23,6 +23,39 @@ namespace Win7BookManagement.Tests
         }
 
         [TestMethod]
+        public void ResponsiveProfiles_UseLogicalSizeInsteadOfPhysicalResolution()
+        {
+            Assert.AreEqual("tight", BookDeskUiSpec.ResolveForDpi(1024, 728, 96).Name);
+            Assert.AreEqual("tight", BookDeskUiSpec.ResolveForDpi(1366, 728, 120).Name);
+            Assert.AreEqual("compact", BookDeskUiSpec.ResolveForDpi(1920, 1040, 144).Name);
+            Assert.AreEqual("standard", BookDeskUiSpec.ResolveForDpi(3840, 2160, 192).Name);
+            Assert.AreEqual("expanded", BookDeskUiSpec.ResolveForDpi(3840, 2160, 144).Name);
+            Assert.AreEqual("standard", BookDeskUiSpec.ResolveForDpi(1600, 900, 0).Name);
+            Assert.AreEqual("tight", BookDeskUiSpec.ResolveForDpi(2360, 1800, 192).Name);
+            Assert.AreEqual("compact", BookDeskUiSpec.ResolveForDpi(2362, 1800, 192).Name);
+        }
+
+        [TestMethod]
+        public void DpiConversions_KeepLogicalControlsReadableWithoutScalingFontsTwice()
+        {
+            Assert.AreEqual(96, BookDeskUiSpec.ToDevicePixels(96, 96));
+            Assert.AreEqual(120, BookDeskUiSpec.ToDevicePixels(96, 120));
+            Assert.AreEqual(144, BookDeskUiSpec.ToDevicePixels(96, 144));
+            Assert.AreEqual(192, BookDeskUiSpec.ToDevicePixels(96, 192));
+            Assert.AreEqual(48, BookDeskUiSpec.ToDevicePixels(32, 144));
+            Assert.AreEqual(64, BookDeskUiSpec.ToDevicePixels(32, 192));
+            Assert.AreEqual(1920, BookDeskUiSpec.ToLogicalPixels(3840, 192));
+            Assert.AreEqual(2560, BookDeskUiSpec.ToLogicalPixels(3840, 144));
+            Assert.AreEqual(50, BookDeskUiSpec.ToDevicePixels(50, 0));
+            Assert.AreEqual(0, BookDeskUiSpec.ToLogicalPixels(-1, 96));
+            Assert.AreEqual(int.MaxValue, BookDeskUiSpec.ToDevicePixels(int.MaxValue, int.MaxValue));
+            // Profiles keep point-sized fonts: the OS, not resolution scaling,
+            // determines their rendered size.
+            Assert.AreEqual(BookDeskUiSpec.Standard.PageTitleFontPoints,
+                BookDeskUiSpec.ResolveForDpi(3840, 2160, 192).PageTitleFontPoints);
+        }
+
+        [TestMethod]
         public void ChineseFontFallback_PrefersInstalledSimSunToSegoe()
         {
             Assert.AreEqual("SimSun", UiTheme.SelectFontFamily(new[] { "Segoe UI", "simsun" }, "fallback"));
