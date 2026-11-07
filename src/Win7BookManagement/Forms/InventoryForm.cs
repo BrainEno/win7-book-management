@@ -35,6 +35,7 @@ namespace Win7BookManagement.Forms
         private TableLayoutPanel _detailHeader;
         private TableLayoutPanel _detailsTable;
         private UiSpecProfile _profile = BookDeskUiSpec.Standard;
+        private bool _applyingResponsiveLayout;
 
         private readonly AntdUI.Column _selfCodeColumn;
         private readonly AntdUI.Column _isbnColumn;
@@ -231,7 +232,6 @@ namespace Win7BookManagement.Forms
             _split.IsSplitterFixed = true;
             _split.BackColor = UiTheme.Background;
             _split.Margin = new Padding(0, BookDeskUiSpec.Standard.SectionGap, 0, 0);
-
             ConfigureGrid();
 
             _leftSurface = new UiSpecSectionPanel
@@ -262,6 +262,7 @@ namespace Win7BookManagement.Forms
             _detailSurface = CreateDetailPanel();
             _split.Panel1.Controls.Add(_leftSurface);
             _split.Panel2.Controls.Add(_detailSurface);
+            _split.Resize += delegate { ApplyResponsiveLayout(); };
             return _split;
         }
 
@@ -453,136 +454,153 @@ namespace Win7BookManagement.Forms
         // dimensions below remain logical because the table scales them.
         private void ApplyResponsiveLayoutForDpi(int dpi)
         {
-            if (_split.Width <= 0)
+            if (_split.Width <= 0 || _applyingResponsiveLayout)
+                return;
+            _applyingResponsiveLayout = true;
+            try
+            {
+                var profile = _profile ?? BookDeskUiSpec.Standard;
+                var compact = profile.IsCompact;
+                var controlHeight = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
+
+                if (_searchSection != null)
+                {
+                    _searchSection.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(profile.ToolbarPadding, dpi));
+                    _searchSection.MinimumSize = new Size(
+                        0,
+                        BookDeskUiSpec.ToDevicePixels(compact
+                            ? BookDeskUiSpec.InventoryToolbarCompactHeight
+                            : BookDeskUiSpec.InventoryToolbarStandardHeight, dpi));
+                }
+
+                if (_searchRow != null)
+                    _searchRow.MinimumSize = new Size(0, controlHeight);
+
+                var searchLabelWidth = BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventorySearchLabelWidth, dpi);
+                _searchLabel.MinimumSize = new Size(searchLabelWidth, controlHeight);
+                _searchLabel.Size = new Size(searchLabelWidth, controlHeight);
+                _search.MinimumSize = new Size(BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventorySearchMinimumWidth, dpi), controlHeight);
+                _search.Height = controlHeight;
+                _search.Font = UiTheme.Font(profile.BodyFontPoints);
+                _search.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(profile.ControlGap, dpi), 0);
+
+                SetToolbarButton(_queryButton, BookDeskUiSpec.InventoryQueryWidth, profile, dpi);
+                SetToolbarButton(_topAdjustButton, BookDeskUiSpec.InventoryTopAdjustWidth, profile, dpi);
+                SetToolbarButton(_detailAdjustButton, BookDeskUiSpec.InventoryDetailAdjustWidth, profile, dpi);
+                SetToolbarButton(_stocktakeButton, 96, profile, dpi);
+                _stocktakeButton.Margin = new Padding(BookDeskUiSpec.ToDevicePixels(12, dpi), 0, 0, 0);
+
+                _lowOnly.MinimumSize = new Size(BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryLowOnlyWidth, dpi), controlHeight);
+                _lowOnly.Size = _lowOnly.MinimumSize;
+                _lowOnly.Font = UiTheme.Font(profile.BodyFontPoints);
+
+                if (_stats != null)
+                {
+                    _stats.Margin = new Padding(0, BookDeskUiSpec.ToDevicePixels(compact ? 8 : 12, dpi), 0, 0);
+                    _stats.WrapContents = true;
+                }
+
+                ResizeMetric(_resultChip, 96, profile.MetricHeight, profile, dpi);
+                ResizeMetric(_lowChip, 108, profile.MetricHeight, profile, dpi);
+                ResizeMetric(_stockChip, 138, profile.MetricHeight, profile, dpi);
+
+                if (_helperText != null)
+                {
+                    _helperText.Font = UiTheme.Font(profile.SecondaryFontPoints);
+                    _helperText.Visible = !compact || BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, dpi) >= 1320;
+                    _helperText.Margin = new Padding(BookDeskUiSpec.ToDevicePixels(6, dpi), BookDeskUiSpec.ToDevicePixels(7, dpi), 0, 0);
+                }
+
+                _split.Margin = new Padding(0, BookDeskUiSpec.ToDevicePixels(profile.SectionGap, dpi), 0, 0);
+                _split.SplitterWidth = BookDeskUiSpec.ToDevicePixels(profile.SectionGap, dpi);
+
+                ApplySplitLayout(profile, dpi);
+
+                _grid.RowHeightHeader = profile.TableHeaderHeight;
+                _grid.RowHeight = profile.TableRowHeight;
+                _grid.Font = UiTheme.Font(profile.TableFontPoints);
+                ApplyColumnWidths(profile);
+
+                _summary.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? 30 : 34, dpi));
+                _summary.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(12, dpi), 0, BookDeskUiSpec.ToDevicePixels(8, dpi), 0);
+                _summary.Font = UiTheme.Font(profile.SecondaryFontPoints);
+
+                if (_detailSurface != null)
+                    _detailSurface.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(compact ? 10 : 14, dpi));
+                if (_detailHeader != null)
+                    _detailHeader.Height = BookDeskUiSpec.ToDevicePixels(48, dpi);
+                if (_detailsTable != null && _detailsTable.ColumnStyles.Count > 0)
+                    _detailsTable.ColumnStyles[0].Width = BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailLabelWidth, dpi);
+                if (_detailsTable != null)
+                    foreach (Control control in _detailsTable.Controls)
+                        if (_detailsTable.GetColumn(control) == 0)
+                            control.MinimumSize = new Size(BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailLabelWidth, dpi),
+                                BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailRowHeight, dpi));
+
+                foreach (var value in _detailValues.Values)
+                {
+                    value.Font = UiTheme.Font(profile.SecondaryFontPoints);
+                    value.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? 50 : BookDeskUiSpec.InventoryDetailRowHeight - 8, dpi));
+                }
+
+                _selfCodeColumn.Visible = true;
+                _isbnColumn.Visible = true;
+                _titleColumn.Visible = true;
+                _authorColumn.Visible = true;
+                _categoryColumn.Visible = true;
+                _shelfColumn.Visible = true;
+                _stockColumn.Visible = true;
+                _grid.LoadLayout();
+            }
+            finally
+            {
+                _applyingResponsiveLayout = false;
+            }
+        }
+
+        private void ApplySplitLayout(UiSpecProfile profile, int dpi)
+        {
+            // Orientation changes can occur before the docked split has been
+            // laid out. Defer until both axes can accommodate both panels.
+            var min = _split.Panel1MinSize + _split.Panel2MinSize + _split.SplitterWidth;
+            if (_split.Width <= min || _split.Height <= min)
                 return;
 
-            var profile = _profile ?? BookDeskUiSpec.Standard;
-            var compact = profile.IsCompact;
-            var controlHeight = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
-
-            if (_searchSection != null)
+            var stackDetails = BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, dpi) < BookDeskUiSpec.InventorySplitStackThreshold;
+            var targetOrientation = stackDetails ? Orientation.Horizontal : Orientation.Vertical;
+            if (_split.Orientation != targetOrientation)
             {
-                _searchSection.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(profile.ToolbarPadding, dpi));
-                _searchSection.MinimumSize = new Size(
-                    0,
-                    BookDeskUiSpec.ToDevicePixels(compact
-                        ? BookDeskUiSpec.InventoryToolbarCompactHeight
-                        : BookDeskUiSpec.InventoryToolbarStandardHeight, dpi));
+                // WinForms validates the old distance while switching axes.
+                var safeMaximum = Math.Min(_split.Width, _split.Height) - _split.SplitterWidth - _split.Panel2MinSize;
+                if (_split.SplitterDistance > safeMaximum)
+                    _split.SplitterDistance = safeMaximum;
+                _split.Orientation = targetOrientation;
             }
 
-            if (_searchRow != null)
-                _searchRow.MinimumSize = new Size(0, controlHeight);
-
-            var searchLabelWidth = BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventorySearchLabelWidth, dpi);
-            _searchLabel.MinimumSize = new Size(searchLabelWidth, controlHeight);
-            _searchLabel.Size = new Size(searchLabelWidth, controlHeight);
-            _search.MinimumSize = new Size(BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventorySearchMinimumWidth, dpi), controlHeight);
-            _search.Height = controlHeight;
-            _search.Font = UiTheme.Font(profile.BodyFontPoints);
-            _search.Margin = new Padding(0, 0, BookDeskUiSpec.ToDevicePixels(profile.ControlGap, dpi), 0);
-
-            SetToolbarButton(_queryButton, BookDeskUiSpec.InventoryQueryWidth, profile, dpi);
-            SetToolbarButton(_topAdjustButton, BookDeskUiSpec.InventoryTopAdjustWidth, profile, dpi);
-            SetToolbarButton(_detailAdjustButton, BookDeskUiSpec.InventoryDetailAdjustWidth, profile, dpi);
-            SetToolbarButton(_stocktakeButton, 96, profile, dpi);
-            _stocktakeButton.Margin = new Padding(BookDeskUiSpec.ToDevicePixels(12, dpi), 0, 0, 0);
-
-            _lowOnly.MinimumSize = new Size(BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryLowOnlyWidth, dpi), controlHeight);
-            _lowOnly.Size = _lowOnly.MinimumSize;
-            _lowOnly.Font = UiTheme.Font(profile.BodyFontPoints);
-
-            if (_stats != null)
-            {
-                _stats.Margin = new Padding(0, BookDeskUiSpec.ToDevicePixels(compact ? 8 : 12, dpi), 0, 0);
-                _stats.WrapContents = true;
-            }
-
-            ResizeMetric(_resultChip, 96, profile.MetricHeight, profile, dpi);
-            ResizeMetric(_lowChip, 108, profile.MetricHeight, profile, dpi);
-            ResizeMetric(_stockChip, 138, profile.MetricHeight, profile, dpi);
-
-            if (_helperText != null)
-            {
-                _helperText.Font = UiTheme.Font(profile.SecondaryFontPoints);
-                _helperText.Visible = !compact || BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, dpi) >= 1320;
-                _helperText.Margin = new Padding(BookDeskUiSpec.ToDevicePixels(6, dpi), BookDeskUiSpec.ToDevicePixels(7, dpi), 0, 0);
-            }
-
-            _split.Margin = new Padding(0, BookDeskUiSpec.ToDevicePixels(profile.SectionGap, dpi), 0, 0);
-            _split.SplitterWidth = BookDeskUiSpec.ToDevicePixels(profile.SectionGap, dpi);
-
-            var workspaceWidth = BookDeskUiSpec.ToLogicalPixels(ClientSize.Width, dpi);
-            var stackDetails = workspaceWidth < BookDeskUiSpec.InventorySplitStackThreshold;
-
+            _split.FixedPanel = FixedPanel.Panel2;
             if (stackDetails)
             {
-                if (_split.Orientation != Orientation.Horizontal)
-                    _split.Orientation = Orientation.Horizontal;
-
-                _split.FixedPanel = FixedPanel.Panel2;
                 var desiredBottomHeight = Math.Min(BookDeskUiSpec.ToDevicePixels(330, dpi),
                     Math.Max(BookDeskUiSpec.ToDevicePixels(250, dpi), _split.Height / 3));
-                var maxDistance = _split.Height - desiredBottomHeight - _split.SplitterWidth;
-                if (maxDistance > BookDeskUiSpec.ToDevicePixels(220, dpi) &&
-                    maxDistance >= _split.Panel1MinSize && maxDistance <= _split.Height - _split.SplitterWidth - _split.Panel2MinSize)
-                    _split.SplitterDistance = maxDistance;
+                var distance = _split.Height - desiredBottomHeight - _split.SplitterWidth;
+                if (distance > BookDeskUiSpec.ToDevicePixels(220, dpi) &&
+                    distance >= _split.Panel1MinSize && distance <= _split.Height - _split.SplitterWidth - _split.Panel2MinSize)
+                    _split.SplitterDistance = distance;
             }
             else
             {
-                if (_split.Orientation != Orientation.Vertical)
-                    _split.Orientation = Orientation.Vertical;
-
-                _split.FixedPanel = FixedPanel.Panel2;
-                var desiredRightWidth = compact
+                var desiredRightWidth = profile.IsCompact
                     ? BookDeskUiSpec.InventoryDetailCompactWidth
                     : BookDeskUiSpec.InventoryDetailStandardWidth;
-                desiredRightWidth = Math.Min(
-                    BookDeskUiSpec.InventoryDetailMaxWidth,
+                desiredRightWidth = Math.Min(BookDeskUiSpec.InventoryDetailMaxWidth,
                     Math.Max(BookDeskUiSpec.InventoryDetailCompactWidth, desiredRightWidth));
-                desiredRightWidth = BookDeskUiSpec.ToDevicePixels(desiredRightWidth, dpi);
-                var distance = _split.Width - desiredRightWidth - _split.SplitterWidth;
-                var maximumDistance = _split.Width - BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailCompactWidth, dpi) - _split.SplitterWidth;
+                var distance = _split.Width - BookDeskUiSpec.ToDevicePixels(desiredRightWidth, dpi) - _split.SplitterWidth;
+                var maximumDistance = Math.Min(_split.Width - BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailCompactWidth, dpi) - _split.SplitterWidth,
+                    _split.Width - _split.SplitterWidth - _split.Panel2MinSize);
                 var minimumLeft = Math.Max(_split.Panel1MinSize, BookDeskUiSpec.ToDevicePixels(600, dpi));
-                maximumDistance = Math.Min(maximumDistance, _split.Width - _split.SplitterWidth - _split.Panel2MinSize);
                 if (distance >= minimumLeft && maximumDistance >= minimumLeft)
                     _split.SplitterDistance = Math.Min(distance, maximumDistance);
             }
-
-            _grid.RowHeightHeader = profile.TableHeaderHeight;
-            _grid.RowHeight = profile.TableRowHeight;
-            _grid.Font = UiTheme.Font(profile.TableFontPoints);
-            ApplyColumnWidths(profile);
-
-            _summary.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? 30 : 34, dpi));
-            _summary.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(12, dpi), 0, BookDeskUiSpec.ToDevicePixels(8, dpi), 0);
-            _summary.Font = UiTheme.Font(profile.SecondaryFontPoints);
-
-            if (_detailSurface != null)
-                _detailSurface.Padding = new Padding(BookDeskUiSpec.ToDevicePixels(compact ? 10 : 14, dpi));
-            if (_detailHeader != null)
-                _detailHeader.Height = BookDeskUiSpec.ToDevicePixels(48, dpi);
-            if (_detailsTable != null && _detailsTable.ColumnStyles.Count > 0)
-                _detailsTable.ColumnStyles[0].Width = BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailLabelWidth, dpi);
-            if (_detailsTable != null)
-                foreach (Control control in _detailsTable.Controls)
-                    if (_detailsTable.GetColumn(control) == 0)
-                        control.MinimumSize = new Size(BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailLabelWidth, dpi),
-                            BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailRowHeight, dpi));
-
-            foreach (var value in _detailValues.Values)
-            {
-                value.Font = UiTheme.Font(profile.SecondaryFontPoints);
-                value.MinimumSize = new Size(0, BookDeskUiSpec.ToDevicePixels(compact ? 50 : BookDeskUiSpec.InventoryDetailRowHeight - 8, dpi));
-            }
-
-            _selfCodeColumn.Visible = true;
-            _isbnColumn.Visible = true;
-            _titleColumn.Visible = true;
-            _authorColumn.Visible = true;
-            _categoryColumn.Visible = true;
-            _shelfColumn.Visible = true;
-            _stockColumn.Visible = true;
-            _grid.LoadLayout();
         }
 
         private void ApplyColumnWidths(UiSpecProfile profile)
