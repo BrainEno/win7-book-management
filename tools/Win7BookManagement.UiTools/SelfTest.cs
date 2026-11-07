@@ -844,6 +844,7 @@ namespace Win7BookManagement.Infrastructure
                 VerifyPersistentTableWidths(services);
                 VerifyBookListDpiMetrics(services);
                 VerifyPurchaseDpiMetrics(services);
+                VerifySalesDpiColumnsAndSettlement(services);
                 VerifyWindowPlacementContracts();
                 VerifyHostedShellSmallScreen(services);
                 VerifyUiLayoutContracts(services, storedBook);
@@ -1259,6 +1260,76 @@ namespace Win7BookManagement.Infrastructure
             finally { services.Settings.SetString(key, previous); }
         }
 
+        // Simulated width/DPI pairs check the production breakpoint logic;
+        // the dialog below is shown only at the CI runner's actual DPI.
+        private static void VerifySalesDpiColumnsAndSettlement(ApplicationServices services)
+        {
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            using (var form = new SalesForm(services))
+            {
+                var apply = typeof(SalesForm).GetMethod("ApplyResponsiveColumnsForWidth", flags);
+                var stock = (AntdUI.Column)typeof(SalesForm).GetField("_stockColumn", flags).GetValue(form);
+                var isbn = (AntdUI.Column)typeof(SalesForm).GetField("_isbnColumn", flags).GetValue(form);
+                var author = (AntdUI.Column)typeof(SalesForm).GetField("_authorColumn", flags).GetValue(form);
+                var code = (AntdUI.Column)typeof(SalesForm).GetField("_selfCodeColumn", flags).GetValue(form);
+                foreach (var dpi in new[] { 96, 120, 144, 192 })
+                {
+                    foreach (var logical in new[] { 759, 760, 949, 950, 1149, 1150, 1399, 1400, 1600 })
+                    {
+                        var physical = BookDeskUiSpec.ToDevicePixels(logical, dpi);
+                        var effective = BookDeskUiSpec.ToLogicalPixels(physical, dpi);
+                        apply.Invoke(form, new object[] { physical, dpi });
+                        if (stock.Visible != (effective >= 760) || isbn.Visible != (effective >= 950) ||
+                            author.Visible != (effective >= 1150) || code.Visible != (effective >= 1400))
+                            throw new InvalidOperationException("销售明细列的逻辑宽度判断错误：" + logical + " / DPI " + dpi);
+                    }
+                }
+            }
+
+            var dialogType = typeof(SalesForm).GetNestedType("SalesSettlementDialog", System.Reflection.BindingFlags.NonPublic);
+            using (var dialog = (Form)Activator.CreateInstance(dialogType, services, 1234L))
+            {
+                dialog.ShowInTaskbar = false;
+                dialog.Show();
+                Application.DoEvents();
+                var area = Screen.FromControl(dialog).WorkingArea;
+                if (!area.Contains(dialog.Bounds))
+                    throw new InvalidOperationException("收款窗口超出工作区：" + dialog.Bounds + " / " + area);
+                foreach (var name in new[] { "_payment", "_received", "_change" })
+                {
+                    var control = (Control)dialogType.GetField(name, flags).GetValue(dialog);
+                    AssertVisibleInsideParents(control, area, "收款窗口 " + name);
+                }
+                foreach (var text in new[] { "确认收款", "取消" })
+                    AssertVisibleInsideParents(FindButton(dialog, text), area, "收款窗口 " + text);
+                var values = (System.Collections.Generic.List<string>)dialogType.GetField("_paymentValues", flags).GetValue(dialog);
+                var cash = values.FindIndex(v => string.Equals(v, SalesService.CashPaymentMethod, StringComparison.OrdinalIgnoreCase));
+                if (cash < 0) throw new InvalidOperationException("收款窗口测试缺少现金方式。");
+                var payment = (AntdUI.Select)dialogType.GetField("_payment", flags).GetValue(dialog);
+                var received = (AntdUI.InputNumber)dialogType.GetField("_received", flags).GetValue(dialog);
+                payment.SelectedIndex = cash;
+                received.Value = 20m;
+                Application.DoEvents();
+                dialogType.GetMethod("Confirm", flags).Invoke(dialog, null);
+                if ((long)dialogType.GetProperty("AmountReceivedCent").GetValue(dialog, null) != 2000L ||
+                    (long)dialogType.GetProperty("ChangeCent").GetValue(dialog, null) != 766L ||
+                    dialog.DialogResult != DialogResult.OK)
+                    throw new InvalidOperationException("现金收款或找零结果不正确。");
+            }
+        }
+
+        private static void AssertVisibleInsideParents(Control control, Rectangle screen, string name)
+        {
+            if (control == null || !control.Visible)
+                throw new InvalidOperationException(name + " 不可见。");
+            var bounds = control.RectangleToScreen(control.ClientRectangle);
+            if (bounds.Width <= 0 || bounds.Height <= 0 || !screen.Contains(bounds))
+                throw new InvalidOperationException(name + " 超出工作区：" + bounds);
+            for (Control parent = control.Parent; parent != null; parent = parent.Parent)
+                if (!parent.Visible || !parent.RectangleToScreen(parent.ClientRectangle).Contains(bounds))
+                    throw new InvalidOperationException(name + " 被裁切：" + parent.GetType().Name + " / " + bounds + " / " + parent.RectangleToScreen(parent.ClientRectangle));
+        }
+
         // Exercise the real shell and hosted pages, not standalone child forms.
         // These are logical-size checks on the CI monitor, not a DPI simulation.
         private static void VerifyHostedShellSmallScreen(ApplicationServices services)
@@ -1321,6 +1392,15 @@ namespace Win7BookManagement.Infrastructure
                         Application.DoEvents();
                         shell.PerformLayout();
                         Application.DoEvents();
+                        if (key == "sales")
+                        {
+                            var salesPage = (SalesForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                            var salesFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                            foreach (var fieldName in new[] { "_isbn", "_note", "_orderDiscount" })
+                                AssertVisibleInsideParents((Control)typeof(SalesForm).GetField(fieldName, salesFlags).GetValue(salesPage), screen, "小屏销售 " + fieldName);
+                            foreach (var text in new[] { "加入", "选择图书", "新单", "挂单", "取单", "清空", "移除选中", "重打上一张" })
+                                AssertVisibleInsideParents(FindButton(salesPage, text), screen, "小屏销售 " + text);
+                        }
                         if (key == "purchase")
                         {
                             var purchasePage = (PurchaseForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);

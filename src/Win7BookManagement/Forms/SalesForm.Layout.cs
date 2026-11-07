@@ -339,6 +339,15 @@ private static void ConfigureSummaryLabel(Label label, bool primary)
 private void ApplyResponsiveColumns()
         {
             var width = _grid.ClientSize.Width > 0 ? _grid.ClientSize.Width : ClientSize.Width;
+            ApplyResponsiveColumnsForWidth(width, DeviceDpi);
+        }
+
+        // AntdUI column widths are logical units; use the same units when
+        // choosing which secondary columns fit. Physical 4K pixels alone do
+        // not imply additional space at 150% or 200% system scaling.
+        private void ApplyResponsiveColumnsForWidth(int physicalWidth, int dpi)
+        {
+            var width = BookDeskUiSpec.ToLogicalPixels(physicalWidth, dpi);
             _selfCodeColumn.Visible = width >= 1400;
             _authorColumn.Visible = width >= 1150;
             _isbnColumn.Visible = width >= 950;
