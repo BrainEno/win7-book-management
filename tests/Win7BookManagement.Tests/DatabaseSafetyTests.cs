@@ -423,6 +423,96 @@ INSERT INTO books(isbn,title,created_at,updated_at) VALUES('duplicate','乙','20
         }
 
         [TestMethod]
+        public void AutomaticBackup_CancelBeforePublicationDoesNotPublishOrCopy()
+        {
+            using (var db = new TemporaryDatabase())
+            using (var source = new CancellationTokenSource())
+            {
+                var primary = Path.Combine(db.Root, "primary");
+                var secondary = Path.Combine(db.Root, "secondary");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetString(AutoBackupService.SecondaryBackupPathKey, secondary);
+                db.Services.Settings.SetString(AutoBackupService.LastSecondaryErrorKey, "旧状态");
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                source.Cancel();
+                Assert.ThrowsException<OperationCanceledException>(() => service.CreateNow("cancel", null, source.Token));
+                Assert.AreEqual(0, Directory.GetFiles(primary).Length);
+                Assert.IsFalse(Directory.Exists(secondary));
+                Assert.AreEqual("旧状态", db.Services.Settings.GetString(AutoBackupService.LastSecondaryErrorKey, ""));
+                Assert.AreEqual("", db.Services.Settings.GetString(AutoBackupService.LastBackupUtcKey, ""));
+            }
+        }
+
+        [TestMethod]
+        public void AutomaticBackup_CancelAfterPrimaryPublicationStillCopiesAndPrunes()
+        {
+            using (var db = new TemporaryDatabase())
+            using (var source = new CancellationTokenSource())
+            {
+                var primary = Path.Combine(db.Root, "primary");
+                var secondary = Path.Combine(db.Root, "secondary");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetString(AutoBackupService.SecondaryBackupPathKey, secondary);
+                db.Services.Settings.SetInt(AutoBackupService.BackupRetentionKey, 3);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () => new string[0]);
+                db.Services.Books.Insert(new Book { Title = "取消边界备份", SalePriceCent = 1000 });
+                for (var i = 0; i < 4; i++)
+                {
+                    var older = db.Services.Backup.CreateTimestampedBackup(primary);
+                    File.SetLastWriteTimeUtc(older, DateTime.UtcNow.AddDays(-1));
+                }
+                Func<string, IProgress<int>, CancellationToken, string> publishThenCancel = (dir, progress, token) =>
+                {
+                    var path = db.Services.Backup.CreateTimestampedBackup(dir, progress, token);
+                    source.Cancel();
+                    return path;
+                };
+                var core = typeof(AutoBackupService).GetMethod("CreateNowCore", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                var result = (string)core.Invoke(service, new object[] { "late cancellation", null, source.Token, publishThenCancel });
+                Assert.IsTrue(source.IsCancellationRequested);
+                Assert.IsTrue(File.Exists(result));
+                BackupService.ValidateBackup(result);
+                var copy = Path.Combine(secondary, Path.GetFileName(result));
+                Assert.IsTrue(File.Exists(copy));
+                BackupService.ValidateBackup(copy);
+                Assert.AreEqual(3, Directory.GetFiles(primary, "bookstore_auto_*.db").Length);
+                Assert.AreEqual(0, Directory.GetFiles(primary, "*.writing-*").Length);
+                Assert.AreEqual(0, Directory.GetFiles(secondary, "*.writing-*").Length);
+                Assert.AreEqual(BackupHealthLevel.Ok, service.GetStatus().Level);
+                Assert.AreNotEqual("", db.Services.Settings.GetString(AutoBackupService.LastBackupUtcKey, ""));
+            }
+        }
+
+        [TestMethod]
+        public void AutomaticBackup_CancelDuringSecondCopyFinishesOtherCopiesAndReportsFailure()
+        {
+            using (var db = new TemporaryDatabase())
+            using (var source = new CancellationTokenSource())
+            {
+                var primary = Path.Combine(db.Root, "primary");
+                var configured = Path.Combine(db.Root, "configured");
+                var removable = Path.Combine(db.Root, "removable");
+                var blocker = Path.Combine(db.Root, "blocker");
+                File.WriteAllText(blocker, "not a directory");
+                db.Services.Settings.SetString(AutoBackupService.BackupDirectoryKey, primary);
+                db.Services.Settings.SetString(AutoBackupService.SecondaryBackupPathKey, configured);
+                db.Services.Settings.SetInt(AutoBackupService.BackupRetentionKey, 3);
+                var service = new AutoBackupService(db.Services.Database, db.Services.Settings, () =>
+                {
+                    source.Cancel(); // configured copy has already completed
+                    return new[] { removable, blocker };
+                });
+                var result = service.CreateNow("late cancellation", null, source.Token);
+                Assert.IsTrue(source.IsCancellationRequested);
+                BackupService.ValidateBackup(result);
+                BackupService.ValidateBackup(Path.Combine(configured, Path.GetFileName(result)));
+                BackupService.ValidateBackup(Path.Combine(removable, Path.GetFileName(result)));
+                Assert.AreEqual(BackupHealthLevel.Warning, service.GetStatus().Level);
+                StringAssert.Contains(service.GetStatus().Message, "第二份备份未完成");
+            }
+        }
+
+        [TestMethod]
         public void SecondaryFailure_IsVisibleAndDoesNotUndoPrimaryBackup()
         {
             using (var db = new TemporaryDatabase())

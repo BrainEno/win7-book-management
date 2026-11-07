@@ -182,19 +182,27 @@ namespace Win7BookManagement.Services
             }
         }
 
-        /// <summary>立即备份（UI 按钮 / 验证脚本使用）。失败向上抛出，由界面用中文提示。</summary>
+        /// <summary>立即备份；失败向上抛出。主备份发布后完成第二份备份与保留策略，不再响应取消。</summary>
         public string CreateNow(string reason, IProgress<int> progress = null, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return CreateNowCore(reason, progress, cancellationToken, _backup.CreateTimestampedBackup);
+        }
+
+        // Injectable primary operation permits deterministic testing at the
+        // publication boundary without racing the filesystem or worker thread.
+        private string CreateNowCore(string reason, IProgress<int> progress, CancellationToken cancellationToken,
+            Func<string, IProgress<int>, CancellationToken, string> createPrimary)
         {
             var directory = BackupDirectory;
             Directory.CreateDirectory(directory);
 
-            var path = _backup.CreateTimestampedBackup(directory, progress, cancellationToken);
+            var path = createPrimary(directory, progress, cancellationToken);
+            // The primary backup is now validated and published. A late request
+            // cannot undo it and must not skip the second copy or report cancel.
             _automaticBackupFailure = null;
             _settings.SetString(LastBackupUtcKey, DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
 
-            cancellationToken.ThrowIfCancellationRequested();
             CopyToSecondaryLocations(path);
-            cancellationToken.ThrowIfCancellationRequested();
             PruneManagedBackups(directory, path);
             if (progress != null) progress.Report(100);
 
