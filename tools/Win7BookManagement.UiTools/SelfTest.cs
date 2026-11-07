@@ -1142,6 +1142,19 @@ namespace Win7BookManagement.Infrastructure
 
                 if (!string.Equals(title.Width, expectedWidth.ToString(), StringComparison.Ordinal))
                     throw new InvalidOperationException("AntdUI 表格列宽持久化恢复自检失败。");
+
+                // Simulate AntdUI's drag result, then exercise the production
+                // promotion path and the responsive-default reapplication.
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                var transient = (System.Collections.Generic.Dictionary<int, int>)typeof(AntdUI.Table).GetField("tmpcol_width", flags).GetValue(table);
+                transient[0] = BookDeskUiSpec.ToDevicePixels(260, table.DeviceDpi);
+                typeof(PersistentAntdTable).GetMethod("PromoteAndPersistInteractiveWidths", flags).Invoke(table, null);
+                if (title.Width != "260" || services.Settings.GetInt("ui.table.column_width." + layoutKey + "." + columnKey, -1) != 260)
+                    throw new InvalidOperationException("交互调整列宽未正确保存。");
+                title.Width = "120"; // responsive page reapplies a default
+                table.ApplyCachedColumnWidths();
+                if (title.Width != "260")
+                    throw new InvalidOperationException("窗口重排覆盖了刚调整的列宽。");
             }
         }
 
