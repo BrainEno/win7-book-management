@@ -1377,12 +1377,15 @@ namespace Win7BookManagement.Infrastructure
         {
             const string saleKey = "ui.table.column_width.documents-sale-list.单号";
             const string purchaseKey = "ui.table.column_width.documents-purchase-list.单号";
+            const string itemKey = "ui.table.column_width.documents-sale-items.ISBN";
+            var previousItem = services.Settings.GetString(itemKey, "");
             var previousSale = services.Settings.GetString(saleKey, "");
             var previousPurchase = services.Settings.GetString(purchaseKey, "");
             try
             {
                 services.Settings.SetInt(saleKey, 242);
                 services.Settings.SetInt(purchaseKey, 278);
+                services.Settings.SetInt(itemKey, 198);
                 using (var form = new DocumentCenterForm(services))
                 {
                     form.ShowInTaskbar = false;
@@ -1429,16 +1432,39 @@ namespace Win7BookManagement.Infrastructure
                     type.SelectedIndex = 2;
                     Application.DoEvents();
                     if (action.Enabled) throw new InvalidOperationException("退货单不应再作为原单发起退货。");
+                    type.SelectedIndex = 3;
+                    Application.DoEvents();
+                    if (action.Enabled) throw new InvalidOperationException("采购退货单不应作为原单发起退货。");
                     type.SelectedIndex = 0;
                     Application.DoEvents();
                     if (columns["单号"].Width != "242" || !action.Enabled)
                         throw new InvalidOperationException("销售单列宽在切换单据后未恢复。");
+
+                    search.Text = "__ui_test_no_matching_document__";
+                    typeof(DocumentCenterForm).GetMethod("ReloadDocuments", flags).Invoke(form, null);
+                    var result = documents.DataSource as DataTable;
+                    if (result == null || result.Rows.Count != 0 || columns["单号"].Width != "242")
+                        throw new InvalidOperationException("单据查询结果或查询后保存列宽不正确。");
+
+                    var itemColumns = (System.Collections.Generic.Dictionary<string, AntdUI.Column>)typeof(DocumentCenterForm).GetField("_itemColumns", flags).GetValue(form);
+                    var schema = new DataTable();
+                    schema.Columns.Add("ISBN");
+                    schema.Columns.Add("书名");
+                    var build = typeof(DocumentCenterForm).GetMethod("BuildColumns", flags);
+                    build.Invoke(form, new object[] { schema, items, itemColumns, false });
+                    method.Invoke(form, new object[] { 144 });
+                    if (itemColumns["ISBN"].Width != "198")
+                        throw new InvalidOperationException("单据明细列宽在重排后未保留。");
+                    build.Invoke(form, new object[] { schema, items, itemColumns, false });
+                    if (itemColumns["ISBN"].Width != "198")
+                        throw new InvalidOperationException("单据明细列宽在重建后未恢复。");
                 }
             }
             finally
             {
                 services.Settings.SetString(saleKey, previousSale);
                 services.Settings.SetString(purchaseKey, previousPurchase);
+                services.Settings.SetString(itemKey, previousItem);
             }
         }
 
