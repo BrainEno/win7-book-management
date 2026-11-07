@@ -846,6 +846,7 @@ namespace Win7BookManagement.Infrastructure
                 VerifyPurchaseDpiMetrics(services);
                 VerifySalesDpiColumnsAndSettlement(services);
                 VerifyInventoryDpiMetrics(services);
+                VerifyDocumentCenterDpiMetrics(services);
                 VerifyWindowPlacementContracts();
                 VerifyHostedShellSmallScreen(services);
                 VerifyUiLayoutContracts(services, storedBook);
@@ -1371,6 +1372,102 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        // Injected DPI checks calculations only, not actual high-DPI rendering.
+        private static void VerifyDocumentCenterDpiMetrics(ApplicationServices services)
+        {
+            const string saleKey = "ui.table.column_width.documents-sale-list.单号";
+            const string purchaseKey = "ui.table.column_width.documents-purchase-list.单号";
+            const string itemKey = "ui.table.column_width.documents-sale-items.ISBN";
+            var previousItem = services.Settings.GetString(itemKey, "");
+            var previousSale = services.Settings.GetString(saleKey, "");
+            var previousPurchase = services.Settings.GetString(purchaseKey, "");
+            try
+            {
+                services.Settings.SetInt(saleKey, 242);
+                services.Settings.SetInt(purchaseKey, 278);
+                services.Settings.SetInt(itemKey, 198);
+                using (var form = new DocumentCenterForm(services))
+                {
+                    form.ShowInTaskbar = false;
+                    form.Show();
+                    Application.DoEvents();
+                    var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var method = typeof(DocumentCenterForm).GetMethod("ApplyResponsiveLayoutForDpi", flags);
+                    var type = (AntdUI.Select)typeof(DocumentCenterForm).GetField("_type", flags).GetValue(form);
+                    var from = (Control)typeof(DocumentCenterForm).GetField("_from", flags).GetValue(form);
+                    var search = (Control)typeof(DocumentCenterForm).GetField("_search", flags).GetValue(form);
+                    var query = (Control)typeof(DocumentCenterForm).GetField("_queryButton", flags).GetValue(form);
+                    var action = (Control)typeof(DocumentCenterForm).GetField("_returnButton", flags).GetValue(form);
+                    var filterRow = (TableLayoutPanel)typeof(DocumentCenterForm).GetField("_filterRow", flags).GetValue(form);
+                    var split = (SplitContainer)typeof(DocumentCenterForm).GetField("_split", flags).GetValue(form);
+                    var documents = (PersistentAntdTable)typeof(DocumentCenterForm).GetField("_documents", flags).GetValue(form);
+                    var items = (PersistentAntdTable)typeof(DocumentCenterForm).GetField("_items", flags).GetValue(form);
+                    var columns = (System.Collections.Generic.Dictionary<string, AntdUI.Column>)typeof(DocumentCenterForm).GetField("_documentColumns", flags).GetValue(form);
+                    foreach (var profile in new[] { BookDeskUiSpec.Tight, BookDeskUiSpec.Standard, BookDeskUiSpec.Tight })
+                    {
+                        form.ApplyUiSpecProfile(profile);
+                        foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                        {
+                            method.Invoke(form, new object[] { dpi });
+                            var height = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
+                            var typeWidth = BookDeskUiSpec.ToDevicePixels(profile.IsCompact ? BookDeskUiSpec.DocumentsTypeCompactWidth : BookDeskUiSpec.DocumentsTypeStandardWidth, dpi);
+                            if (type.Height != height || from.Height != height || search.Height != height || query.Height != height || action.Height != height ||
+                                action.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.DocumentsTopActionWidth, dpi) ||
+                                filterRow.ColumnStyles[0].Width != typeWidth ||
+                                search.MinimumSize.Width != BookDeskUiSpec.ToDevicePixels(profile.IsCompact ? BookDeskUiSpec.DocumentsSearchCompactMinimumWidth : BookDeskUiSpec.DocumentsSearchMinimumWidth, dpi))
+                                throw new InvalidOperationException("单据中心 DPI 控件尺寸不一致：" + profile.Name + " / " + dpi);
+                            if (documents.RowHeight != profile.TableRowHeight || items.RowHeightHeader != profile.TableHeaderHeight || columns["单号"].Width != "242")
+                                throw new InvalidOperationException("单据中心表格行高或保存列宽不正确：" + profile.Name + " / " + dpi);
+                            var available = split.Height - split.SplitterWidth;
+                            if (available > split.Panel1MinSize + split.Panel2MinSize &&
+                                (split.SplitterDistance < split.Panel1MinSize || available - split.SplitterDistance < split.Panel2MinSize))
+                                throw new InvalidOperationException("单据中心分区超出边界。");
+                        }
+                    }
+                    // Reloads rebuild columns; each document kind has its own widths.
+                    type.SelectedIndex = 1;
+                    Application.DoEvents();
+                    if (columns["单号"].Width != "278" || !action.Enabled)
+                        throw new InvalidOperationException("采购单列宽或退货操作不正确。");
+                    type.SelectedIndex = 2;
+                    Application.DoEvents();
+                    if (action.Enabled) throw new InvalidOperationException("退货单不应再作为原单发起退货。");
+                    type.SelectedIndex = 3;
+                    Application.DoEvents();
+                    if (action.Enabled) throw new InvalidOperationException("采购退货单不应作为原单发起退货。");
+                    type.SelectedIndex = 0;
+                    Application.DoEvents();
+                    if (columns["单号"].Width != "242" || !action.Enabled)
+                        throw new InvalidOperationException("销售单列宽在切换单据后未恢复。");
+
+                    search.Text = "__ui_test_no_matching_document__";
+                    typeof(DocumentCenterForm).GetMethod("ReloadDocuments", flags).Invoke(form, null);
+                    var result = documents.DataSource as System.Data.DataTable;
+                    if (result == null || result.Rows.Count != 0 || columns["单号"].Width != "242")
+                        throw new InvalidOperationException("单据查询结果或查询后保存列宽不正确。");
+
+                    var itemColumns = (System.Collections.Generic.Dictionary<string, AntdUI.Column>)typeof(DocumentCenterForm).GetField("_itemColumns", flags).GetValue(form);
+                    var schema = new System.Data.DataTable();
+                    schema.Columns.Add("ISBN");
+                    schema.Columns.Add("书名");
+                    var build = typeof(DocumentCenterForm).GetMethod("BuildColumns", flags);
+                    build.Invoke(form, new object[] { schema, items, itemColumns, false });
+                    method.Invoke(form, new object[] { 144 });
+                    if (itemColumns["ISBN"].Width != "198")
+                        throw new InvalidOperationException("单据明细列宽在重排后未保留。");
+                    build.Invoke(form, new object[] { schema, items, itemColumns, false });
+                    if (itemColumns["ISBN"].Width != "198")
+                        throw new InvalidOperationException("单据明细列宽在重建后未恢复。");
+                }
+            }
+            finally
+            {
+                services.Settings.SetString(saleKey, previousSale);
+                services.Settings.SetString(purchaseKey, previousPurchase);
+                services.Settings.SetString(itemKey, previousItem);
+            }
+        }
+
         private static void AssertVisibleInsideParents(Control control, Rectangle screen, string name)
         {
             if (control == null || !control.Visible)
@@ -1445,6 +1542,15 @@ namespace Win7BookManagement.Infrastructure
                     var inventoryFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
                     foreach (var fieldName in new[] { "_search", "_queryButton", "_topAdjustButton", "_lowOnly", "_stocktakeButton", "_detailAdjustButton" })
                         AssertVisibleInsideParents((Control)typeof(InventoryForm).GetField(fieldName, inventoryFlags).GetValue(inventoryPage), screen, "小屏库存 " + fieldName);
+                    shell.Navigate("documents");
+                    Application.DoEvents();
+                    var documentPage = (DocumentCenterForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                    var documentFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    foreach (var fieldName in new[] { "_type", "_from", "_to", "_search", "_queryButton", "_returnButton", "_detailTitle" })
+                        AssertVisibleInsideParents((Control)typeof(DocumentCenterForm).GetField(fieldName, documentFlags).GetValue(documentPage), screen, "小屏单据中心 " + fieldName);
+                    var documentSplit = (SplitContainer)typeof(DocumentCenterForm).GetField("_split", documentFlags).GetValue(documentPage);
+                    if (documentSplit.Panel1.Height < 60 || documentSplit.Panel2.Height < 60)
+                        throw new InvalidOperationException("小屏单据列表或明细区高度不足：" + documentSplit.Panel1.Height + " / " + documentSplit.Panel2.Height);
                     foreach (var key in new[] { "sales", "purchase" })
                     {
                         shell.Navigate(key);
