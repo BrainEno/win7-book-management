@@ -1323,11 +1323,11 @@ namespace Win7BookManagement.Infrastructure
                         Application.DoEvents();
                         if (key == "purchase")
                         {
-                            var page = (PurchaseForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                            var purchasePage = (PurchaseForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
                             var purchaseFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
                             foreach (var fieldName in new[] { "_purchaseDate", "_orderNo", "_supplier", "_newOrderButton", "_historyButton", "_previousButton", "_nextButton", "_exportButton", "_lookupButton", "_clearButton", "_note", "_saveDraftButton", "_reviewButton" })
                             {
-                                var control = (Control)typeof(PurchaseForm).GetField(fieldName, purchaseFlags).GetValue(page);
+                                var control = (Control)typeof(PurchaseForm).GetField(fieldName, purchaseFlags).GetValue(purchasePage);
                                 var bounds = control.RectangleToScreen(control.ClientRectangle);
                                 if (!control.Visible || bounds.Width <= 0 || bounds.Height <= 0 || !screen.Contains(bounds))
                                     throw new InvalidOperationException("小屏采购控件不可见：" + fieldName + " / " + bounds);
