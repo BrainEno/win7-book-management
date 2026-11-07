@@ -459,7 +459,7 @@ namespace Win7BookManagement.Forms
             _contentHost.Controls.Add(child);
             child.Show();
 
-            var profile = BookDeskUiSpec.Resolve(ClientSize.Width, ClientSize.Height);
+            var profile = BookDeskUiSpec.ResolveForDpi(ClientSize.Width, ClientSize.Height, DeviceDpi);
             var specPage = child as IUiSpecPage;
             if (specPage != null)
                 specPage.ApplyUiSpecProfile(profile);
@@ -637,22 +637,34 @@ namespace Win7BookManagement.Forms
                     return "完全离线  |  最近备份：" + ageDays + " 天前  |  数据库：" + dbPath;
                 }
 
+        private static Padding ScalePadding(Padding padding, int dpi)
+        {
+            return new Padding(
+                BookDeskUiSpec.ToDevicePixels(padding.Left, dpi),
+                BookDeskUiSpec.ToDevicePixels(padding.Top, dpi),
+                BookDeskUiSpec.ToDevicePixels(padding.Right, dpi),
+                BookDeskUiSpec.ToDevicePixels(padding.Bottom, dpi));
+        }
+
                 private void ApplyResponsiveLayout()
                 {
-            var profile = BookDeskUiSpec.Resolve(ClientSize.Width, ClientSize.Height);
+            var profile = BookDeskUiSpec.ResolveForDpi(ClientSize.Width, ClientSize.Height, DeviceDpi);
 
-            _sidebar.Width = profile.SidebarWidth;
-            _header.Height = profile.PageHeaderHeight;
+            var dpi = DeviceDpi;
+            _sidebar.Width = BookDeskUiSpec.ToDevicePixels(profile.SidebarWidth, dpi);
+            var headerHeight = BookDeskUiSpec.ToDevicePixels(profile.PageHeaderHeight, dpi);
+            _header.MinimumSize = new Size(0, headerHeight);
+            _header.Height = headerHeight;
 
             ApplyNavigationProfile(profile.IsTight);
             _navigation.Padding = profile.IsTight
-            ? new Padding(6, 12, 6, 8)
-            : new Padding(9, 14, 6, 8);
+            ? ScalePadding(new Padding(6, 12, 6, 8), dpi)
+            : ScalePadding(new Padding(9, 14, 6, 8), dpi);
             _sidebarFooter.Visible = !profile.IsTight;
 
             _header.Padding = profile.IsCompact
-            ? new Padding(12, 4, 12, 4)
-            : new Padding(16, 6, 16, 6);
+            ? ScalePadding(new Padding(12, 4, 12, 4), dpi)
+            : ScalePadding(new Padding(16, 6, 16, 6), dpi);
 
             var navigationFontPixels = profile.IsTight
             ? 12
@@ -666,11 +678,11 @@ namespace Win7BookManagement.Forms
             _pageTitle.IconRatio = profile.IsCompact ? 0.86F : 0.9F;
             _pageTitle.IconGap = profile.IsCompact ? 7 : 8;
 
-            _contentHost.Padding = new Padding(
+            _contentHost.Padding = ScalePadding(new Padding(
             profile.ContentPaddingX,
             profile.ContentPaddingY,
             profile.ContentPaddingX,
-            profile.ContentPaddingY);
+            profile.ContentPaddingY), dpi);
 
             if (_currentPage == null)
             return;

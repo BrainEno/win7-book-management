@@ -324,6 +324,25 @@ namespace Win7BookManagement.Infrastructure
             return Standard;
         }
 
+        // ClientSize/Width are device pixels in this DPI-aware process, while
+        // the spec's breakpoints and metrics are 96-DPI logical pixels.
+        public static int ToLogicalPixels(int physicalPixels, int dpi)
+        {
+            if (dpi <= 0) dpi = 96;
+            return (int)Math.Min(int.MaxValue, Math.Max(0L, ((long)Math.Max(0, physicalPixels) * 96 + dpi / 2) / dpi));
+        }
+
+        public static int ToDevicePixels(int logicalPixels, int dpi)
+        {
+            if (dpi <= 0) dpi = 96;
+            return (int)Math.Min(int.MaxValue, Math.Max(0L, ((long)Math.Max(0, logicalPixels) * dpi + 48) / 96));
+        }
+
+        public static UiSpecProfile ResolveForDpi(int clientWidth, int clientHeight, int dpi)
+        {
+            return Resolve(ToLogicalPixels(clientWidth, dpi), ToLogicalPixels(clientHeight, dpi));
+        }
+
         public static float PixelFontToPoints(int pixels)
         {
             return pixels * 72F / 96F;

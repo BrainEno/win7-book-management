@@ -113,10 +113,12 @@ namespace Win7BookManagement.Infrastructure
             if (root == null || availableWidth <= 0)
                 return;
 
-            var inputHeight = ResponsiveInputHeight(availableWidth);
-            var buttonHeight = ResponsiveButtonHeight(availableWidth);
-            var fontSize = ResponsiveControlFontSize(availableWidth);
-            ApplyResponsiveDensityRecursive(root, availableWidth, inputHeight, buttonHeight, fontSize);
+            var dpi = root.DeviceDpi;
+            var logicalWidth = BookDeskUiSpec.ToLogicalPixels(availableWidth, dpi);
+            var inputHeight = BookDeskUiSpec.ToDevicePixels(ResponsiveInputHeight(logicalWidth), dpi);
+            var buttonHeight = BookDeskUiSpec.ToDevicePixels(ResponsiveButtonHeight(logicalWidth), dpi);
+            var fontSize = ResponsiveControlFontSize(logicalWidth);
+            ApplyResponsiveDensityRecursive(root, logicalWidth, inputHeight, buttonHeight, fontSize, dpi);
         }
 
         private static void ApplyResponsiveDensityRecursive(
@@ -124,7 +126,8 @@ namespace Win7BookManagement.Infrastructure
             int availableWidth,
             int inputHeight,
             int buttonHeight,
-            float fontSize)
+            float fontSize,
+            int dpi)
         {
             foreach (Control control in root.Controls)
             {
@@ -133,9 +136,9 @@ namespace Win7BookManagement.Infrastructure
                 {
                     var font = Font(fontSize);
                     antdButton.Font = font;
-                    antdButton.Height = buttonHeight;
                     var configuredMinimumWidth = antdButton.MinimumSize.Width;
                     antdButton.MinimumSize = new Size(configuredMinimumWidth, buttonHeight);
+                    antdButton.Height = buttonHeight;
 
                     var measured = TextRenderer.MeasureText(
                         string.IsNullOrWhiteSpace(antdButton.Text) ? "按钮" : antdButton.Text,
@@ -148,8 +151,8 @@ namespace Win7BookManagement.Infrastructure
                         : 0;
                     var minimumWidth = availableWidth < 900 ? 64 : availableWidth < 1180 ? 72 : 80;
                     antdButton.Width = Math.Max(
-                        Math.Max(minimumWidth, configuredMinimumWidth),
-                        measured.Width + horizontalPadding + iconAllowance);
+                        Math.Max(BookDeskUiSpec.ToDevicePixels(minimumWidth, dpi), configuredMinimumWidth),
+                        measured.Width + BookDeskUiSpec.ToDevicePixels(horizontalPadding + iconAllowance, dpi));
                 }
                 else
                 {
@@ -157,32 +160,32 @@ namespace Win7BookManagement.Infrastructure
                     if (input != null)
                     {
                         input.Font = Font(fontSize);
-                        input.Height = inputHeight;
                         input.MinimumSize = new Size(input.MinimumSize.Width, inputHeight);
+                        input.Height = inputHeight;
                     }
 
                     var select = control as AntdUI.Select;
                     if (select != null)
                     {
                         select.Font = Font(fontSize);
-                        select.Height = inputHeight;
                         select.MinimumSize = new Size(select.MinimumSize.Width, inputHeight);
+                        select.Height = inputHeight;
                     }
 
                     var number = control as AntdUI.InputNumber;
                     if (number != null)
                     {
                         number.Font = Font(fontSize);
-                        number.Height = inputHeight;
                         number.MinimumSize = new Size(number.MinimumSize.Width, inputHeight);
+                        number.Height = inputHeight;
                     }
 
                     var date = control as AntdUI.DatePicker;
                     if (date != null)
                     {
                         date.Font = Font(fontSize);
-                        date.Height = inputHeight;
                         date.MinimumSize = new Size(date.MinimumSize.Width, inputHeight);
+                        date.Height = inputHeight;
                     }
 
                     var checkbox = control as AntdUI.Checkbox;
@@ -195,7 +198,8 @@ namespace Win7BookManagement.Infrastructure
                     availableWidth,
                     inputHeight,
                     buttonHeight,
-                    fontSize);
+                    fontSize,
+                    dpi);
             }
         }
 

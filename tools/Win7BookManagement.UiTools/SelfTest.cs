@@ -1167,6 +1167,17 @@ namespace Win7BookManagement.Infrastructure
                     if (!screen.Contains(shell.Bounds) || shell.Size != windowSize)
                         throw new InvalidOperationException("主窗口没有完整位于工作区：" + shell.Bounds + " / " + screen);
 
+                    // Check the real shell at the runner's actual DPI. The
+                    // numerical high-DPI matrix is tested separately; CI does
+                    // not claim to simulate a physical 4K/high-DPI display.
+                    var shellFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var sidebar = (Control)typeof(MainForm).GetField("_sidebar", shellFlags).GetValue(shell);
+                    var header = (Control)typeof(MainForm).GetField("_header", shellFlags).GetValue(shell);
+                    var expectedProfile = BookDeskUiSpec.ResolveForDpi(shell.ClientSize.Width, shell.ClientSize.Height, shell.DeviceDpi);
+                    if (sidebar.Width != BookDeskUiSpec.ToDevicePixels(expectedProfile.SidebarWidth, shell.DeviceDpi) ||
+                        header.Height != BookDeskUiSpec.ToDevicePixels(expectedProfile.PageHeaderHeight, shell.DeviceDpi))
+                        throw new InvalidOperationException("主窗口响应式尺寸与系统 DPI 不一致。" + shell.ClientSize + " / DPI=" + shell.DeviceDpi);
+
                     foreach (var key in new[] { "dashboard", "sales", "books", "purchase", "inventory", "documents", "suppliers", "reports", "backup", "help", "settings" })
                     {
                         var nav = shell.GetNavigationScreenBounds(key);
