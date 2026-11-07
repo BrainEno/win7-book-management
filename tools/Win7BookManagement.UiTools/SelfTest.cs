@@ -1442,12 +1442,12 @@ namespace Win7BookManagement.Infrastructure
 
                     search.Text = "__ui_test_no_matching_document__";
                     typeof(DocumentCenterForm).GetMethod("ReloadDocuments", flags).Invoke(form, null);
-                    var result = documents.DataSource as DataTable;
+                    var result = documents.DataSource as System.Data.DataTable;
                     if (result == null || result.Rows.Count != 0 || columns["单号"].Width != "242")
                         throw new InvalidOperationException("单据查询结果或查询后保存列宽不正确。");
 
                     var itemColumns = (System.Collections.Generic.Dictionary<string, AntdUI.Column>)typeof(DocumentCenterForm).GetField("_itemColumns", flags).GetValue(form);
-                    var schema = new DataTable();
+                    var schema = new System.Data.DataTable();
                     schema.Columns.Add("ISBN");
                     schema.Columns.Add("书名");
                     var build = typeof(DocumentCenterForm).GetMethod("BuildColumns", flags);
