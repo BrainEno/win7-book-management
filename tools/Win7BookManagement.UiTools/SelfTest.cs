@@ -843,6 +843,7 @@ namespace Win7BookManagement.Infrastructure
                 VerifyLegacyBookSchemaUpgrade(root);
                 VerifyPersistentTableWidths(services);
                 VerifyBookListDpiMetrics(services);
+                VerifyPurchaseDpiMetrics(services);
                 VerifyWindowPlacementContracts();
                 VerifyHostedShellSmallScreen(services);
                 VerifyUiLayoutContracts(services, storedBook);
@@ -1211,6 +1212,53 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        // Numeric DPI injection verifies the layout calculations, not actual
+        // high-DPI rendering or OS monitor changes.
+        private static void VerifyPurchaseDpiMetrics(ApplicationServices services)
+        {
+            const string key = "ui.table.column_width.purchase-lines-ui-spec-v6.Quantity";
+            var previous = services.Settings.GetString(key, "");
+            try
+            {
+                services.Settings.SetInt(key, 133);
+                using (var form = new PurchaseForm(services))
+                {
+                    form.ShowInTaskbar = false;
+                    form.Show();
+                    Application.DoEvents();
+                    var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var method = typeof(PurchaseForm).GetMethod("ApplyResponsiveColumnsForDpi", flags);
+                    var date = (Control)typeof(PurchaseForm).GetField("_purchaseDate", flags).GetValue(form);
+                    var note = (Control)typeof(PurchaseForm).GetField("_note", flags).GetValue(form);
+                    var review = (Control)typeof(PurchaseForm).GetField("_reviewButton", flags).GetValue(form);
+                    var top = (Control)typeof(PurchaseForm).GetField("_newOrderButton", flags).GetValue(form);
+                    var grid = (PersistentAntdTable)typeof(PurchaseForm).GetField("_grid", flags).GetValue(form);
+                    var empty = (Control)typeof(PurchaseForm).GetField("_emptyState", flags).GetValue(form);
+                    var quantity = (AntdUI.Column)typeof(PurchaseForm).GetField("_quantityColumn", flags).GetValue(form);
+                    foreach (var profile in new[] { BookDeskUiSpec.Tight, BookDeskUiSpec.Standard, BookDeskUiSpec.Tight })
+                    {
+                        form.ApplyUiSpecProfile(profile);
+                        foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                        {
+                            method.Invoke(form, new object[] { dpi });
+                            var controlHeight = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
+                            var fieldHeight = BookDeskUiSpec.ToDevicePixels(profile.IsCompact ? BookDeskUiSpec.PurchaseFieldCompactHeight : BookDeskUiSpec.PurchaseFieldStandardHeight, dpi);
+                            if (date.MinimumSize.Height != fieldHeight || note.MinimumSize.Height != controlHeight ||
+                                review.MinimumSize != new Size(BookDeskUiSpec.ToDevicePixels(profile.IsCompact ? 104 : 112, dpi), controlHeight) ||
+                                top.MinimumSize.Height != BookDeskUiSpec.ToDevicePixels(profile.IsCompact ? BookDeskUiSpec.PurchaseTopButtonCompactHeight : BookDeskUiSpec.PurchaseTopButtonStandardHeight, dpi))
+                                throw new InvalidOperationException("采购控件 DPI 尺寸不一致：" + profile.Name + " / " + dpi);
+                            if (grid.RowHeight != profile.TableRowHeight || grid.RowHeightHeader != profile.TableHeaderHeight || quantity.Width != "133")
+                                throw new InvalidOperationException("采购表格逻辑尺寸或用户列宽不正确：" + profile.Name + " / " + dpi);
+                            var expectedTop = Math.Min(BookDeskUiSpec.ToDevicePixels(profile.TableHeaderHeight, dpi), Math.Max(0, grid.ClientSize.Height));
+                            if (empty.Top != expectedTop)
+                                throw new InvalidOperationException("采购空状态遮挡表头：" + profile.Name + " / " + dpi);
+                        }
+                    }
+                }
+            }
+            finally { services.Settings.SetString(key, previous); }
+        }
+
         // Exercise the real shell and hosted pages, not standalone child forms.
         // These are logical-size checks on the CI monitor, not a DPI simulation.
         private static void VerifyHostedShellSmallScreen(ApplicationServices services)
@@ -1273,6 +1321,21 @@ namespace Win7BookManagement.Infrastructure
                         Application.DoEvents();
                         shell.PerformLayout();
                         Application.DoEvents();
+                        if (key == "purchase")
+                        {
+                            var page = (PurchaseForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                            var purchaseFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                            foreach (var fieldName in new[] { "_purchaseDate", "_orderNo", "_supplier", "_newOrderButton", "_historyButton", "_previousButton", "_nextButton", "_exportButton", "_lookupButton", "_clearButton", "_note", "_saveDraftButton", "_reviewButton" })
+                            {
+                                var control = (Control)typeof(PurchaseForm).GetField(fieldName, purchaseFlags).GetValue(page);
+                                var bounds = control.RectangleToScreen(control.ClientRectangle);
+                                if (!control.Visible || bounds.Width <= 0 || bounds.Height <= 0 || !screen.Contains(bounds))
+                                    throw new InvalidOperationException("小屏采购控件不可见：" + fieldName + " / " + bounds);
+                                for (Control parent = control.Parent; parent != null; parent = parent.Parent)
+                                    if (!parent.Visible || !parent.RectangleToScreen(parent.ClientRectangle).Contains(bounds))
+                                        throw new InvalidOperationException("小屏采购控件被裁切：" + fieldName + " / " + parent.GetType().Name + " / " + bounds + " / " + parent.RectangleToScreen(parent.ClientRectangle));
+                            }
+                        }
                         var target = FindButton(shell, key == "sales" ? "确认结账" : "复核入库");
                         if (target == null || !target.Visible || !target.Enabled)
                             throw new InvalidOperationException("主窗口 " + windowSize + " 中找不到可操作的 " + key + " 主按钮。");
