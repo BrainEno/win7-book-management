@@ -845,6 +845,7 @@ namespace Win7BookManagement.Infrastructure
                 VerifyBookListDpiMetrics(services);
                 VerifyPurchaseDpiMetrics(services);
                 VerifySalesDpiColumnsAndSettlement(services);
+                VerifyInventoryDpiMetrics(services);
                 VerifyWindowPlacementContracts();
                 VerifyHostedShellSmallScreen(services);
                 VerifyUiLayoutContracts(services, storedBook);
@@ -901,7 +902,7 @@ namespace Win7BookManagement.Infrastructure
                 var id = services.Books.Insert(new Book { Title = "宋体自检图书" });
                 var book = services.Books.GetById(id);
                 VerifyHostedShellSmallScreen(services);
-                var forms = new Form[] { new SalesForm(services), new PurchaseForm(services), new BookListForm(services), new BookEditForm(services, book), new BookLabelForm(services, book) };
+                var forms = new Form[] { new SalesForm(services), new PurchaseForm(services), new BookListForm(services), new InventoryForm(services), new BookEditForm(services, book), new BookLabelForm(services, book) };
                 try
                 {
                     foreach (var form in forms)
@@ -1318,6 +1319,47 @@ namespace Win7BookManagement.Infrastructure
             }
         }
 
+        // Synthetic DPI values test the production calculations, not actual
+        // rendering at these system scaling settings.
+        private static void VerifyInventoryDpiMetrics(ApplicationServices services)
+        {
+            using (var form = new InventoryForm(services))
+            {
+                form.ShowInTaskbar = false;
+                form.Show();
+                Application.DoEvents();
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                var method = typeof(InventoryForm).GetMethod("ApplyResponsiveLayoutForDpi", flags);
+                var search = (Control)typeof(InventoryForm).GetField("_search", flags).GetValue(form);
+                var label = (Control)typeof(InventoryForm).GetField("_searchLabel", flags).GetValue(form);
+                var stocktake = (Control)typeof(InventoryForm).GetField("_stocktakeButton", flags).GetValue(form);
+                var adjust = (Control)typeof(InventoryForm).GetField("_topAdjustButton", flags).GetValue(form);
+                var details = (TableLayoutPanel)typeof(InventoryForm).GetField("_detailsTable", flags).GetValue(form);
+                var grid = (AntdUI.Table)typeof(InventoryForm).GetField("_grid", flags).GetValue(form);
+                var split = (SplitContainer)typeof(InventoryForm).GetField("_split", flags).GetValue(form);
+                foreach (var profile in new[] { BookDeskUiSpec.Tight, BookDeskUiSpec.Standard, BookDeskUiSpec.Tight })
+                {
+                    form.ApplyUiSpecProfile(profile);
+                    foreach (var dpi in new[] { 96, 120, 144, 192, 96 })
+                    {
+                        method.Invoke(form, new object[] { dpi });
+                        var height = BookDeskUiSpec.ToDevicePixels(profile.ControlHeight, dpi);
+                        if (search.Height != height || label.Height != height || stocktake.Height != height || adjust.Height != height ||
+                            search.MinimumSize.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventorySearchMinimumWidth, dpi) ||
+                            adjust.Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryTopAdjustWidth, dpi) ||
+                            details.ColumnStyles[0].Width != BookDeskUiSpec.ToDevicePixels(BookDeskUiSpec.InventoryDetailLabelWidth, dpi))
+                            throw new InvalidOperationException("库存页 DPI 尺寸不一致：" + profile.Name + " / " + dpi);
+                        if (grid.RowHeight != profile.TableRowHeight || grid.RowHeightHeader != profile.TableHeaderHeight)
+                            throw new InvalidOperationException("库存表格逻辑行高不正确：" + profile.Name + " / " + dpi);
+                        var expected = BookDeskUiSpec.ToLogicalPixels(form.ClientSize.Width, dpi) < BookDeskUiSpec.InventorySplitStackThreshold
+                            ? Orientation.Horizontal : Orientation.Vertical;
+                        if (split.Orientation != expected)
+                            throw new InvalidOperationException("库存详情布局断点不正确：" + form.ClientSize + " / DPI " + dpi);
+                    }
+                }
+            }
+        }
+
         private static void AssertVisibleInsideParents(Control control, Rectangle screen, string name)
         {
             if (control == null || !control.Visible)
@@ -1386,6 +1428,12 @@ namespace Win7BookManagement.Infrastructure
                             if (!parent.Visible || !parent.RectangleToScreen(parent.ClientRectangle).Contains(bounds))
                                 throw new InvalidOperationException("小屏图书页面控件被裁切：" + fieldName + " / " + parent.GetType().Name + " / " + bounds + " / " + parent.RectangleToScreen(parent.ClientRectangle));
                     }
+                    shell.Navigate("inventory");
+                    Application.DoEvents();
+                    var inventoryPage = (InventoryForm)typeof(MainForm).GetField("_currentPage", shellFlags).GetValue(shell);
+                    var inventoryFlags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    foreach (var fieldName in new[] { "_search", "_queryButton", "_topAdjustButton", "_lowOnly", "_stocktakeButton", "_detailAdjustButton" })
+                        AssertVisibleInsideParents((Control)typeof(InventoryForm).GetField(fieldName, inventoryFlags).GetValue(inventoryPage), screen, "小屏库存 " + fieldName);
                     foreach (var key in new[] { "sales", "purchase" })
                     {
                         shell.Navigate(key);
