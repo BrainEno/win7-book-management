@@ -583,9 +583,9 @@ namespace Win7BookManagement.Forms
                 var desiredBottomHeight = Math.Min(BookDeskUiSpec.ToDevicePixels(330, dpi),
                     Math.Max(BookDeskUiSpec.ToDevicePixels(250, dpi), _split.Height / 3));
                 var distance = _split.Height - desiredBottomHeight - _split.SplitterWidth;
-                if (distance > BookDeskUiSpec.ToDevicePixels(220, dpi) &&
-                    distance >= _split.Panel1MinSize && distance <= _split.Height - _split.SplitterWidth - _split.Panel2MinSize)
-                    _split.SplitterDistance = distance;
+                distance = Math.Max(_split.Panel1MinSize,
+                    Math.Min(distance, _split.Height - _split.SplitterWidth - _split.Panel2MinSize));
+                _split.SplitterDistance = distance;
             }
             else
             {
