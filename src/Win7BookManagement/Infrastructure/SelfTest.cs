@@ -524,7 +524,34 @@ namespace Win7BookManagement.Infrastructure
                 bookForSnapshotMutation.Author = "后改作者";
                 bookForSnapshotMutation.Publisher = "后改出版社";
                 bookForSnapshotMutation.Category = "后改分类";
+                bookForSnapshotMutation.DefaultPurchasePriceCent = 9999;
+                bookForSnapshotMutation.SalePriceCent = 8888;
+                bookForSnapshotMutation.ListPriceCent = 7777;
                 services.Books.Update(bookForSnapshotMutation);
+
+                // Issue #92 / #94：修改图书主数据（含默认进价、售价、定价）后，
+                // 历史销售与采购的单价 / 成本 / 定价快照必须保持不变。
+                var salesAfterMasterEdit =
+                    services.Reports.SalesDetail(DateTime.Today, DateTime.Today);
+                if (salesAfterMasterEdit.Rows.Count != 1 ||
+                    Convert.ToDecimal(salesAfterMasterEdit.Rows[0]["原单价"]) != 20.00m ||
+                    Convert.ToDecimal(salesAfterMasterEdit.Rows[0]["实收单价"]) != 14.40m)
+                    throw new InvalidOperationException("修改图书主数据后历史销售单价被改写。");
+
+                var purchaseAfterMasterEdit = services.Purchases.GetDocument(purchaseDraft.Id);
+                if (purchaseAfterMasterEdit == null ||
+                    purchaseAfterMasterEdit.Lines.Count != 1 ||
+                    purchaseAfterMasterEdit.Lines[0].BaseUnitCostCent != 2000 ||
+                    purchaseAfterMasterEdit.Lines[0].LineDiscountedUnitCostCent != 1600 ||
+                    purchaseAfterMasterEdit.Lines[0].UnitCostCent != 1000)
+                    throw new InvalidOperationException("修改图书默认进价后历史采购成本被改写。");
+
+                var purchaseDetailAfterMasterEdit =
+                    services.Reports.PurchaseDetail(DateTime.Today, DateTime.Today);
+                if (purchaseDetailAfterMasterEdit.Rows.Count != 1 ||
+                    Convert.ToDecimal(purchaseDetailAfterMasterEdit.Rows[0]["原进价"]) != 20.00m ||
+                    Convert.ToDecimal(purchaseDetailAfterMasterEdit.Rows[0]["实际进价"]) != 10.00m)
+                    throw new InvalidOperationException("修改图书默认进价后采购报表进价被改写。");
 
                 var monthlySummary = services.Reports.SalesMonthlySummary(DateTime.Today);
                 if (monthlySummary.Rows.Count != 1 ||
@@ -542,9 +569,11 @@ namespace Win7BookManagement.Infrastructure
                     Convert.ToString(monthlyDetail.Rows[0]["publisher"]) != "测试出版社" ||
                     Convert.ToString(monthlyDetail.Rows[0]["category"]) != "测试分类" ||
                     Convert.ToString(monthlyDetail.Rows[0]["cost_ref_source"]) != "最近采购价" ||
+                    Convert.ToInt64(monthlyDetail.Rows[0]["cost_ref_cent"]) != 1000 ||
+                    Convert.ToInt64(monthlyDetail.Rows[0]["list_price_cent"]) != 3000 ||
                     Convert.ToInt32(monthlyDetail.Rows[0]["returned_quantity_in_month"]) != 1 ||
                     Convert.ToInt32(monthlyDetail.Rows[0]["returned_quantity_to_month_end"]) != 1)
-                    throw new InvalidOperationException("销售历史快照 / 参考成本 / 月内退货口径自检失败。");
+                    throw new InvalidOperationException("销售历史快照 / 参考成本 / 定价 / 月内退货口径自检失败。");
 
                 var monthlyReturns = services.Reports.SalesMonthlyReturnExportDetail(DateTime.Today);
                 if (monthlyReturns.Rows.Count != 1 ||
@@ -782,6 +811,111 @@ namespace Win7BookManagement.Infrastructure
                     new ApplicationServices(dbPath).Books.GetById(bookId).StockQuantity != backupSnapshotStock)
                     throw new InvalidOperationException("损坏备份拒绝或原数据库保护自检失败。");
 
+                // Issue #91：空月份 / 空结果报表导出仍必须是结构完整的有效工作簿。
+                VerifyEmptyReportExports(services, root);
+
+                // Issue #95：停用字典值不得删除历史单据里的引用。
+                var testPaymentId = services.Dictionaries.Insert(new DictionaryValue
+                {
+                    DictionaryKey = DictionaryKeys.PaymentMethod,
+                    Value = "测试支付",
+                    SortOrder = 90,
+                    Note = "self-test",
+                    IsActive = true
+                });
+                var testPayment = services.Dictionaries.GetById(testPaymentId);
+                var dictSaleNo = services.Sales.Checkout(
+                    new List<TransactionLineInput>
+                    {
+                        new TransactionLineInput
+                        {
+                            BookId = bookId,
+                            Quantity = 1,
+                            UnitPriceCent = 2000,
+                            BaseUnitPriceCent = 2000
+                        }
+                    },
+                    "dictionary disable sale",
+                    10000,
+                    "测试支付",
+                    null);
+                if (!services.Dictionaries
+                        .GetActiveValues(DictionaryKeys.PaymentMethod)
+                        .Contains("测试支付"))
+                    throw new InvalidOperationException("新增收款方式字典值没有生效。");
+
+                testPayment.IsActive = false;
+                services.Dictionaries.Update(testPayment);
+                if (services.Dictionaries
+                        .GetActiveValues(DictionaryKeys.PaymentMethod)
+                        .Contains("测试支付"))
+                    throw new InvalidOperationException("停用后的收款方式仍出现在可选列表。");
+
+                var dictSaleDocs =
+                    services.Documents.Search("sale", DateTime.Today, DateTime.Today, "测试支付");
+                var dictSalePreserved = false;
+                foreach (System.Data.DataRow row in dictSaleDocs.Rows)
+                {
+                    if (string.Equals(Convert.ToString(row["单号"]), dictSaleNo, StringComparison.Ordinal) &&
+                        string.Equals(Convert.ToString(row["收款方式"]), "测试支付", StringComparison.Ordinal))
+                    {
+                        dictSalePreserved = true;
+                        break;
+                    }
+                }
+                if (!dictSalePreserved)
+                    throw new InvalidOperationException("停用收款方式后历史销售单的收款快照被删除。");
+
+                var dictSaleDetail = services.Reports.SalesDetail(DateTime.Today, DateTime.Today);
+                var dictDetailPreserved = false;
+                foreach (System.Data.DataRow row in dictSaleDetail.Rows)
+                {
+                    if (string.Equals(Convert.ToString(row["收款方式"]), "测试支付", StringComparison.Ordinal))
+                    {
+                        dictDetailPreserved = true;
+                        break;
+                    }
+                }
+                if (!dictDetailPreserved)
+                    throw new InvalidOperationException("停用收款方式后销售报表丢失历史收款方式。");
+
+                testPayment.IsActive = true;
+                services.Dictionaries.Update(testPayment);
+
+                // Issue #93：库存调整失败必须整体回滚（库存不变、不写流水）。
+                var stockBeforeAdjustFailure = services.Books.GetById(bookId).StockQuantity;
+                var adjustmentCountBefore = CountLedgerRows(dbPath, bookId, "ADJUSTMENT");
+
+                var negativeAdjustRejected = false;
+                try
+                {
+                    services.Inventory.Adjust(
+                        bookId,
+                        -(stockBeforeAdjustFailure + 1),
+                        "adjust rollback");
+                }
+                catch (InvalidOperationException)
+                {
+                    negativeAdjustRejected = true;
+                }
+                if (!negativeAdjustRejected ||
+                    services.Books.GetById(bookId).StockQuantity != stockBeforeAdjustFailure ||
+                    CountLedgerRows(dbPath, bookId, "ADJUSTMENT") != adjustmentCountBefore)
+                    throw new InvalidOperationException("库存调整失败没有回滚库存或仍写入流水。");
+
+                var missingBookAdjustRejected = false;
+                try
+                {
+                    services.Inventory.Adjust(987654321L, 1, "missing book adjust");
+                }
+                catch (InvalidOperationException)
+                {
+                    missingBookAdjustRejected = true;
+                }
+                if (!missingBookAdjustRejected ||
+                    CountLedgerRows(dbPath, bookId, "ADJUSTMENT") != adjustmentCountBefore)
+                    throw new InvalidOperationException("对不存在图书的库存调整未正确拒绝或写入了流水。");
+
                 VerifyLegacyBookSchemaUpgrade(root);
                 VerifyPersistentTableWidths(services);
                 VerifyUiLayoutContracts(services, storedBook);
@@ -806,6 +940,141 @@ namespace Win7BookManagement.Infrastructure
             {
                 SQLiteConnection.ClearAllPools();
                 try { Directory.Delete(root, true); } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Issue #91：空月份 / 空结果导出必须仍然是结构完整的有效 .xlsx，
+        /// 不能因为没有任何业务数据就生成空文件或缺少标题、表头、打印设置。
+        /// </summary>
+        private static void VerifyEmptyReportExports(ApplicationServices services, string root)
+        {
+            var emptyMonth = DateTime.Today.AddMonths(-2);
+
+            var emptySales = services.Reports.SalesDetail(emptyMonth, emptyMonth);
+            if (emptySales.Rows.Count != 0)
+                throw new InvalidOperationException("空月份销售明细应无数据。");
+
+            var emptyGenericPath = Path.Combine(root, "empty-sales-detail.xlsx");
+            services.Excel.Export(emptySales, emptyGenericPath, "空销售明细");
+            if (!File.Exists(emptyGenericPath) || new FileInfo(emptyGenericPath).Length == 0)
+                throw new InvalidOperationException("空结果通用 Excel 导出没有生成文件。");
+
+            using (var stream = File.OpenRead(emptyGenericPath))
+            {
+                var workbook = new XSSFWorkbook(stream);
+                try
+                {
+                    var sheet = workbook.GetSheet("空销售明细");
+                    if (sheet == null ||
+                        sheet.GetRow(0) == null ||
+                        sheet.GetRow(0).GetCell(0) == null ||
+                        sheet.GetRow(0).GetCell(0).StringCellValue != "空销售明细" ||
+                        sheet.GetRow(1) == null ||
+                        sheet.GetRow(1).GetCell(0) == null ||
+                        sheet.GetRow(1).GetCell(0).StringCellValue != "日期" ||
+                        sheet.RepeatingRows == null ||
+                        sheet.RepeatingRows.FormatAsString() != "2:2" ||
+                        string.IsNullOrWhiteSpace(workbook.GetPrintArea(0)))
+                        throw new InvalidOperationException(
+                            "空结果通用 Excel 缺少标题 / 表头 / 打印设置。");
+                }
+                finally
+                {
+                    workbook.Close();
+                }
+            }
+
+            var emptyMonthlyDetail = services.Reports.SalesMonthlyExportDetail(emptyMonth);
+            var emptyMonthlyReturns = services.Reports.SalesMonthlyReturnExportDetail(emptyMonth);
+            if (emptyMonthlyDetail.Rows.Count != 0 || emptyMonthlyReturns.Rows.Count != 0)
+                throw new InvalidOperationException("空月份销售月报明细应无数据。");
+
+            var emptyMonthlySummary = services.Reports.SalesMonthlySummary(emptyMonth);
+            if (emptyMonthlySummary.Rows.Count != 1 ||
+                Convert.ToInt64(emptyMonthlySummary.Rows[0]["gross_sales_cent"]) != 0 ||
+                Convert.ToInt64(emptyMonthlySummary.Rows[0]["net_sales_cent"]) != 0 ||
+                Convert.ToInt64(emptyMonthlySummary.Rows[0]["order_count"]) != 0)
+                throw new InvalidOperationException("空月份销售月报汇总应全为 0。");
+
+            var emptyMonthlyPath = Path.Combine(root, "empty-sales-monthly.xlsx");
+            services.SalesMonthlyExcel.Export(
+                emptyMonthlyDetail,
+                emptyMonthlyReturns,
+                emptyMonthlyPath,
+                emptyMonth,
+                services.Settings.GetReportStoreName(),
+                services.Settings.GetReportNightShiftStartHour(),
+                services.Settings.GetReportCategoryMapping());
+            if (!File.Exists(emptyMonthlyPath) || new FileInfo(emptyMonthlyPath).Length == 0)
+                throw new InvalidOperationException("空月份销售月报导出没有生成文件。");
+
+            using (var stream = File.OpenRead(emptyMonthlyPath))
+            {
+                var workbook = new XSSFWorkbook(stream);
+                try
+                {
+                    var expectedSheets =
+                        DateTime.DaysInMonth(emptyMonth.Year, emptyMonth.Month) + 1;
+                    if (workbook.NumberOfSheets != expectedSheets ||
+                        workbook.GetSheet("销售月报表") == null)
+                        throw new InvalidOperationException("空月份销售月报 Sheet 结构不正确。");
+                }
+                finally
+                {
+                    workbook.Close();
+                }
+            }
+
+            var emptyPurchaseDetail = services.Reports.PurchaseMonthlyExportDetail(emptyMonth);
+            var emptyPurchaseReturns =
+                services.Reports.PurchaseMonthlyReturnExportDetail(emptyMonth);
+            if (emptyPurchaseDetail.Rows.Count != 0 || emptyPurchaseReturns.Rows.Count != 0)
+                throw new InvalidOperationException("空月份采购月报明细应无数据。");
+
+            var emptyPurchasePath = Path.Combine(root, "empty-purchase-monthly.xlsx");
+            services.PurchaseMonthlyExcel.Export(
+                emptyPurchaseDetail,
+                emptyPurchaseReturns,
+                emptyPurchasePath,
+                emptyMonth,
+                services.Settings.GetReportStoreName());
+            if (!File.Exists(emptyPurchasePath) || new FileInfo(emptyPurchasePath).Length == 0)
+                throw new InvalidOperationException("空月份采购月报导出没有生成文件。");
+
+            using (var stream = File.OpenRead(emptyPurchasePath))
+            {
+                var workbook = new XSSFWorkbook(stream);
+                try
+                {
+                    var expectedSheets =
+                        DateTime.DaysInMonth(emptyMonth.Year, emptyMonth.Month) + 2;
+                    if (workbook.NumberOfSheets != expectedSheets ||
+                        workbook.GetSheet("采购月报表") == null ||
+                        workbook.GetSheet("供应商汇总") == null)
+                        throw new InvalidOperationException("空月份采购月报 Sheet 结构不正确。");
+                }
+                finally
+                {
+                    workbook.Close();
+                }
+            }
+        }
+
+        private static int CountLedgerRows(string dbPath, long bookId, string type)
+        {
+            using (var connection = new SQLiteConnection(
+                "Data Source=" + dbPath + ";Version=3;Pooling=False;"))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText =
+                        "SELECT COUNT(1) FROM inventory_transactions WHERE book_id=@id AND type=@type;";
+                    command.Parameters.AddWithValue("@id", bookId);
+                    command.Parameters.AddWithValue("@type", type);
+                    return Convert.ToInt32(command.ExecuteScalar());
+                }
             }
         }
 
