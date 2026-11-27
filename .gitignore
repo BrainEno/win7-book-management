@@ -1,5 +1,6 @@
 bin/
 obj/
+src/Win7BookManagement/Resources/BookDesk.ico
 packages/
 .vs/
 *.user

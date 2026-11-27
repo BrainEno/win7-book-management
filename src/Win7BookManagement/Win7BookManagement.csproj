@@ -83,6 +83,7 @@
     <Compile Include="Forms\SettingsForm.cs" />
     <Compile Include="Forms\SupplierForm.cs" />
 
+    <Compile Include="Infrastructure\AppLog.cs" />
     <Compile Include="Infrastructure\AppPaths.cs" />
     <Compile Include="Infrastructure\ApplicationServices.cs" />
     <Compile Include="Infrastructure\BookDeskUiSpec.cs" />
